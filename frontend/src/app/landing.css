@@ -1,0 +1,50 @@
+/* Premium Landing Page Styles for AgriMarket */
+
+.hero-gradient {
+  background: radial-gradient(circle at top left, rgba(31, 122, 99, 0.05), transparent 40%),
+              radial-gradient(circle at bottom right, rgba(242, 169, 0, 0.05), transparent 40%);
+}
+
+.mockup-container {
+  perspective: 1000px;
+}
+
+.mockup-float {
+  animation: float 6s ease-in-out infinite;
+}
+
+@keyframes float {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-20px); }
+}
+
+.benefit-card {
+  @apply transition-all duration-300;
+}
+
+.benefit-card:hover {
+  border-color: rgba(31, 122, 99, 0.3);
+}
+
+.benefit-icon-wrapper {
+  @apply relative overflow-hidden;
+}
+
+.benefit-icon-wrapper::after {
+  content: '';
+  @apply absolute inset-0 bg-primary/5 opacity-0 transition-opacity duration-300;
+}
+
+.benefit-card:hover .benefit-icon-wrapper::after {
+  @apply opacity-100;
+}
+
+.step-number {
+  @apply relative;
+}
+
+.step-number::after {
+  content: '';
+  @apply absolute -inset-2 rounded-full border-2 animate-ping opacity-20;
+  border-color: rgba(31, 122, 99, 0.2);
+}
