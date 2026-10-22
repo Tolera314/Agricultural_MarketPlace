@@ -1,36 +1,26 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# AgriMarket Frontend
 
-## Getting Started
+High-performance Next.js 16 frontend for the AgriMarket Agricultural Platform.
 
-First, run the development server:
+## Features
+- **Theme Support**: Seamless Dark & Light themes with persistent preference storage and anti-flicker hydration.
+- **Landing Folder Architecture**: All landing page sections are cleanly structured in `src/components/landing/`.
+- **Responsive Layout**: Designed for mobile smartphones (375px+), tablets (768px+), and desktops (1024px – 1920px+).
+- **Lucide React Icons**: 100% vector-based, clean SVG iconography replacing all emojis.
+- **High-Definition Imagery**: Optimized photography for all 6 produce categories and featured farm goods.
+- **Cart & Direct Order Drawer**: Slide-out cart with real-time ETB pricing and delivery logistics estimation.
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
-```
+## Available Scripts
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+- `npm run dev` — Starts Next.js development server on port 3000.
+- `npm run build` — Compiles optimized production build with TypeScript type verification.
+- `npm run start` — Runs the compiled production server.
+- `npm run lint` — Runs ESLint checks.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
-
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
-
-## Learn More
-
-To learn more about Next.js, take a look at the following resources:
-
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
-
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+## Folder Organization
+- `src/components/landing/` — Section components (Hero, ShopByCategory, HowItWorks, FreshAndSeasonalProducts, CommunityImpact, ConnectAcrossCities, Testimonials, CtaBanner).
+- `src/components/layout/` — Shared structural components (Header, Footer, ThemeToggle).
+- `src/components/cart/` — CartDrawer component.
+- `src/context/` — React Context providers (ThemeContext).
+- `src/data/` — Marketplace mock data and location registry.
+- `public/images/` — Curated agricultural photography assets.

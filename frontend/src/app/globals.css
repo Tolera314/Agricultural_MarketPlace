@@ -1,103 +1,71 @@
 @import "tailwindcss";
 
+@custom-variant dark (&:where(.dark, .dark *));
+
 @theme {
-  --font-sans: 'Outfit', ui-sans-serif, system-ui, sans-serif;
-  
-  /* AgriMarket Design System */
-  --color-primary: #1F7A63; /* Deep Earth Green */
-  --color-primary-light: #2A9D8F;
-  --color-secondary: #F2A900; /* Harvest Gold */
-  --color-accent: #6BCB77; /* Fresh Leaf */
-  --color-bg-warm: #F9FAF7; /* Soft Warm White */
-  --color-text-charcoal: #1E1E1E;
-  --color-text-muted: #6B7280;
+  --font-sans: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  --font-display: 'Outfit', 'Plus Jakarta Sans', sans-serif;
+
+  --color-forest: #173F35;
+  --color-growth: #39745A;
+  --color-sage: #E5EDE4;
+  --color-ivory: #F5F0E5;
+  --color-gold: #D9A441;
+  --color-terracotta: #C76D4A;
+  --color-agri-dark: #252B26;
+  --color-agri-muted: #68766C;
+  --color-agri-white: #FFFFFF;
 }
 
-@layer base {
-  :root {
-    --background: #F9FAF7;
-    --foreground: #1E1E1E;
-    --primary: #1F7A63;
-    --secondary: #F2A900;
-  }
-
-  body {
-    background: var(--background);
-    color: var(--foreground);
-    font-family: var(--font-sans);
-    -webkit-font-smoothing: antialiased;
-  }
-
-  h1, h2, h3, h4, h5, h6 {
-    @apply font-bold tracking-tight text-text-charcoal;
-  }
+:root {
+  color-scheme: light;
+  --background: #FAF8F5;
+  --foreground: #252B26;
 }
 
-@layer components {
-  .btn-primary {
-    @apply px-8 py-4 bg-primary text-white rounded-xl font-semibold transition-all shadow-[0_4px_14px_0_rgba(31,122,99,0.39)] hover:shadow-[0_6px_20px_rgba(31,122,99,0.23)] hover:scale-[1.02] active:scale-[0.98] cursor-pointer;
-  }
-  
-  .btn-secondary {
-    @apply px-8 py-4 bg-white text-primary border-2 border-primary/20 rounded-xl font-semibold transition-all hover:bg-bg-warm hover:border-primary cursor-pointer;
-  }
-
-  .card-premium {
-    @apply bg-white rounded-2xl p-8 shadow-[0_10px_40px_-15px_rgba(0,0,0,0.05)] border border-slate-100 transition-all hover:shadow-[0_20px_50px_-20px_rgba(0,0,0,0.08)] hover:-translate-y-1;
-  }
-
-  .section-container {
-    @apply max-w-7xl mx-auto px-6 py-24;
-  }
+.dark {
+  color-scheme: dark;
+  --background: #0B1512;
+  --foreground: #ECF7F1;
 }
 
-/* Premium Landing Page Styles for AgriMarket */
-
-.hero-gradient {
-  background: radial-gradient(circle at top left, rgba(31, 122, 99, 0.05), transparent 40%),
-              radial-gradient(circle at bottom right, rgba(242, 169, 0, 0.05), transparent 40%);
+html {
+  scroll-behavior: smooth;
+  overflow-x: hidden;
+  max-width: 100%;
 }
 
-.mockup-container {
-  perspective: 1000px;
+body {
+  margin: 0;
+  font-family: var(--font-sans);
+  color: var(--foreground);
+  background-color: var(--background);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  transition: background-color 0.2s ease, color 0.2s ease;
+  overflow-x: hidden;
+  max-width: 100%;
+  width: 100%;
 }
 
-.mockup-float {
-  animation: float 6s ease-in-out infinite;
+/* Restrained scrollbar */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+::-webkit-scrollbar-track {
+  background: var(--background);
+}
+::-webkit-scrollbar-thumb {
+  background: #39745A;
+  border-radius: 4px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #173F35;
 }
 
-@keyframes float {
-  0%, 100% { transform: translateY(0); }
-  50% { transform: translateY(-20px); }
-}
-
-.benefit-card {
-  @apply transition-all duration-300;
-}
-
-.benefit-card:hover {
-  border-color: rgba(31, 122, 99, 0.3);
-}
-
-.benefit-icon-wrapper {
-  @apply relative overflow-hidden;
-}
-
-.benefit-icon-wrapper::after {
-  content: '';
-  @apply absolute inset-0 bg-primary/5 opacity-0 transition-opacity duration-300;
-}
-
-.benefit-card:hover .benefit-icon-wrapper::after {
-  @apply opacity-100;
-}
-
-.step-number {
-  @apply relative;
-}
-
-.step-number::after {
-  content: '';
-  @apply absolute -inset-2 rounded-full border-2 animate-ping opacity-20;
-  border-color: rgba(31, 122, 99, 0.2);
+/* Clean focus visible ring */
+:focus-visible {
+  outline: 2px solid #39745A;
+  outline-offset: 2px;
 }

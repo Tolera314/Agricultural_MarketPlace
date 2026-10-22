@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { ShoppingBag, ArrowRight, ChevronRight, Menu, X, Sprout } from 'lucide-react';
+import { ShoppingBag, ArrowRight, ChevronRight, Menu, X } from 'lucide-react';
 import { MarketLocation } from '@/types';
 import { ThemeToggle } from './ThemeToggle';
 
