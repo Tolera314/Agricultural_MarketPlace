@@ -179,7 +179,7 @@ export default function LoginPage() {
             </div>
             <div className="flex flex-col">
               <span className="font-extrabold text-xl sm:text-2xl text-[#075C3B] dark:text-[#34D399] tracking-tight group-hover:text-[#05462D] dark:group-hover:text-[#6EE7B7] transition-colors leading-none">AgriMarket</span>
-              <span className="text-[10px] sm:text-[11px] text-[#476C57] dark:text-[#88B8A0] font-semibold tracking-wide uppercase mt-0.5">Farmers · Buyers · Better Tomorrow</span>
+              <span className="text-[10px] sm:text-[11px] text-[#476C57] dark:text-[#88B8A0] font-semibold tracking-wide uppercase mt-0.5">Farmers  Buyers  Better Tomorrow</span>
             </div>
           </Link>
 
@@ -218,7 +218,7 @@ export default function LoginPage() {
                   <div className="w-4 h-4 rounded-full bg-[#E2F2E7] dark:bg-[#1C3E2E] flex items-center justify-center text-[#075C3B] dark:text-[#34D399]">
                     <Sprout className="w-3 h-3" />
                   </div>
-                  <span className="text-xs font-bold text-[#075C3B] dark:text-[#34D399] tracking-wide">Local Farmers · Fresh Products · Direct to You</span>
+                  <span className="text-xs font-bold text-[#075C3B] dark:text-[#34D399] tracking-wide">Local Farmers  Fresh Products  Direct to You</span>
                 </div>
 
                 <h1 className="text-4xl xl:text-5xl font-black text-[#043E27] dark:text-[#EEFAF3] tracking-tight leading-[1.12] drop-shadow-xs">
@@ -247,7 +247,7 @@ export default function LoginPage() {
 
               <div className="pt-2">
                 <span className="font-serif italic text-2xl font-bold text-white drop-shadow-[0_2px_4px_rgba(0,0,0,0.85)] tracking-wide">
-                  Better Farmers · Brighter Future
+                  Better Farmers  Brighter Future
                 </span>
               </div>
             </div>
@@ -458,7 +458,7 @@ export default function LoginPage() {
       {/* FOOTER */}
       <footer className="w-full bg-white dark:bg-[#07130D] border-t border-[#E8EFEA] dark:border-[#1A3326] py-5 text-center text-xs text-[#527563] dark:text-[#88B8A0] transition-colors z-20">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex flex-col sm:flex-row items-center justify-between gap-2">
-          <span>© {new Date().getFullYear()} AgriMarket. All rights reserved.</span>
+          <span> {new Date().getFullYear()} AgriMarket. All rights reserved.</span>
           <div className="flex items-center gap-4">
             <Link href="/terms" className="hover:text-[#075C3B] dark:hover:text-[#34D399] hover:underline transition-colors">Terms of Service</Link>
             <Link href="/privacy" className="hover:text-[#075C3B] dark:hover:text-[#34D399] hover:underline transition-colors">Privacy Policy</Link>
