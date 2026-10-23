@@ -187,20 +187,12 @@ export const Header: React.FC<HeaderProps> = ({
               )}
             </button>
 
-            {/* Log In Action */}
+            {/* Primary Action: Log In */}
             <Link
               href="/login"
-              className="px-4 py-2 rounded-full text-[#075C3B] dark:text-[#34D399] hover:bg-[#EAF5EE] dark:hover:bg-[#18352A] text-xs sm:text-sm font-semibold transition-all"
-            >
-              Log In
-            </Link>
-
-            {/* Primary Action: Get Started */}
-            <Link
-              href="/signup"
               className="px-5 py-2.5 rounded-full bg-[#075C3B] hover:bg-[#05482E] active:bg-[#043B26] dark:bg-[#10B981] dark:hover:bg-[#059669] text-white text-xs sm:text-sm font-semibold shadow-xs hover:shadow-md transition-all flex items-center gap-1.5"
             >
-              <span>Get Started</span>
+              <span>Log In</span>
               <ArrowRight className="w-4 h-4" />
             </Link>
           </div>
@@ -276,19 +268,12 @@ export const Header: React.FC<HeaderProps> = ({
 
             <div className="pt-3 border-t border-[#E5EDE4] dark:border-[#1E3A2F] mt-2 space-y-2">
               <Link
-                href="/signup"
+                href="/login"
                 onClick={() => setMobileMenuOpen(false)}
                 className="w-full py-3 text-center text-sm font-bold rounded-xl bg-[#075C3B] dark:bg-[#10B981] hover:bg-[#05482E] text-white shadow-xs transition-colors flex items-center justify-center gap-2"
               >
-                <span>Get Started</span>
-                <ArrowRight className="w-4 h-4" />
-              </Link>
-              <Link
-                href="/login"
-                onClick={() => setMobileMenuOpen(false)}
-                className="w-full py-2.5 text-center text-xs font-semibold rounded-xl border border-[#075C3B] dark:border-[#34D399] text-[#075C3B] dark:text-[#34D399] hover:bg-[#E8F5E9] dark:hover:bg-[#18352A] transition-colors flex items-center justify-center gap-1.5"
-              >
                 <span>Log In</span>
+                <ArrowRight className="w-4 h-4" />
               </Link>
             </div>
           </div>
