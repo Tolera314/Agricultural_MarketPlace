@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState } from 'react';
+import Link from 'next/link';
 import { ArrowRight, Sparkles, TrendingUp, Sprout } from 'lucide-react';
 import { MarketLocation } from '@/types';
 
@@ -208,15 +209,14 @@ export const Hero: React.FC<HeroProps> = ({
 
             {/* CTA Buttons */}
             <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2.5 sm:gap-3 w-full sm:w-auto">
-              <button
-                type="button"
-                onClick={onStartSellingClick}
-                className="inline-flex items-center justify-center gap-2 bg-[#0F7638] hover:bg-[#0B5C2B] dark:bg-[#10B981] dark:hover:bg-[#059669] text-white font-bold text-xs sm:text-base px-6 sm:px-7 py-3 sm:py-3.5 rounded-full shadow-lg shadow-emerald-900/20 transition-all duration-200 hover:scale-[1.02] active:scale-[0.98] cursor-pointer"
-                aria-label="Start selling on AgriMarket"
+              <Link
+                href="/signup"
+                className="inline-flex items-center justify-center gap-2 bg-[#0F7638] hover:bg-[#0B5C2B] dark:bg-[#10B981] dark:hover:bg-[#059669] text-white font-bold text-xs sm:text-base px-6 sm:px-7 py-3 sm:py-3.5 rounded-full shadow-lg shadow-emerald-900/20 transition-all duration-200 hover:scale-[1.02] active:scale-[0.98]"
+                aria-label="Get started on AgriMarket"
               >
-                <span>Start Selling</span>
+                <span>Get Started</span>
                 <ArrowRight className="w-4 h-4" />
-              </button>
+              </Link>
 
               <button
                 type="button"
