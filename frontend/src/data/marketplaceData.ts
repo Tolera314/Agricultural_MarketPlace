@@ -13,9 +13,9 @@ const prodMaize = '/images/prod_maize.jpg';
 const prodCoffee = '/images/prod_coffee.jpg';
 const prodLettuce = '/images/prod_lettuce.jpg';
 
-const avatarAbebe = '/images/avatar_abebe_hd.png';
-const avatarSelamawit = '/images/avatar_selamawit_hd.png';
-const avatarMekonnen = '/images/avatar_mekonnen_hd.png';
+const avatarAbebe = '/images/avatar_abebe_hd.jpg';
+const avatarSelamawit = '/images/avatar_selamawit_hd.jpg';
+const avatarMekonnen = '/images/avatar_mekonnen_hd.jpg';
 
 export const POPULAR_CATEGORIES = [
   {

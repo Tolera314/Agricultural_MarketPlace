@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState } from 'react';
+import { useRouter } from 'next/navigation';
 import { Header, Footer } from '@/components/layout';
 import { CartDrawer } from '@/components/cart/CartDrawer';
 import {
@@ -18,6 +19,7 @@ import { CartItem, MarketLocation, Product } from '@/types';
 import { SUPPORTED_LOCATIONS } from '@/data/marketplaceData';
 
 export default function Home() {
+  const router = useRouter();
   // Active location and filter state
   const [currentLocation] = useState<MarketLocation>(SUPPORTED_LOCATIONS[0]);
   const [searchQuery, setSearchQuery] = useState('');
@@ -133,7 +135,7 @@ export default function Home() {
 
         {/* 9. Call to Action Banner */}
         <CtaBanner
-          onGetStarted={() => handleScrollTo('products')}
+          onGetStarted={() => router.push('/signup')}
           onLearnMore={() => handleScrollTo('how-it-works')}
         />
       </main>

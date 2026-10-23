@@ -1,6 +1,7 @@
 'use client';
 
 import React from 'react';
+import Link from 'next/link';
 import { Mail, Phone, MapPin, ArrowUpRight } from 'lucide-react';
 
 interface FooterProps {
@@ -99,6 +100,15 @@ export const Footer: React.FC<FooterProps> = ({
               For Users
             </h4>
             <ul className="space-y-2.5 text-xs">
+              <li>
+                <Link
+                  href="/signup"
+                  className="font-semibold text-[#2E7D32] dark:text-[#34D399] hover:underline transition-colors flex items-center gap-1"
+                >
+                  <span>Create Account</span>
+                  <ArrowUpRight className="w-3 h-3" />
+                </Link>
+              </li>
               <li>
                 <button
                   onClick={() => onScrollTo('how-it-works')}

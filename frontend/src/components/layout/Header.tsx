@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
+import Link from 'next/link';
 import { ShoppingBag, ArrowRight, ChevronRight, Menu, X } from 'lucide-react';
 import { MarketLocation } from '@/types';
 import { ThemeToggle } from './ThemeToggle';
@@ -186,14 +187,14 @@ export const Header: React.FC<HeaderProps> = ({
               )}
             </button>
 
-            {/* Primary Action: Start Selling */}
-            <button
-              onClick={() => onScrollTo('cta')}
-              className="px-5 py-2.5 rounded-full bg-[#075C3B] hover:bg-[#05482E] active:bg-[#043B26] dark:bg-[#10B981] dark:hover:bg-[#059669] text-white text-xs sm:text-sm font-semibold shadow-xs hover:shadow-md transition-all cursor-pointer flex items-center gap-1.5"
+            {/* Primary Action: Log In */}
+            <Link
+              href="/login"
+              className="px-5 py-2.5 rounded-full bg-[#075C3B] hover:bg-[#05482E] active:bg-[#043B26] dark:bg-[#10B981] dark:hover:bg-[#059669] text-white text-xs sm:text-sm font-semibold shadow-xs hover:shadow-md transition-all flex items-center gap-1.5"
             >
-              <span>Start Selling</span>
+              <span>Log In</span>
               <ArrowRight className="w-4 h-4" />
-            </button>
+            </Link>
           </div>
 
           {/* Mobile Right Side: Theme Toggle + Cart Button + Mobile Menu Trigger */}
@@ -265,17 +266,15 @@ export const Header: React.FC<HeaderProps> = ({
               );
             })}
 
-            <div className="pt-3 border-t border-[#E5EDE4] dark:border-[#1E3A2F] mt-2">
-              <button
-                onClick={() => {
-                  setMobileMenuOpen(false);
-                  onScrollTo('cta');
-                }}
-                className="w-full py-3 text-center text-sm font-bold rounded-xl bg-[#075C3B] dark:bg-[#10B981] hover:bg-[#05482E] text-white shadow-xs transition-colors flex items-center justify-center gap-2 cursor-pointer"
+            <div className="pt-3 border-t border-[#E5EDE4] dark:border-[#1E3A2F] mt-2 space-y-2">
+              <Link
+                href="/login"
+                onClick={() => setMobileMenuOpen(false)}
+                className="w-full py-3 text-center text-sm font-bold rounded-xl bg-[#075C3B] dark:bg-[#10B981] hover:bg-[#05482E] text-white shadow-xs transition-colors flex items-center justify-center gap-2"
               >
-                <span>Start Selling as a Farmer</span>
+                <span>Log In</span>
                 <ArrowRight className="w-4 h-4" />
-              </button>
+              </Link>
             </div>
           </div>
         </div>

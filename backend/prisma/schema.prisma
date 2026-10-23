@@ -1,8 +1,19 @@
-// This is Prisma schema file,
-// learn more about it in the docs: https://pris.ly/d/prisma-schema
+// ============================================================
+// Agricultural Marketplace Platform — Prisma Schema
+// PostgreSQL + PostGIS | Prisma v7
+// ============================================================
+// Design principles:
+//  • Farmer-controlled pricing — prices are never silently overridden.
+//  • Order snapshots — agreed prices are locked at order creation.
+//  • Location-aware — coordinates stored as Float pairs; PostGIS
+//    spatial queries are issued from raw SQL at the application layer.
+//  • Exact decimals — all monetary values use Decimal(14,4).
+//  • Validated state machines — enums enforce lifecycle transitions.
+//  • Full audit trail — every financial/admin action is logged.
+// ============================================================
 
 generator client {
-  provider = "prisma-client-js"
+  provider   = "prisma-client-js"
   engineType = "library"
 }
 
@@ -10,51 +21,157 @@ datasource db {
   provider = "postgresql"
 }
 
-/// Defines the role of a user within the platform.
+// ============================================================
+// --------------------------  ENUMS  -------------------------
+// ============================================================
+
+/// Platform roles that control access and capabilities.
 enum Role {
   FARMER
   BUYER
-  DRIVER
+  DELIVERY_WORKER
   ADMIN
   SUPERADMIN
 }
 
-/// Represents the lifecycle status of an order.
-enum OrderStatus {
+/// Verification state for accounts that require manual review.
+enum VerificationStatus {
   PENDING
+  VERIFIED
+  REJECTED
+  SUSPENDED
+}
+
+/// Quality tier assigned by the farmer or auto-graded.
+enum QualityGrade {
+  A
+  B
+  C
+  UNGRADED
+}
+
+/// Lifecycle state of a product listing.
+enum ListingStatus {
+  ACTIVE
+  PAUSED
+  OUT_OF_STOCK
+  REMOVED
+}
+
+/// Distinguishes local-market orders from intercity trades.
+enum TradeType {
+  LOCAL
+  INTERCITY
+}
+
+/// Full order lifecycle including intercity approval steps.
+enum OrderStatus {
+  DRAFT
+  PENDING_APPROVAL
+  APPROVED
+  PENDING_PAYMENT
   CONFIRMED
   PREPARING
   READY_FOR_PICKUP
   IN_TRANSIT
   DELIVERED
   CANCELLED
+  REFUNDED
 }
 
-/// The method chosen by the buyer to pay for the order.
+/// Payment method chosen at checkout.
 enum PaymentMethod {
   CASH_ON_DELIVERY
-  DIGITAL
+  TELEBIRR
+  CHAPA
+  CBEBIRR
+  BANK_TRANSFER
+  OTHER_DIGITAL
 }
 
-/// The current state of a payment transaction.
+/// Payment lifecycle states.
 enum PaymentStatus {
   PENDING
+  PROCESSING
   COMPLETED
-  REFUNDED
   FAILED
+  REFUNDED
+  PARTIALLY_REFUNDED
 }
 
-/// Represents the lifecycle status of a delivery.
+/// Delivery job lifecycle.
 enum DeliveryStatus {
   UNASSIGNED
+  BROADCASTING
   ASSIGNED
+  HEADING_TO_PICKUP
   PICKED_UP
   EN_ROUTE
   DELIVERED
   FAILED
+  CANCELLED
 }
 
-/// Status of a dispute raised by a user.
+/// State of a single delivery offer sent to one worker.
+enum OfferStatus {
+  PENDING
+  ACCEPTED
+  REJECTED
+  EXPIRED
+  WITHDRAWN
+}
+
+/// Vehicle class for capacity filtering.
+enum VehicleType {
+  BICYCLE
+  MOTORCYCLE
+  THREE_WHEELER
+  PICKUP_TRUCK
+  TRUCK
+  OTHER
+}
+
+/// Availability flag for delivery workers.
+enum WorkerAvailability {
+  ONLINE
+  BUSY
+  OFFLINE
+}
+
+/// Intercity route operational status.
+enum RouteStatus {
+  ACTIVE
+  SUSPENDED
+  UNDER_REVIEW
+}
+
+/// Admin-approval workflow state.
+enum ApprovalStatus {
+  PENDING
+  APPROVED
+  REJECTED
+  CANCELLED
+}
+
+/// Type of platform fee rule.
+enum PricingRuleType {
+  COMMISSION_PERCENTAGE
+  FLAT_COMMISSION
+  DELIVERY_BASE_FEE
+  INTERCITY_FEE
+  TAX_PERCENTAGE
+  DISCOUNT_PERCENTAGE
+}
+
+/// Scope at which a pricing rule applies.
+enum PricingRuleScope {
+  GLOBAL
+  CATEGORY
+  MARKET
+  INTERCITY_ROUTE
+}
+
+/// Dispute lifecycle.
 enum DisputeStatus {
   OPEN
   UNDER_REVIEW
@@ -62,14 +179,15 @@ enum DisputeStatus {
   CLOSED
 }
 
-/// Status of cash reconciliation for drivers handling COD orders.
+/// Cash reconciliation state for COD orders.
 enum ReconciliationStatus {
   PENDING
+  SUBMITTED
   APPROVED
   REJECTED
 }
 
-/// Status of a system report.
+/// Report lifecycle.
 enum ReportStatus {
   OPEN
   INVESTIGATING
@@ -77,38 +195,79 @@ enum ReportStatus {
   DISMISSED
 }
 
-/// Represents a user account on the platform.
-model User {
-  id            String   @id @default(uuid())
-  email         String   @unique
-  passwordHash  String
-  phone         String   @unique
-  fullName      String
-  role          Role
-  address       String?  // General address
-  latitude      Float?
-  longitude     Float?
-  isVerified    Boolean  @default(false)
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
-
-  // Relations
-  profile         UserProfile?
-  farmerProfile   FarmerProfile?
-  products        Product[]
-  orders          Order[]              @relation("BuyerOrders")
-  deliveries      Delivery[]           @relation("DriverDeliveries")
-  disputes        Dispute[]            @relation("UserDisputes")
-  reconciliations CashReconciliation[] @relation("DriverReconciliations")
-  reviewsGiven    Review[]             @relation("ReviewerReviews")
-  reviewsReceived Review[]             @relation("TargetReviews")
-  reportsFiled    Report[]             @relation("ReporterReports")
-  reportsAgainst  Report[]             @relation("ReportedUserReports")
-  notifications   Notification[]
-  otpVerifications OTPVerification[]
+/// Notification delivery channel.
+enum NotificationChannel {
+  IN_APP
+  SMS
+  EMAIL
+  PUSH
 }
 
-/// Extended profile information for general users.
+/// Notification delivery state.
+enum NotificationStatus {
+  QUEUED
+  SENT
+  FAILED
+  READ
+}
+
+/// Category of auditable action.
+enum AuditAction {
+  CREATE
+  UPDATE
+  DELETE
+  APPROVE
+  REJECT
+  CANCEL
+  PRICE_CHANGE
+  STATUS_CHANGE
+  PAYMENT_EVENT
+  ADMIN_OVERRIDE
+}
+
+// ============================================================
+// ---------------------  USER & PROFILES  --------------------
+// ============================================================
+
+/// Central user account. A single record covers all roles;
+/// role-specific data lives in dedicated profile tables.
+model User {
+  id           String             @id @default(uuid())
+  email        String?            @unique
+  phone        String             @unique
+  passwordHash String
+  fullName     String
+  role         Role
+  isActive     Boolean            @default(true)
+  isVerified   Boolean            @default(false)
+  createdAt    DateTime           @default(now())
+  updatedAt    DateTime           @updatedAt
+
+  userProfile       UserProfile?
+  farmerProfile     FarmerProfile?
+  buyerProfile      BuyerProfile?
+  deliveryProfile   DeliveryWorkerProfile?
+  productListings   ProductListing[]      @relation("FarmerListings")
+  buyerOrders       Order[]               @relation("BuyerOrders")
+  reviewsGiven      Review[]              @relation("ReviewerReviews")
+  reviewsReceived   Review[]              @relation("TargetReviews")
+  deliveryJobs      DeliveryJob[]         @relation("AssignedWorker")
+  deliveryOffers    DeliveryOffer[]       @relation("WorkerOffers")
+  reconciliations   CashReconciliation[]  @relation("WorkerReconciliations")
+  disputes          Dispute[]             @relation("DisputeRaiser")
+  reports           Report[]              @relation("Reporter")
+  reportsAgainst    Report[]              @relation("ReportedUser")
+  adminApprovals    AdminApproval[]       @relation("ApproverAdmin")
+  notifications     Notification[]
+  otpVerifications  OTPVerification[]
+  auditLogs         AuditLog[]            @relation("ActorLogs")
+
+  @@index([role])
+  @@index([phone])
+  @@map("users")
+}
+
+/// General profile metadata for any user role.
 model UserProfile {
   id          String   @id @default(uuid())
   userId      String   @unique
@@ -119,218 +278,631 @@ model UserProfile {
   updatedAt   DateTime @updatedAt
 
   user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("user_profiles")
 }
 
-/// Specialized profile information for farmers.
+/// Farmer-specific profile and farm location.
+/// Farm coordinates are the reference point for distance ranking.
 model FarmerProfile {
-  id             String   @id @default(uuid())
-  userId         String   @unique
-  farmName       String
-  farmSize       Float?   // in acres or hectares
-  isOrganic      Boolean  @default(false)
-  certifications String[]
-  createdAt      DateTime @default(now())
-  updatedAt      DateTime @updatedAt
+  id                 String             @id @default(uuid())
+  userId             String             @unique
+  farmName           String
+  farmDescription    String?
+  farmSizeHectares   Float?
+  isOrganic          Boolean            @default(false)
+  certifications     String[]
+  verificationStatus VerificationStatus @default(PENDING)
+  verificationNote   String?
+  farmLatitude       Float
+  farmLongitude      Float
+  marketId           String?
+  createdAt          DateTime           @default(now())
+  updatedAt          DateTime           @updatedAt
 
-  user           User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user               User               @relation(fields: [userId], references: [id], onDelete: Cascade)
+  market             Market?            @relation(fields: [marketId], references: [id])
+  productListings    ProductListing[]
+
+  @@index([farmLatitude, farmLongitude])
+  @@index([marketId])
+  @@map("farmer_profiles")
 }
 
-/// Represents a category for grouping products.
+/// Buyer-specific profile including preferred delivery location.
+model BuyerProfile {
+  id                       String   @id @default(uuid())
+  userId                   String   @unique
+  preferredDeliveryAddress String?
+  preferredLatitude        Float?
+  preferredLongitude       Float?
+  createdAt                DateTime @default(now())
+  updatedAt                DateTime @updatedAt
+
+  user                     User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("buyer_profiles")
+}
+
+/// Delivery worker profile — vehicle, capacity, and live location.
+model DeliveryWorkerProfile {
+  id                 String             @id @default(uuid())
+  userId             String             @unique
+  vehicleType        VehicleType
+  vehiclePlate       String?
+  vehicleCapacityKg  Float?
+  availability       WorkerAvailability @default(OFFLINE)
+  verificationStatus VerificationStatus @default(PENDING)
+  lastLatitude       Float?
+  lastLongitude      Float?
+  lastLocationAt     DateTime?
+  deliveryZoneId     String?
+  activeJobCount     Int                @default(0)
+  createdAt          DateTime           @default(now())
+  updatedAt          DateTime           @updatedAt
+
+  user               User               @relation(fields: [userId], references: [id], onDelete: Cascade)
+  deliveryZone       DeliveryZone?      @relation(fields: [deliveryZoneId], references: [id])
+
+  @@index([lastLatitude, lastLongitude])
+  @@index([availability])
+  @@map("delivery_worker_profiles")
+}
+
+// ============================================================
+// -----------------  GEOGRAPHY & MARKETS  --------------------
+// ============================================================
+
+/// Administrative city record.
+model City {
+  id              String   @id @default(uuid())
+  name            String   @unique
+  regionName      String?
+  countryCode     String   @default("ET")
+  latitude        Float
+  longitude       Float
+  boundaryGeoJson String?
+  isActive        Boolean  @default(true)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  markets           Market[]
+  originRoutes      IntercityRoute[] @relation("OriginCity")
+  destinationRoutes IntercityRoute[] @relation("DestinationCity")
+  deliveryZones     DeliveryZone[]
+
+  @@map("cities")
+}
+
+/// A local agricultural market within a city.
+model Market {
+  id              String   @id @default(uuid())
+  cityId          String
+  name            String
+  description     String?
+  latitude        Float
+  longitude       Float
+  serviceRadiusKm Float    @default(30)
+  boundaryGeoJson String?
+  isActive        Boolean  @default(true)
+  configuration   Json?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  city            City             @relation(fields: [cityId], references: [id])
+  farmerProfiles  FarmerProfile[]
+  deliveryZones   DeliveryZone[]
+  originRoutes    IntercityRoute[] @relation("OriginMarket")
+  destRoutes      IntercityRoute[] @relation("DestinationMarket")
+  pricingRules    PricingRule[]
+
+  @@index([cityId])
+  @@map("markets")
+}
+
+/// A geographic delivery coverage zone.
+model DeliveryZone {
+  id              String   @id @default(uuid())
+  cityId          String
+  marketId        String?
+  name            String
+  description     String?
+  latitude        Float
+  longitude       Float
+  radiusKm        Float
+  boundaryGeoJson String?
+  isActive        Boolean  @default(true)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  city                   City                    @relation(fields: [cityId], references: [id])
+  market                 Market?                 @relation(fields: [marketId], references: [id])
+  deliveryWorkerProfiles DeliveryWorkerProfile[]
+
+  @@index([cityId])
+  @@map("delivery_zones")
+}
+
+// ============================================================
+// -----------------  PRODUCTS & LISTINGS  --------------------
+// ============================================================
+
+/// Product category taxonomy with optional hierarchy.
 model Category {
-  id          String    @id @default(uuid())
-  name        String    @unique
-  description String?
-  products    Product[]
-  createdAt   DateTime  @default(now())
-  updatedAt   DateTime  @updatedAt
+  id               String    @id @default(uuid())
+  name             String    @unique
+  slug             String    @unique
+  description      String?
+  iconUrl          String?
+  parentCategoryId String?
+  isActive         Boolean   @default(true)
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
+
+  parentCategory   Category?          @relation("CategoryHierarchy", fields: [parentCategoryId], references: [id])
+  subCategories    Category[]         @relation("CategoryHierarchy")
+  productListings  ProductListing[]
+  pricingRules     PricingRule[]
+
+  @@map("categories")
 }
 
-/// Represents a product listed by a farmer.
-model Product {
-  id          String      @id @default(uuid())
-  farmerId    String
-  categoryId  String
-  name        String
-  description String
-  price       Decimal     @db.Decimal(10, 2)
-  unit        String      // e.g. kg, liter, piece
-  stock       Int         @default(0)
-  isActive    Boolean     @default(true)
-  createdAt   DateTime    @default(now())
-  updatedAt   DateTime    @updatedAt
-
-  farmer      User        @relation(fields: [farmerId], references: [id])
-  category    Category    @relation(fields: [categoryId], references: [id])
-  orderItems  OrderItem[]
-  images      ProductImage[]
-  reviews     Review[]
-}
-
-/// Dedicated model for product images.
-model ProductImage {
-  id        String   @id @default(uuid())
-  productId String
-  url       String
-  isPrimary Boolean  @default(false)
-  createdAt DateTime @default(now())
-
-  product   Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
-}
-
-/// Represents a customer order.
-model Order {
+/// A product listing created by a farmer.
+/// pricePerUnit is farmer-owned and must not be silently modified.
+model ProductListing {
   id              String        @id @default(uuid())
-  buyerId         String
-  totalAmount     Decimal       @db.Decimal(10, 2)
-  status          OrderStatus   @default(PENDING)
-  paymentMethod   PaymentMethod
-  paymentStatus   PaymentStatus @default(PENDING) // Kept for quick access, but detailed in Payment
-  deliveryAddress String
+  farmerId        String
+  farmerProfileId String
+  categoryId      String
+  name            String
+  description     String?
+  qualityGrade    QualityGrade  @default(UNGRADED)
+  pricePerUnit    Decimal       @db.Decimal(14, 4)
+  unit            String
+  stockQuantity   Decimal       @db.Decimal(14, 3)
+  minOrderQty     Decimal       @db.Decimal(14, 3) @default(0.001)
+  maxOrderQty     Decimal?      @db.Decimal(14, 3)
+  harvestDate     DateTime?
+  productionDate  DateTime?
+  expiryDate      DateTime?
+  status          ListingStatus @default(ACTIVE)
+  pickupLatitude  Float
+  pickupLongitude Float
+  intercityEligible Boolean    @default(false)
   createdAt       DateTime      @default(now())
   updatedAt       DateTime      @updatedAt
 
-  buyer           User          @relation("BuyerOrders", fields: [buyerId], references: [id])
-  items           OrderItem[]
-  delivery        Delivery?
-  disputes        Dispute[]
-  payment         Payment?
+  farmer          User          @relation("FarmerListings", fields: [farmerId], references: [id])
+  farmerProfile   FarmerProfile @relation(fields: [farmerProfileId], references: [id])
+  category        Category      @relation(fields: [categoryId], references: [id])
+  images          ListingImage[]
+  orderItems      OrderItem[]
+  reviews         Review[]
+
+  @@index([farmerId])
+  @@index([categoryId])
+  @@index([status])
+  @@index([pickupLatitude, pickupLongitude])
+  @@map("product_listings")
 }
 
-/// Represents an individual item within an order.
+/// Images attached to a product listing.
+model ListingImage {
+  id        String         @id @default(uuid())
+  listingId String
+  url       String
+  altText   String?
+  isPrimary Boolean        @default(false)
+  sortOrder Int            @default(0)
+  createdAt DateTime       @default(now())
+
+  listing   ProductListing @relation(fields: [listingId], references: [id], onDelete: Cascade)
+
+  @@index([listingId])
+  @@map("listing_images")
+}
+
+// ============================================================
+// --------------------  INTERCITY ROUTES  --------------------
+// ============================================================
+
+/// Administrator-configured intercity trade route.
+model IntercityRoute {
+  id                  String      @id @default(uuid())
+  originCityId        String
+  destinationCityId   String
+  originMarketId      String
+  destinationMarketId String
+  status              RouteStatus @default(ACTIVE)
+  requiresApproval    Boolean     @default(true)
+  maxTransactionLimit Decimal?    @db.Decimal(14, 4)
+  minTransactionLimit Decimal?    @db.Decimal(14, 4)
+  estimatedTransitDays Int?
+  notes               String?
+  configuration       Json?
+  createdAt           DateTime    @default(now())
+  updatedAt           DateTime    @updatedAt
+
+  originCity          City    @relation("OriginCity", fields: [originCityId], references: [id])
+  destinationCity     City    @relation("DestinationCity", fields: [destinationCityId], references: [id])
+  originMarket        Market  @relation("OriginMarket", fields: [originMarketId], references: [id])
+  destinationMarket   Market  @relation("DestinationMarket", fields: [destinationMarketId], references: [id])
+  orders              Order[]
+  pricingRules        PricingRule[]
+
+  @@unique([originMarketId, destinationMarketId])
+  @@index([originCityId, destinationCityId])
+  @@map("intercity_routes")
+}
+
+// ============================================================
+// ---------------------  PRICING RULES  ----------------------
+// ============================================================
+
+/// Platform fee and commission rules configured by admins.
+/// Never rewrites the farmer price; used only to compute totals.
+model PricingRule {
+  id               String           @id @default(uuid())
+  name             String
+  description      String?
+  type             PricingRuleType
+  scope            PricingRuleScope @default(GLOBAL)
+  value            Decimal          @db.Decimal(14, 4)
+  categoryId       String?
+  marketId         String?
+  intercityRouteId String?
+  isActive         Boolean          @default(true)
+  effectiveFrom    DateTime         @default(now())
+  effectiveTo      DateTime?
+  createdAt        DateTime         @default(now())
+  updatedAt        DateTime         @updatedAt
+
+  category         Category?        @relation(fields: [categoryId], references: [id])
+  market           Market?          @relation(fields: [marketId], references: [id])
+  intercityRoute   IntercityRoute?  @relation(fields: [intercityRouteId], references: [id])
+
+  @@index([scope, isActive])
+  @@map("pricing_rules")
+}
+
+// ============================================================
+// --------------------------  ORDERS  ------------------------
+// ============================================================
+
+/// A buyer's purchase. May contain items from multiple farmers.
+model Order {
+  id                  String         @id @default(uuid())
+  buyerId             String
+  tradeType           TradeType      @default(LOCAL)
+  status              OrderStatus    @default(DRAFT)
+  deliveryAddress     String
+  deliveryLatitude    Float
+  deliveryLongitude   Float
+  intercityRouteId    String?
+  idempotencyKey      String?        @unique
+  productSubtotal     Decimal        @db.Decimal(14, 4)
+  deliveryFee         Decimal        @db.Decimal(14, 4) @default(0)
+  platformCommission  Decimal        @db.Decimal(14, 4) @default(0)
+  taxAmount           Decimal        @db.Decimal(14, 4) @default(0)
+  discountAmount      Decimal        @db.Decimal(14, 4) @default(0)
+  totalAmount         Decimal        @db.Decimal(14, 4)
+  paymentMethod       PaymentMethod
+  paymentStatus       PaymentStatus  @default(PENDING)
+  buyerNotes          String?
+  cancellationReason  String?
+  confirmedAt         DateTime?
+  cancelledAt         DateTime?
+  createdAt           DateTime       @default(now())
+  updatedAt           DateTime       @updatedAt
+
+  buyer               User            @relation("BuyerOrders", fields: [buyerId], references: [id])
+  intercityRoute      IntercityRoute? @relation(fields: [intercityRouteId], references: [id])
+  items               OrderItem[]
+  payment             Payment?
+  deliveryJob         DeliveryJob?
+  adminApproval       AdminApproval?
+  disputes            Dispute[]
+
+  @@index([buyerId])
+  @@index([status])
+  @@index([tradeType])
+  @@map("orders")
+}
+
+/// A single line item within an order.
+/// agreedUnitPrice and listingSnapshot are frozen at order creation.
 model OrderItem {
-  id         String   @id @default(uuid())
-  orderId    String
-  productId  String
-  quantity   Int
-  priceAtBuy Decimal  @db.Decimal(10, 2) // Lock in price at purchase time
+  id              String   @id @default(uuid())
+  orderId         String
+  listingId       String
+  listingSnapshot Json
+  quantity        Decimal  @db.Decimal(14, 3)
+  agreedUnitPrice Decimal  @db.Decimal(14, 4)
+  subtotal        Decimal  @db.Decimal(14, 4)
+  createdAt       DateTime @default(now())
 
-  order      Order    @relation(fields: [orderId], references: [id], onDelete: Cascade)
-  product    Product  @relation(fields: [productId], references: [id])
+  order           Order          @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  listing         ProductListing @relation(fields: [listingId], references: [id])
+
+  @@index([orderId])
+  @@index([listingId])
+  @@map("order_items")
 }
 
-/// Detailed payment information for an order.
+// ============================================================
+// ----------------------  PAYMENTS  --------------------------
+// ============================================================
+
+/// Full payment record for an order.
 model Payment {
-  id            String        @id @default(uuid())
-  orderId       String        @unique
-  amount        Decimal       @db.Decimal(10, 2)
-  status        PaymentStatus @default(PENDING)
-  gatewayTxId   String?       // Transaction ID from payment gateway
-  paymentMethod PaymentMethod
-  createdAt     DateTime      @default(now())
-  updatedAt     DateTime      @updatedAt
+  id               String        @id @default(uuid())
+  orderId          String        @unique
+  amount           Decimal       @db.Decimal(14, 4)
+  status           PaymentStatus @default(PENDING)
+  paymentMethod    PaymentMethod
+  gatewayReference String?
+  gatewayResponse  Json?
+  idempotencyKey   String?       @unique
+  paidAt           DateTime?
+  refundedAt       DateTime?
+  refundAmount     Decimal?      @db.Decimal(14, 4)
+  refundReason     String?
+  createdAt        DateTime      @default(now())
+  updatedAt        DateTime      @updatedAt
 
-  order         Order         @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  order            Order         @relation(fields: [orderId], references: [id], onDelete: Cascade)
+
+  @@map("payments")
 }
 
-/// Represents the delivery assignment for an order.
-model Delivery {
-  id               String         @id @default(uuid())
-  orderId          String         @unique
-  driverId         String?
-  status           DeliveryStatus @default(UNASSIGNED)
-  cashCollected    Decimal?       @db.Decimal(10, 2) // Important for COD
-  pickupTime       DateTime?
-  dropoffTime      DateTime?
-  createdAt        DateTime       @default(now())
-  updatedAt        DateTime       @updatedAt
+// ============================================================
+// ---------------------  DELIVERY  ---------------------------
+// ============================================================
 
-  order            Order          @relation(fields: [orderId], references: [id], onDelete: Cascade)
-  driver           User?          @relation("DriverDeliveries", fields: [driverId], references: [id])
-  logs             DeliveryLog[]
+/// Delivery job for an order. Dispatch engine broadcasts offers
+/// and atomically assigns the first accepting worker.
+model DeliveryJob {
+  id                  String         @id @default(uuid())
+  orderId             String         @unique
+  assignedWorker      String?
+  status              DeliveryStatus @default(UNASSIGNED)
+  pickupAddress       String?
+  pickupLatitude      Float
+  pickupLongitude     Float
+  dropoffAddress      String?
+  dropoffLatitude     Float
+  dropoffLongitude    Float
+  requiredVehicleType VehicleType?
+  requiredCapacityKg  Float?
+  broadcastRadiusKm   Float          @default(5)
+  offerExpirySeconds  Int            @default(60)
+  acceptedAt          DateTime?
+  pickedUpAt          DateTime?
+  deliveredAt         DateTime?
+  failedAt            DateTime?
+  proofOfDeliveryUrl  String?
+  cashCollected       Decimal?       @db.Decimal(14, 4)
+  createdAt           DateTime       @default(now())
+  updatedAt           DateTime       @updatedAt
+
+  order               Order          @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  worker              User?          @relation("AssignedWorker", fields: [assignedWorker], references: [id])
+  offers              DeliveryOffer[]
+  events              DeliveryEvent[]
+
+  @@index([status])
+  @@index([pickupLatitude, pickupLongitude])
+  @@map("delivery_jobs")
 }
 
-/// Tracks the status history of a delivery.
-model DeliveryLog {
-  id          String         @id @default(uuid())
-  deliveryId  String
-  status      DeliveryStatus
-  notes       String?
-  createdAt   DateTime       @default(now())
+/// A time-limited offer sent to one delivery worker.
+model DeliveryOffer {
+  id              String      @id @default(uuid())
+  jobId           String
+  workerId        String
+  status          OfferStatus @default(PENDING)
+  offeredAt       DateTime    @default(now())
+  expiresAt       DateTime
+  respondedAt     DateTime?
+  rejectionReason String?
 
-  delivery    Delivery       @relation(fields: [deliveryId], references: [id], onDelete: Cascade)
+  job             DeliveryJob @relation(fields: [jobId], references: [id], onDelete: Cascade)
+  worker          User        @relation("WorkerOffers", fields: [workerId], references: [id])
+
+  @@unique([jobId, workerId])
+  @@index([jobId, status])
+  @@index([workerId, status])
+  @@map("delivery_offers")
 }
 
-/// Manages cash reconciliation for drivers after COD deliveries.
+/// Immutable event log for each delivery job.
+model DeliveryEvent {
+  id         String         @id @default(uuid())
+  jobId      String
+  status     DeliveryStatus
+  notes      String?
+  imageUrl   String?
+  latitude   Float?
+  longitude  Float?
+  occurredAt DateTime       @default(now())
+
+  job        DeliveryJob    @relation(fields: [jobId], references: [id], onDelete: Cascade)
+
+  @@index([jobId])
+  @@map("delivery_events")
+}
+
+/// Cash reconciliation record for COD deliveries.
 model CashReconciliation {
-  id               String               @id @default(uuid())
-  driverId         String
-  amount           Decimal              @db.Decimal(10, 2)
-  status           ReconciliationStatus @default(PENDING)
-  notes            String?
-  remittedAt       DateTime?
-  createdAt        DateTime             @default(now())
-  updatedAt        DateTime             @updatedAt
+  id          String               @id @default(uuid())
+  workerId    String
+  jobId       String?
+  amount      Decimal              @db.Decimal(14, 4)
+  status      ReconciliationStatus @default(PENDING)
+  submittedAt DateTime?
+  reviewedAt  DateTime?
+  reviewedBy  String?
+  notes       String?
+  createdAt   DateTime             @default(now())
+  updatedAt   DateTime             @updatedAt
 
-  driver           User                 @relation("DriverReconciliations", fields: [driverId], references: [id])
+  worker      User                 @relation("WorkerReconciliations", fields: [workerId], references: [id])
+
+  @@index([workerId, status])
+  @@map("cash_reconciliations")
 }
 
-/// Represents a dispute raised for an order.
-model Dispute {
-  id          String        @id @default(uuid())
-  orderId     String
-  userId      String        // User who raised the dispute
-  reason      String
-  status      DisputeStatus @default(OPEN)
-  resolution  String?
-  createdAt   DateTime      @default(now())
-  updatedAt   DateTime      @updatedAt
+// ============================================================
+// ------------------  INTERCITY APPROVALS  -------------------
+// ============================================================
 
-  order       Order         @relation(fields: [orderId], references: [id])
-  user        User          @relation("UserDisputes", fields: [userId], references: [id])
+/// Admin approval record for intercity orders requiring authorization.
+model AdminApproval {
+  id            String         @id @default(uuid())
+  orderId       String         @unique
+  requestedAt   DateTime       @default(now())
+  adminId       String?
+  status        ApprovalStatus @default(PENDING)
+  decisionAt    DateTime?
+  decisionNotes String?
+
+  order         Order          @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  admin         User?          @relation("ApproverAdmin", fields: [adminId], references: [id])
+
+  @@index([status])
+  @@map("admin_approvals")
 }
 
-/// A review given by a buyer for a product or a user (farmer/driver).
+// ============================================================
+// ---------------  REVIEWS, DISPUTES & REPORTS  --------------
+// ============================================================
+
+/// A buyer's review for a product listing or platform user.
 model Review {
-  id          String   @id @default(uuid())
-  reviewerId  String
-  targetId    String?  // Can be a User ID (farmer/driver)
-  productId   String?  // Can be a Product ID
-  rating      Int      // 1 to 5
-  comment     String?
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  id           String   @id @default(uuid())
+  reviewerId   String
+  listingId    String?
+  targetUserId String?
+  rating       Int
+  comment      String?
+  isVerified   Boolean  @default(false)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
 
-  reviewer    User     @relation("ReviewerReviews", fields: [reviewerId], references: [id])
-  targetUser  User?    @relation("TargetReviews", fields: [targetId], references: [id])
-  product     Product? @relation(fields: [productId], references: [id])
+  reviewer     User            @relation("ReviewerReviews", fields: [reviewerId], references: [id])
+  targetUser   User?           @relation("TargetReviews", fields: [targetUserId], references: [id])
+  listing      ProductListing? @relation(fields: [listingId], references: [id])
+
+  @@index([listingId])
+  @@index([targetUserId])
+  @@map("reviews")
 }
 
-/// A report submitted against a user or entity for rule violations.
+/// A dispute raised against an order by any platform participant.
+model Dispute {
+  id           String        @id @default(uuid())
+  orderId      String
+  raisedById   String
+  reason       String
+  description  String?
+  status       DisputeStatus @default(OPEN)
+  resolution   String?
+  resolvedAt   DateTime?
+  resolvedById String?
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
+
+  order        Order         @relation(fields: [orderId], references: [id])
+  raisedBy     User          @relation("DisputeRaiser", fields: [raisedById], references: [id])
+
+  @@index([orderId])
+  @@index([status])
+  @@map("disputes")
+}
+
+/// A rule-violation report against a user or entity.
 model Report {
   id             String       @id @default(uuid())
   reporterId     String
   reportedUserId String?
+  relatedOrderId String?
   reason         String
+  description    String?
   status         ReportStatus @default(OPEN)
   resolution     String?
+  resolvedAt     DateTime?
   createdAt      DateTime     @default(now())
   updatedAt      DateTime     @updatedAt
 
-  reporter       User         @relation("ReporterReports", fields: [reporterId], references: [id])
-  reportedUser   User?        @relation("ReportedUserReports", fields: [reportedUserId], references: [id])
+  reporter       User         @relation("Reporter", fields: [reporterId], references: [id])
+  reportedUser   User?        @relation("ReportedUser", fields: [reportedUserId], references: [id])
+
+  @@index([reportedUserId])
+  @@map("reports")
 }
 
-/// A notification meant for a specific user.
+// ============================================================
+// ------------------  NOTIFICATIONS & OTP  -------------------
+// ============================================================
+
+/// A notification sent to a user via one or more channels.
 model Notification {
-  id        String   @id @default(uuid())
+  id        String              @id @default(uuid())
   userId    String
   title     String
   message   String
-  isRead    Boolean  @default(false)
-  type      String   // e.g., ORDER_UPDATE, SYSTEM, PROMO
-  createdAt DateTime @default(now())
+  type      String
+  channel   NotificationChannel @default(IN_APP)
+  status    NotificationStatus  @default(QUEUED)
+  metadata  Json?
+  readAt    DateTime?
+  sentAt    DateTime?
+  createdAt DateTime            @default(now())
 
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user      User                @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, status])
+  @@map("notifications")
 }
 
-/// Secure storage for OTP codes used during authentication and verification.
+/// OTP codes for phone/email verification and password reset.
 model OTPVerification {
   id        String   @id @default(uuid())
   userId    String
   code      String
+  purpose   String
   expiresAt DateTime
   isUsed    Boolean  @default(false)
   createdAt DateTime @default(now())
 
   user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, isUsed])
+  @@map("otp_verifications")
+}
+
+// ============================================================
+// ---------------------  AUDIT LOG  --------------------------
+// ============================================================
+
+/// Immutable audit record for every significant platform action.
+model AuditLog {
+  id            String      @id @default(uuid())
+  actorId       String?
+  action        AuditAction
+  entityType    String
+  entityId      String
+  previousValue Json?
+  newValue      Json?
+  reason        String?
+  ipAddress     String?
+  userAgent     String?
+  occurredAt    DateTime    @default(now())
+
+  actor         User?       @relation("ActorLogs", fields: [actorId], references: [id])
+
+  @@index([actorId])
+  @@index([entityType, entityId])
+  @@index([occurredAt])
+  @@map("audit_logs")
 }
