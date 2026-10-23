@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
+import Link from 'next/link';
 import { ShoppingBag, ArrowRight, ChevronRight, Menu, X } from 'lucide-react';
 import { MarketLocation } from '@/types';
 import { ThemeToggle } from './ThemeToggle';
@@ -186,6 +187,22 @@ export const Header: React.FC<HeaderProps> = ({
               )}
             </button>
 
+            {/* Log In Action */}
+            <Link
+              href="/login"
+              className="px-4 py-2 rounded-full text-[#075C3B] dark:text-[#34D399] hover:bg-[#EAF5EE] dark:hover:bg-[#18352A] text-xs sm:text-sm font-semibold transition-all"
+            >
+              Log In
+            </Link>
+
+            {/* Sign Up Action */}
+            <Link
+              href="/signup"
+              className="px-4 py-2 rounded-full border border-[#075C3B] dark:border-[#34D399] text-[#075C3B] dark:text-[#34D399] hover:bg-[#E8F5E9] dark:hover:bg-[#18352A] text-xs sm:text-sm font-bold transition-all"
+            >
+              Sign Up
+            </Link>
+
             {/* Primary Action: Start Selling */}
             <button
               onClick={() => onScrollTo('cta')}
@@ -265,16 +282,30 @@ export const Header: React.FC<HeaderProps> = ({
               );
             })}
 
-            <div className="pt-3 border-t border-[#E5EDE4] dark:border-[#1E3A2F] mt-2">
+            <div className="pt-3 border-t border-[#E5EDE4] dark:border-[#1E3A2F] mt-2 space-y-2">
+              <Link
+                href="/signup"
+                onClick={() => setMobileMenuOpen(false)}
+                className="w-full py-3 text-center text-sm font-bold rounded-xl bg-[#075C3B] dark:bg-[#10B981] hover:bg-[#05482E] text-white shadow-xs transition-colors flex items-center justify-center gap-2"
+              >
+                <span>Create Account / Sign Up</span>
+                <ArrowRight className="w-4 h-4" />
+              </Link>
+              <Link
+                href="/login"
+                onClick={() => setMobileMenuOpen(false)}
+                className="w-full py-2.5 text-center text-xs font-semibold rounded-xl border border-[#075C3B] dark:border-[#34D399] text-[#075C3B] dark:text-[#34D399] hover:bg-[#E8F5E9] dark:hover:bg-[#18352A] transition-colors flex items-center justify-center gap-1.5"
+              >
+                <span>Log In to Your Account</span>
+              </Link>
               <button
                 onClick={() => {
                   setMobileMenuOpen(false);
                   onScrollTo('cta');
                 }}
-                className="w-full py-3 text-center text-sm font-bold rounded-xl bg-[#075C3B] dark:bg-[#10B981] hover:bg-[#05482E] text-white shadow-xs transition-colors flex items-center justify-center gap-2 cursor-pointer"
+                className="w-full py-2.5 text-center text-xs font-semibold rounded-xl border border-[#D1DDD7] dark:border-[#2A4A3A] text-[#4E7060] dark:text-[#88B8A0] hover:bg-[#F3F9F5] dark:hover:bg-[#142A22] transition-colors flex items-center justify-center gap-1.5 cursor-pointer"
               >
                 <span>Start Selling as a Farmer</span>
-                <ArrowRight className="w-4 h-4" />
               </button>
             </div>
           </div>
