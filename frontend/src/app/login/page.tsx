@@ -455,18 +455,6 @@ export default function LoginPage() {
         </div>
       </main>
 
-      {/* FOOTER */}
-      <footer className="w-full bg-white dark:bg-[#07130D] border-t border-[#E8EFEA] dark:border-[#1A3326] py-5 text-center text-xs text-[#527563] dark:text-[#88B8A0] transition-colors z-20">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex flex-col sm:flex-row items-center justify-between gap-2">
-          <span> {new Date().getFullYear()} AgriMarket. All rights reserved.</span>
-          <div className="flex items-center gap-4">
-            <Link href="/terms" className="hover:text-[#075C3B] dark:hover:text-[#34D399] hover:underline transition-colors">Terms of Service</Link>
-            <Link href="/privacy" className="hover:text-[#075C3B] dark:hover:text-[#34D399] hover:underline transition-colors">Privacy Policy</Link>
-            <Link href="/help" className="hover:text-[#075C3B] dark:hover:text-[#34D399] hover:underline transition-colors">Help</Link>
-          </div>
-        </div>
-      </footer>
-
     </div>
   );
 }
