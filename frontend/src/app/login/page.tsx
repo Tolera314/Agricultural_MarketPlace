@@ -160,45 +160,92 @@ export default function LoginPage() {
 
       {/* HEADER */}
       <header className="w-full bg-white dark:bg-[#0A1812] border-b border-[#E8EFEA] dark:border-[#1A3326] z-40 transition-colors">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 sm:h-20 flex items-center justify-between">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-14 sm:h-16 lg:h-20 flex items-center justify-between">
 
-          <div className="flex items-center gap-3 lg:hidden">
-            <Link href="/" className="p-2 -ml-2 rounded-lg text-[#075C3B] dark:text-[#34D399] hover:bg-[#EAF5EE] dark:hover:bg-[#132A20] transition-colors" aria-label="Back to home">
+          {/* Mobile Back Button */}
+          <div className="flex items-center lg:hidden">
+            <Link
+              href="/"
+              className="p-2 -ml-2 rounded-lg text-[#075C3B] dark:text-[#34D399] hover:bg-[#EAF5EE] dark:hover:bg-[#132A20] transition-colors"
+              aria-label="Back to home"
+            >
               <ArrowLeft className="w-5 h-5" />
             </Link>
           </div>
 
-          <Link href="/" className="flex items-center gap-2.5 sm:gap-3 group">
-            <div className="w-9 h-9 sm:w-10 sm:h-10 flex items-center justify-center shrink-0">
-              <svg className="w-8 h-8 sm:w-9 sm:h-9" viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
-                <path d="M18 4C18 4 23 11 23 18C23 21 21 24 18 25C15 24 13 21 13 18C13 11 18 4 18 4Z" fill="#10B981" />
-                <path d="M16 26C16 26 9 24 7 18C5 12 11 9 11 9C11 9 13 16 17 21C17.5 21.6 18 22.2 18 22.2" fill="#059669" />
-                <path d="M20 26C20 26 27 24 29 18C31 12 25 9 25 9C25 9 23 16 19 21C18.5 21.6 18 22.2 18 22.2" fill="#34D399" />
-                <path d="M18 25V30" stroke="#059669" strokeWidth="2.5" strokeLinecap="round" />
-              </svg>
-            </div>
-            <div className="flex flex-col">
-              <span className="font-extrabold text-xl sm:text-2xl text-[#075C3B] dark:text-[#34D399] tracking-tight group-hover:text-[#05462D] dark:group-hover:text-[#6EE7B7] transition-colors leading-none">AgriMarket</span>
-              <span className="text-[10px] sm:text-[11px] text-[#476C57] dark:text-[#88B8A0] font-semibold tracking-wide uppercase mt-0.5">Farmers  Buyers  Better Tomorrow</span>
-            </div>
-          </Link>
-
-          <div className="flex items-center gap-3">
-            <span className="hidden sm:inline-block text-xs text-[#527563] dark:text-[#8BB39D]">New here?</span>
-            <Link href="/signup" className="text-xs sm:text-sm font-bold text-[#075C3B] dark:text-[#34D399] hover:underline px-2.5 py-1.5 rounded-lg hover:bg-[#EAF5EE] dark:hover:bg-[#132A20] transition-colors">
-              Create an account ?
+          {/* Mobile Centered Brand */}
+          <div className="lg:hidden flex-1 flex justify-center">
+            <Link href="/" className="flex items-center gap-2 group">
+              <div className="w-8 h-8 flex items-center justify-center shrink-0">
+                <svg className="w-7 h-7" viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+                  <path d="M18 4C18 4 23 11 23 18C23 21 21 24 18 25C15 24 13 21 13 18C13 11 18 4 18 4Z" fill="#10B981" />
+                  <path d="M16 26C16 26 9 24 7 18C5 12 11 9 11 9C11 9 13 16 17 21C17.5 21.6 18 22.2 18 22.2" fill="#059669" />
+                  <path d="M20 26C20 26 27 24 29 18C31 12 25 9 25 9C25 9 23 16 19 21C18.5 21.6 18 22.2 18 22.2" fill="#34D399" />
+                  <path d="M18 25V30" stroke="#059669" strokeWidth="2.5" strokeLinecap="round" />
+                </svg>
+              </div>
+              <div className="flex flex-col">
+                <span className="font-extrabold text-lg text-[#075C3B] dark:text-[#34D399] tracking-tight leading-none">AgriMarket</span>
+                <span className="text-[9px] text-[#476C57] dark:text-[#88B8A0] font-semibold tracking-wider uppercase mt-0.5">Farmers · Buyers · Better Tomorrow</span>
+              </div>
             </Link>
-            <ThemeToggle />
+          </div>
+
+          {/* Desktop Left Brand */}
+          <div className="hidden lg:flex items-center">
+            <Link href="/" className="flex items-center gap-2.5 sm:gap-3 group">
+              <div className="w-9 h-9 sm:w-10 sm:h-10 flex items-center justify-center shrink-0">
+                <svg className="w-8 h-8 sm:w-9 sm:h-9" viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+                  <path d="M18 4C18 4 23 11 23 18C23 21 21 24 18 25C15 24 13 21 13 18C13 11 18 4 18 4Z" fill="#10B981" />
+                  <path d="M16 26C16 26 9 24 7 18C5 12 11 9 11 9C11 9 13 16 17 21C17.5 21.6 18 22.2 18 22.2" fill="#059669" />
+                  <path d="M20 26C20 26 27 24 29 18C31 12 25 9 25 9C25 9 23 16 19 21C18.5 21.6 18 22.2 18 22.2" fill="#34D399" />
+                  <path d="M18 25V30" stroke="#059669" strokeWidth="2.5" strokeLinecap="round" />
+                </svg>
+              </div>
+              <div className="flex flex-col">
+                <span className="font-extrabold text-xl sm:text-2xl text-[#075C3B] dark:text-[#34D399] tracking-tight group-hover:text-[#05462D] dark:group-hover:text-[#6EE7B7] transition-colors leading-none">AgriMarket</span>
+                <span className="text-[10px] sm:text-[11px] text-[#476C57] dark:text-[#88B8A0] font-semibold tracking-wide uppercase mt-0.5">Farmers · Buyers · Better Tomorrow</span>
+              </div>
+            </Link>
+          </div>
+
+          {/* Right Actions */}
+          <div className="flex items-center justify-end">
+            <div className="hidden lg:flex items-center gap-3">
+              <span className="text-xs text-[#527563] dark:text-[#8BB39D]">New here?</span>
+              <Link href="/signup" className="text-xs sm:text-sm font-bold text-[#075C3B] dark:text-[#34D399] hover:underline px-2.5 py-1.5 rounded-lg hover:bg-[#EAF5EE] dark:hover:bg-[#132A20] transition-colors">
+                Create an account →
+              </Link>
+            </div>
+            <div className="lg:ml-3">
+              <ThemeToggle />
+            </div>
           </div>
         </div>
       </header>
 
       {/* MAIN */}
-      <main className="flex-1 relative overflow-hidden flex flex-col justify-center py-8 sm:py-12 lg:py-14">
+      <main className="flex-1 relative flex flex-col justify-start lg:justify-center overflow-x-hidden">
 
-        <div className="absolute inset-0 z-0 pointer-events-none">
+        {/* Mobile Scenic Landscape Banner (Lush terraced hills of signup_landscape_hero.jpg fading softly to page background) */}
+        <div className="lg:hidden relative w-full h-44 sm:h-52 overflow-hidden shrink-0 pointer-events-none">
+          <div className="absolute inset-0 w-[180%] -left-[80%] h-full">
+            <Image
+              src="/images/signup_landscape_hero.jpg"
+              alt="Scenic terraced farm landscape"
+              fill
+              priority
+              sizes="100vw"
+              className="object-cover object-top"
+            />
+          </div>
+          <div className="absolute inset-0 bg-gradient-to-b from-transparent via-[#FAF8F5]/50 to-[#FAF8F5] dark:via-[#07130D]/70 dark:to-[#07130D]" />
+        </div>
+
+        {/* Desktop Full-Screen Landscape Background */}
+        <div className="hidden lg:block absolute inset-0 z-0 pointer-events-none">
           <Image
-            src="/images/signup_landscape_hero_v2.jpg"
+            src="/images/signup_landscape_hero.jpg"
             alt="Ethiopian farmer holding fresh vegetables in a lush green farm"
             fill
             priority
@@ -208,17 +255,17 @@ export default function LoginPage() {
           <div className="absolute inset-0 bg-white/10 dark:bg-[#07130D]/75" />
         </div>
 
-        <div className="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 w-full">
+        <div className="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 w-full py-0 lg:py-14">
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-14 items-center">
 
-            {/* LEFT PANEL */}
+            {/* LEFT PANEL (Desktop Only) */}
             <div className="hidden lg:flex lg:col-span-6 flex-col justify-between space-y-6 pr-2">
               <div className="space-y-4">
                 <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-white/95 dark:bg-[#12281E] border border-[#BBD6C5] dark:border-[#204735] shadow-xs">
                   <div className="w-4 h-4 rounded-full bg-[#E2F2E7] dark:bg-[#1C3E2E] flex items-center justify-center text-[#075C3B] dark:text-[#34D399]">
                     <Sprout className="w-3 h-3" />
                   </div>
-                  <span className="text-xs font-bold text-[#075C3B] dark:text-[#34D399] tracking-wide">Local Farmers  Fresh Products  Direct to You</span>
+                  <span className="text-xs font-bold text-[#075C3B] dark:text-[#34D399] tracking-wide">Local Farmers · Fresh Products · Direct to You</span>
                 </div>
 
                 <h1 className="text-4xl xl:text-5xl font-black text-[#043E27] dark:text-[#EEFAF3] tracking-tight leading-[1.12] drop-shadow-xs">
@@ -247,14 +294,14 @@ export default function LoginPage() {
 
               <div className="pt-2">
                 <span className="font-serif italic text-2xl font-bold text-white drop-shadow-[0_2px_4px_rgba(0,0,0,0.85)] tracking-wide">
-                  Better Farmers  Brighter Future
+                  Better Farmers · Brighter Future
                 </span>
               </div>
             </div>
 
-            {/* RIGHT PANEL - SIGN IN CARD */}
+            {/* RIGHT PANEL - SIGN IN FORM */}
             <div className="lg:col-span-6 w-full max-w-md mx-auto lg:ml-auto">
-              <div className="bg-white dark:bg-[#0D2118] rounded-[24px] sm:rounded-[28px] p-6 sm:p-8 shadow-2xl shadow-emerald-950/20 dark:shadow-black/60 border border-[#DEECE2] dark:border-[#1E4130] transition-all">
+              <div className="bg-transparent lg:bg-white lg:dark:bg-[#0D2118] rounded-none lg:rounded-[28px] p-1 sm:p-4 lg:p-8 shadow-none lg:shadow-2xl shadow-emerald-950/20 dark:shadow-black/60 border-0 lg:border lg:border-[#DEECE2] lg:dark:border-[#1E4130] transition-all">
 
                 {successData ? (
                   <div className="py-8 text-center space-y-5">
@@ -276,15 +323,17 @@ export default function LoginPage() {
                   </div>
                 ) : (
                   <>
-                    <div className="mb-5 space-y-1.5">
-                      <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-[#EAF5EE] dark:bg-[#143224] text-[#075C3B] dark:text-[#34D399] text-xs font-bold">
+                    {/* Header Details (Exact styling from phone screenshot) */}
+                    <div className="mb-5 space-y-2">
+                      <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-[#EAF5EE] dark:bg-[#143224] border border-[#B8D8C5] dark:border-[#204735] text-[#075C3B] dark:text-[#34D399] text-xs font-bold shadow-2xs">
                         <Sprout className="w-3.5 h-3.5" />
-                        <span>Welcome Back!</span>
+                        <span>Local Farmers · Fresh Products · Direct to You</span>
                       </div>
-                      <h1 className="text-2xl sm:text-[26px] font-extrabold text-[#0D3823] dark:text-[#EEFAF3] tracking-tight">
-                        Sign In to AgriMarket
+                      <h1 className="text-2xl sm:text-[28px] font-extrabold text-[#0D3823] dark:text-[#EEFAF3] tracking-tight leading-snug">
+                        Welcome Back!<br />
+                        <span className="text-[#0D3823] dark:text-[#EEFAF3]">Sign In to AgriMarket</span>
                       </h1>
-                      <p className="text-xs text-[#527563] dark:text-[#90B8A3] font-medium">
+                      <p className="text-xs sm:text-sm text-[#527563] dark:text-[#90B8A3] font-medium leading-relaxed">
                         Enter your phone number or email and password to continue.
                       </p>
                     </div>
@@ -307,7 +356,7 @@ export default function LoginPage() {
 
                       {/* Phone or Email */}
                       <div>
-                        <label htmlFor="identifier" className="block text-xs font-bold text-[#143E2C] dark:text-[#D5EADF] mb-1">
+                        <label htmlFor="identifier" className="block text-xs font-bold text-[#143E2C] dark:text-[#D5EADF] mb-1.5">
                           Phone Number or Email <span className="text-rose-500">*</span>
                         </label>
                         <div className="relative">
@@ -322,11 +371,11 @@ export default function LoginPage() {
                             value={formData.identifier}
                             onChange={handleChange}
                             placeholder="e.g. +251 9XX XXX XXX or name@example.com"
-                            className={`w-full pl-10 pr-4 py-2.5 text-sm rounded-xl bg-white dark:bg-[#12281E] border ${
+                            className={`w-full pl-10 pr-4 py-3 text-sm rounded-xl bg-white dark:bg-[#12281E] border ${
                               errors.identifier
                                 ? 'border-rose-400 focus:border-rose-500 focus:ring-rose-200'
                                 : 'border-[#D5E2DA] dark:border-[#224A37] focus:border-[#075C3B] focus:ring-[#075C3B]/20'
-                            } text-[#113123] dark:text-white placeholder-[#8FA79B] dark:placeholder-[#4E7361] focus:outline-none focus:ring-3 transition-colors`}
+                            } text-[#113123] dark:text-white placeholder-[#8FA79B] dark:placeholder-[#4E7361] focus:outline-none focus:ring-3 transition-colors shadow-2xs`}
                           />
                         </div>
                         {errors.identifier && (
@@ -339,7 +388,7 @@ export default function LoginPage() {
 
                       {/* Password */}
                       <div>
-                        <label htmlFor="password" className="block text-xs font-bold text-[#143E2C] dark:text-[#D5EADF] mb-1">
+                        <label htmlFor="password" className="block text-xs font-bold text-[#143E2C] dark:text-[#D5EADF] mb-1.5">
                           Password <span className="text-rose-500">*</span>
                         </label>
                         <div className="relative">
@@ -354,11 +403,11 @@ export default function LoginPage() {
                             value={formData.password}
                             onChange={handleChange}
                             placeholder="Enter your password"
-                            className={`w-full pl-10 pr-11 py-2.5 text-sm rounded-xl bg-white dark:bg-[#12281E] border ${
+                            className={`w-full pl-10 pr-11 py-3 text-sm rounded-xl bg-white dark:bg-[#12281E] border ${
                               errors.password
                                 ? 'border-rose-400 focus:border-rose-500 focus:ring-rose-200'
                                 : 'border-[#D5E2DA] dark:border-[#224A37] focus:border-[#075C3B] focus:ring-[#075C3B]/20'
-                            } text-[#113123] dark:text-white placeholder-[#8FA79B] dark:placeholder-[#4E7361] focus:outline-none focus:ring-3 transition-colors`}
+                            } text-[#113123] dark:text-white placeholder-[#8FA79B] dark:placeholder-[#4E7361] focus:outline-none focus:ring-3 transition-colors shadow-2xs`}
                           />
                           <button
                             type="button"
@@ -378,7 +427,7 @@ export default function LoginPage() {
                       </div>
 
                       {/* Remember Me + Forgot Password */}
-                      <div className="flex items-center justify-between pt-0.5">
+                      <div className="flex items-center justify-between pt-1">
                         <label className="flex items-center gap-2 cursor-pointer text-xs text-[#355746] dark:text-[#97C2AC]">
                           <input
                             type="checkbox"
@@ -389,7 +438,7 @@ export default function LoginPage() {
                           />
                           <span>Remember me</span>
                         </label>
-                        <Link href="/forgot-password" className="text-xs font-bold text-[#075C3B] dark:text-[#34D399] hover:underline">
+                        <Link href="/forgot-password" className="text-xs font-semibold text-[#075C3B] dark:text-[#34D399] hover:underline">
                           Forgot password?
                         </Link>
                       </div>
@@ -399,7 +448,7 @@ export default function LoginPage() {
                         type="submit"
                         disabled={isLoading}
                         id="signin-btn"
-                        className="w-full mt-1 py-3 px-6 rounded-xl bg-[#075C3B] hover:bg-[#05462D] text-white font-bold text-sm flex items-center justify-center gap-2 shadow-md shadow-emerald-950/20 active:scale-[0.99] disabled:opacity-70 disabled:cursor-not-allowed transition-all cursor-pointer"
+                        className="w-full mt-2 py-3.5 px-6 rounded-xl bg-[#075C3B] hover:bg-[#05462D] text-white font-bold text-sm flex items-center justify-center gap-2 shadow-md shadow-emerald-950/20 active:scale-[0.99] disabled:opacity-70 disabled:cursor-not-allowed transition-all cursor-pointer"
                       >
                         {isLoading ? (
                           <>
@@ -415,9 +464,11 @@ export default function LoginPage() {
                       </button>
 
                       {/* Divider */}
-                      <div className="relative py-1.5 flex items-center justify-center">
+                      <div className="relative py-2 flex items-center justify-center">
                         <div className="border-t border-[#E3EDE6] dark:border-[#1E4130] w-full" />
-                        <span className="bg-white dark:bg-[#0D2118] px-3 text-xs text-[#8BA799] dark:text-[#6E9581] font-medium lowercase absolute">or</span>
+                        <span className="bg-[#FAF8F5] lg:bg-white dark:bg-[#07130D] lg:dark:bg-[#0D2118] px-3 text-xs text-[#8BA799] dark:text-[#6E9581] font-medium lowercase absolute">
+                          or
+                        </span>
                       </div>
 
                       {/* Google Button */}
@@ -425,7 +476,7 @@ export default function LoginPage() {
                         type="button"
                         onClick={handleGoogleAuth}
                         id="google-signin-btn"
-                        className="w-full py-2.5 px-6 rounded-xl bg-white dark:bg-[#12281E] border border-[#D5E2DA] dark:border-[#224A37] hover:bg-gray-50 dark:hover:bg-[#183528] text-xs sm:text-sm font-semibold text-[#183E2C] dark:text-[#D5EADF] flex items-center justify-center gap-3 transition-colors shadow-xs cursor-pointer"
+                        className="w-full py-3 px-6 rounded-xl bg-white dark:bg-[#12281E] border border-[#D5E2DA] dark:border-[#224A37] hover:bg-gray-50 dark:hover:bg-[#183528] text-xs sm:text-sm font-semibold text-[#183E2C] dark:text-[#D5EADF] flex items-center justify-center gap-3 transition-colors shadow-2xs cursor-pointer"
                       >
                         <svg className="w-4 h-4" viewBox="0 0 24 24">
                           <path fill="#4285F4" d="M23.745 12.27c0-.7-.06-1.4-.19-2.07H12v4.51h6.6c-.29 1.52-1.14 2.82-2.4 3.68v3.05h3.88c2.27-2.09 3.665-5.17 3.665-9.17z" />
@@ -437,10 +488,10 @@ export default function LoginPage() {
                       </button>
 
                       {/* Footer Link */}
-                      <div className="pt-1.5 text-center text-xs text-[#527563] dark:text-[#8BB39D]">
+                      <div className="pt-2 text-center text-xs sm:text-sm text-[#527563] dark:text-[#8BB39D]">
                         {"Don't have an account?"}{' '}
                         <Link href="/signup" className="font-bold text-[#075C3B] dark:text-[#34D399] hover:underline">
-                          Create an account ?
+                          Create an account →
                         </Link>
                       </div>
 

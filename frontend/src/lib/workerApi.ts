@@ -3,22 +3,41 @@
 const API = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
 
 function getToken(): string | null {
-  try { return localStorage.getItem('agrimarket_token'); } catch { return null; }
+  try {
+    return localStorage.getItem('agrimarket_token');
+  } catch {
+    return null;
+  }
 }
 
 async function apiFetch<T>(path: string, options: RequestInit = {}): Promise<T> {
   const token = getToken();
-  const res = await fetch(`${API}${path}`, {
-    ...options,
-    headers: {
-      'Content-Type': 'application/json',
-      ...(token ? { Authorization: `Bearer ${token}` } : {}),
-      ...(options.headers ?? {}),
-    },
-  });
-  const data = await res.json();
-  if (!res.ok) throw new Error(data?.error?.message || 'Request failed');
-  return data;
+
+  // If there's no auth token, avoid a doomed 401/404 fetch and cleanly throw
+  if (!token) {
+    throw new Error('AUTH_REQUIRED');
+  }
+
+  try {
+    const res = await fetch(`${API}${path}`, {
+      ...options,
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${token}`,
+        ...(options.headers ?? {}),
+      },
+    });
+
+    const data = await res.json().catch(() => null);
+
+    if (!res.ok) {
+      throw new Error(data?.error?.message || `Request failed with status ${res.status}`);
+    }
+
+    return data as T;
+  } catch (err: any) {
+    throw err;
+  }
 }
 
 export const workerApi = {

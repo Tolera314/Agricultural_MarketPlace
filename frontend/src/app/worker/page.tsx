@@ -46,6 +46,7 @@ import {
   SlidersHorizontal,
   Compass,
 } from 'lucide-react';
+import { ThemeToggle } from '@/components/layout/ThemeToggle';
 import { workerApi } from '@/lib/workerApi';
 import type {
   DashboardData,
@@ -1558,15 +1559,18 @@ export default function WorkerDashboardPage() {
             </div>
           </div>
 
-          {/* Right: Notifications & Profile Pill */}
-          <div className="flex items-center gap-3 sm:gap-4">
+          {/* Right: Notifications, Theme Toggle & Profile Pill */}
+          <div className="flex items-center gap-2.5 sm:gap-3">
+            {/* Theme Toggle */}
+            <ThemeToggle />
+
             {/* Bell Icon with notification dot */}
             <button
               onClick={() => showToast('No new unread broadcasts.')}
-              className="relative p-2 rounded-full text-[#47705B] hover:text-[#0B3322] hover:bg-[#F0F5F2] transition-colors cursor-pointer"
+              className="relative p-2 rounded-full text-[#47705B] dark:text-[#88B8A0] hover:text-[#0B3322] dark:hover:text-white hover:bg-[#F0F5F2] dark:hover:bg-[#12281E] transition-colors cursor-pointer"
             >
               <Bell className="w-5 h-5" />
-              <span className="absolute top-1.5 right-1.5 w-2 h-2 rounded-full bg-[#10B981] border-2 border-white" />
+              <span className="absolute top-1.5 right-1.5 w-2 h-2 rounded-full bg-[#10B981] border-2 border-white dark:border-[#0A1812]" />
             </button>
 
             {/* Worker Avatar & Info Pill (Matching Reference: Abebe Mekonnen, Delivery Worker) */}
@@ -1684,9 +1688,13 @@ export default function WorkerDashboardPage() {
                   <span className="font-bold text-[#0B3322]">Auto-calculate Toll Routes</span>
                   <input type="checkbox" defaultChecked className="accent-[#075C3B]" />
                 </label>
-                <label className="flex items-center justify-between p-3 rounded-xl bg-[#F8FAF9] border border-[#E8F0EB]">
-                  <span className="font-bold text-[#0B3322]">Language: Amharic (አማርኛ) / English</span>
-                  <span className="text-[#075C3B] font-bold">English (Default)</span>
+                <label className="flex items-center justify-between p-3 rounded-xl bg-[#F8FAF9] dark:bg-[#12281E] border border-[#E8F0EB] dark:border-[#1E4130]">
+                  <span className="font-bold text-[#0B3322] dark:text-[#E6F4ED]">Theme Mode (Light / Dark)</span>
+                  <ThemeToggle />
+                </label>
+                <label className="flex items-center justify-between p-3 rounded-xl bg-[#F8FAF9] dark:bg-[#12281E] border border-[#E8F0EB] dark:border-[#1E4130]">
+                  <span className="font-bold text-[#0B3322] dark:text-[#E6F4ED]">Language: Amharic (አማርኛ) / English</span>
+                  <span className="text-[#075C3B] dark:text-[#34D399] font-bold">English (Default)</span>
                 </label>
               </div>
             </div>
