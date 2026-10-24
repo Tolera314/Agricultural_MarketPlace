@@ -235,7 +235,8 @@ export default function LoginPage() {
               alt="Scenic terraced farm landscape"
               fill
               priority
-              sizes="(max-width: 768px) 180vw, 100vw"
+              loading="eager"
+              sizes="(max-width: 1023px) 180vw, 0vw"
               className="object-cover object-top"
             />
           </div>
@@ -248,8 +249,8 @@ export default function LoginPage() {
             src="/images/signup_landscape_hero.jpg"
             alt="Ethiopian farmer holding fresh vegetables in a lush green farm"
             fill
-            priority
-            sizes="100vw"
+            priority={false}
+            sizes="(min-width: 1024px) 100vw, 0vw"
             className="object-cover object-center"
           />
           <div className="absolute inset-0 bg-white/10 dark:bg-[#07130D]/75" />
