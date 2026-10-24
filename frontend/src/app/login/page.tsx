@@ -159,7 +159,7 @@ export default function LoginPage() {
     <div className="min-h-screen bg-[#FAF8F5] dark:bg-[#07130D] text-[#1D2B22] dark:text-[#E6F4ED] flex flex-col font-sans transition-colors duration-200">
 
       {/* HEADER */}
-      <header className="w-full bg-white dark:bg-[#0A1812] border-b border-[#E8EFEA] dark:border-[#1A3326] z-40 transition-colors">
+      <header className="sticky top-0 z-50 w-full bg-white/95 dark:bg-[#0A1812]/95 backdrop-blur-md border-b border-[#E8EFEA] dark:border-[#1A3326] transition-colors">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-14 sm:h-16 lg:h-20 flex items-center justify-between">
 
           {/* Mobile Back Button */}
@@ -235,7 +235,7 @@ export default function LoginPage() {
               alt="Scenic terraced farm landscape"
               fill
               priority
-              sizes="100vw"
+              sizes="(max-width: 768px) 180vw, 100vw"
               className="object-cover object-top"
             />
           </div>

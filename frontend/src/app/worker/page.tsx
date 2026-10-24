@@ -174,23 +174,23 @@ function DashboardMetricCard({
   iconColor: string;
 }) {
   return (
-    <div className="bg-white rounded-2xl border border-[#E3EDE6] p-4 sm:p-5 shadow-[0_2px_8px_rgba(10,40,25,0.03)] hover:shadow-md transition-shadow flex flex-col justify-between min-h-[110px]">
+    <div className="bg-white dark:bg-[#0D2118] rounded-2xl border border-[#E3EDE6] dark:border-[#1E4130] p-4 sm:p-5 shadow-[0_2px_8px_rgba(10,40,25,0.03)] hover:shadow-md transition-all flex flex-col justify-between min-h-[110px]">
       <div className="flex items-center justify-between">
-        <div className={`w-9 h-9 rounded-xl flex items-center justify-center shrink-0 ${iconBg} ${iconColor}`}>
+        <div className={`w-9 h-9 rounded-xl flex items-center justify-center shrink-0 ${iconBg} ${iconColor} dark:bg-[#163828] dark:text-[#34D399]`}>
           {icon}
         </div>
         {badge && (
-          <span className="text-[11px] font-bold text-[#088647] bg-[#E5F7ED] px-2 py-0.5 rounded-full flex items-center gap-0.5">
+          <span className="text-[11px] font-bold text-[#088647] dark:text-[#34D399] bg-[#E5F7ED] dark:bg-[#133A27] px-2 py-0.5 rounded-full flex items-center gap-0.5">
             {badge}
           </span>
         )}
       </div>
 
       <div className="mt-3">
-        <p className="text-[11px] uppercase tracking-wider text-[#6B8B7B] font-semibold">{label}</p>
+        <p className="text-[11px] uppercase tracking-wider text-[#6B8B7B] dark:text-[#88B8A0] font-semibold">{label}</p>
         <div className="flex items-baseline gap-2 mt-0.5">
-          <p className="text-xl sm:text-2xl font-black text-[#0B3322] leading-tight tracking-tight">{value}</p>
-          {sub && <span className="text-xs text-[#7B998A] font-medium">{sub}</span>}
+          <p className="text-xl sm:text-2xl font-black text-[#0B3322] dark:text-[#EEFAF3] leading-tight tracking-tight">{value}</p>
+          {sub && <span className="text-xs text-[#7B998A] dark:text-[#6E9581] font-medium">{sub}</span>}
         </div>
       </div>
     </div>
@@ -211,13 +211,13 @@ function RouteCardVisual({
   onOpenRouteModal: () => void;
 }) {
   return (
-    <div className="bg-white rounded-2xl border border-[#E3EDE6] p-4 sm:p-5 shadow-[0_2px_8px_rgba(10,40,25,0.03)] flex flex-col justify-between">
+    <div className="bg-white dark:bg-[#0D2118] rounded-2xl border border-[#E3EDE6] dark:border-[#1E4130] p-4 sm:p-5 shadow-[0_2px_8px_rgba(10,40,25,0.03)] flex flex-col justify-between">
       <div className="flex items-center justify-between mb-3">
-        <h3 className="text-sm font-bold text-[#0B3322]">Today&apos;s Route</h3>
+        <h3 className="text-sm font-bold text-[#0B3322] dark:text-[#EEFAF3]">Today&apos;s Route</h3>
       </div>
 
       {/* Stylized vector map canvas */}
-      <div className="relative w-full h-36 rounded-xl overflow-hidden bg-[#F2F8F4] border border-[#DEEBE1]">
+      <div className="relative w-full h-36 rounded-xl overflow-hidden bg-[#F2F8F4] dark:bg-[#12281E] border border-[#DEEBE1] dark:border-[#1A3B2A]">
         {/* Soft road network grid */}
         <svg viewBox="0 0 340 160" className="w-full h-full" preserveAspectRatio="none">
           {/* Faint street lines */}
@@ -274,20 +274,20 @@ function RouteCardVisual({
         </svg>
 
         {/* Live indicator badge */}
-        <div className="absolute top-2 left-2 bg-white/90 backdrop-blur-sm px-2 py-0.5 rounded-full text-[10px] font-bold text-[#075C3B] flex items-center gap-1 shadow-xs">
+        <div className="absolute top-2 left-2 bg-white/90 dark:bg-[#0D2118]/90 backdrop-blur-sm px-2 py-0.5 rounded-full text-[10px] font-bold text-[#075C3B] dark:text-[#34D399] flex items-center gap-1 shadow-xs">
           <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
           Live Route
         </div>
       </div>
 
       {/* Route metrics row */}
-      <div className="flex items-center justify-between text-xs text-[#517663] font-semibold mt-3 px-1">
+      <div className="flex items-center justify-between text-xs text-[#517663] dark:text-[#88B8A0] font-semibold mt-3 px-1">
         <span className="flex items-center gap-1.5">
-          <Package className="w-4 h-4 text-[#075C3B]" />
+          <Package className="w-4 h-4 text-[#075C3B] dark:text-[#34D399]" />
           {deliveriesCount} deliveries
         </span>
-        <span className="flex items-center gap-1.5 text-[#0B3322] font-bold">
-          <Navigation className="w-3.5 h-3.5 text-[#075C3B]" />
+        <span className="flex items-center gap-1.5 text-[#0B3322] dark:text-[#EEFAF3] font-bold">
+          <Navigation className="w-3.5 h-3.5 text-[#075C3B] dark:text-[#34D399]" />
           {distanceKm}
         </span>
       </div>
@@ -295,7 +295,7 @@ function RouteCardVisual({
       {/* View full route button */}
       <button
         onClick={onOpenRouteModal}
-        className="mt-3.5 w-full py-2.5 rounded-xl border border-[#BDE0CB] text-[#075C3B] hover:bg-[#EAF6EF] hover:border-[#075C3B] font-bold text-xs transition-colors flex items-center justify-center gap-1.5 cursor-pointer"
+        className="mt-3.5 w-full py-2.5 rounded-xl border border-[#BDE0CB] dark:border-[#224A37] text-[#075C3B] dark:text-[#34D399] hover:bg-[#EAF6EF] dark:hover:bg-[#163828] hover:border-[#075C3B] dark:hover:border-[#34D399] font-bold text-xs transition-colors flex items-center justify-center gap-1.5 cursor-pointer"
       >
         <span>View Full Route</span>
       </button>
@@ -319,25 +319,25 @@ function VehicleCard({
   onEdit: () => void;
 }) {
   return (
-    <div className="bg-white rounded-2xl border border-[#E3EDE6] p-4 sm:p-5 shadow-[0_2px_8px_rgba(10,40,25,0.03)] flex flex-col justify-between">
+    <div className="bg-white dark:bg-[#0D2118] rounded-2xl border border-[#E3EDE6] dark:border-[#1E4130] p-4 sm:p-5 shadow-[0_2px_8px_rgba(10,40,25,0.03)] flex flex-col justify-between">
       <div className="flex items-center justify-between mb-2">
-        <h3 className="text-sm font-bold text-[#0B3322]">Your Vehicle</h3>
+        <h3 className="text-sm font-bold text-[#0B3322] dark:text-[#EEFAF3]">Your Vehicle</h3>
         <button
           onClick={onEdit}
-          className="text-xs text-[#075C3B] font-bold hover:underline cursor-pointer flex items-center gap-1"
+          className="text-xs text-[#075C3B] dark:text-[#34D399] font-bold hover:underline cursor-pointer flex items-center gap-1"
         >
           <span>Edit</span>
         </button>
       </div>
 
       <div className="flex items-center gap-3.5 mt-1">
-        <div className="w-11 h-11 rounded-xl bg-[#E8F6EE] flex items-center justify-center text-[#075C3B] shrink-0">
+        <div className="w-11 h-11 rounded-xl bg-[#E8F6EE] dark:bg-[#163828] flex items-center justify-center text-[#075C3B] dark:text-[#34D399] shrink-0">
           <Bike className="w-6 h-6" />
         </div>
         <div>
-          <p className="text-sm font-bold text-[#0B3322]">{vehicleType}</p>
-          <p className="text-xs text-[#6B8B7B] font-medium">Capacity: {capacityKg} kg</p>
-          {plate && <p className="text-[11px] text-[#8EA89B] font-mono mt-0.5">{plate}</p>}
+          <p className="text-sm font-bold text-[#0B3322] dark:text-[#EEFAF3]">{vehicleType}</p>
+          <p className="text-xs text-[#6B8B7B] dark:text-[#88B8A0] font-medium">Capacity: {capacityKg} kg</p>
+          {plate && <p className="text-[11px] text-[#8EA89B] dark:text-[#6E9581] font-mono mt-0.5">{plate}</p>}
         </div>
       </div>
     </div>
@@ -358,26 +358,26 @@ function NearbyDeliveryRequestsCard({
   onViewAll: () => void;
 }) {
   return (
-    <div className="bg-white rounded-2xl border border-[#E3EDE6] p-4 sm:p-5 shadow-[0_2px_8px_rgba(10,40,25,0.03)]">
+    <div className="bg-white dark:bg-[#0D2118] rounded-2xl border border-[#E3EDE6] dark:border-[#1E4130] p-4 sm:p-5 shadow-[0_2px_8px_rgba(10,40,25,0.03)]">
       <div className="flex items-center justify-between mb-4">
-        <h3 className="text-sm font-bold text-[#0B3322]">Nearby Delivery Requests</h3>
+        <h3 className="text-sm font-bold text-[#0B3322] dark:text-[#EEFAF3]">Nearby Delivery Requests</h3>
         <button
           onClick={onViewAll}
-          className="text-xs text-[#075C3B] font-bold hover:underline cursor-pointer"
+          className="text-xs text-[#075C3B] dark:text-[#34D399] font-bold hover:underline cursor-pointer"
         >
           View all
         </button>
       </div>
 
-      <div className="divide-y divide-[#EDF5F0]">
+      <div className="divide-y divide-[#EDF5F0] dark:divide-[#1A3326]">
         {requests.map(item => (
           <div
             key={item.id}
-            className="py-3.5 first:pt-0 last:pb-0 flex items-center justify-between gap-3 group transition-colors"
+            className="py-3.5 first:pt-0 last:pb-0 flex items-center justify-between gap-3 group transition-colors hover:bg-[#F9FCFA] dark:hover:bg-[#122A1E]/50 rounded-xl px-2 -mx-2"
           >
             {/* Product image & description */}
             <div className="flex items-center gap-3 min-w-0">
-              <div className="relative w-12 h-12 rounded-full overflow-hidden shrink-0 border border-[#E2ECE5] bg-slate-100">
+              <div className="relative w-12 h-12 rounded-full overflow-hidden shrink-0 border border-[#E2ECE5] dark:border-[#1E4130] bg-slate-100 dark:bg-slate-800">
                 <img
                   src={item.image}
                   alt={item.title}
@@ -386,11 +386,11 @@ function NearbyDeliveryRequestsCard({
               </div>
 
               <div className="min-w-0">
-                <h4 className="text-sm font-bold text-[#0B3322] truncate">{item.title}</h4>
-                <p className="text-xs text-[#6B8B7B] mt-0.5">
+                <h4 className="text-sm font-bold text-[#0B3322] dark:text-[#EEFAF3] truncate">{item.title}</h4>
+                <p className="text-xs text-[#6B8B7B] dark:text-[#88B8A0] mt-0.5">
                   {item.distance} &bull; {item.location}
                 </p>
-                <p className="text-xs font-bold text-[#0B3322] mt-0.5">
+                <p className="text-xs font-bold text-[#0B3322] dark:text-[#EEFAF3] mt-0.5">
                   ETB {item.fee} &bull; {item.weightKg} kg
                 </p>
               </div>
@@ -399,19 +399,19 @@ function NearbyDeliveryRequestsCard({
             {/* Accept button and timer */}
             <div className="flex items-center gap-3 shrink-0">
               {item.accepted ? (
-                <span className="px-3 py-1.5 rounded-lg bg-[#E7F7ED] text-[#088647] text-xs font-bold flex items-center gap-1">
+                <span className="px-3 py-1.5 rounded-lg bg-[#E7F7ED] dark:bg-[#133A27] text-[#088647] dark:text-[#34D399] text-xs font-bold flex items-center gap-1">
                   <Check className="w-3.5 h-3.5" />
                   Accepted
                 </span>
               ) : (
                 <button
                   onClick={() => onAccept(item)}
-                  className="px-4 py-1.5 rounded-lg bg-[#075C3B] hover:bg-[#05462D] active:scale-95 text-white text-xs font-bold transition-all shadow-xs cursor-pointer"
+                  className="px-4 py-1.5 rounded-lg bg-[#075C3B] dark:bg-[#10B981] hover:bg-[#05462D] dark:hover:bg-[#059669] active:scale-95 text-white dark:text-[#062417] text-xs font-bold transition-all shadow-xs cursor-pointer"
                 >
                   Accept
                 </button>
               )}
-              <span className="text-xs text-[#7B998A] font-medium min-w-[36px] text-right">
+              <span className="text-xs text-[#7B998A] dark:text-[#6E9581] font-medium min-w-[36px] text-right">
                 {item.timerMinutes} min
               </span>
             </div>
@@ -453,31 +453,31 @@ function RecentActivityCard({
   const items = activities && activities.length > 0 ? activities : defaultItems;
 
   return (
-    <div className="bg-white rounded-2xl border border-[#E3EDE6] p-4 sm:p-5 shadow-[0_2px_8px_rgba(10,40,25,0.03)]">
+    <div className="bg-white dark:bg-[#0D2118] rounded-2xl border border-[#E3EDE6] dark:border-[#1E4130] p-4 sm:p-5 shadow-[0_2px_8px_rgba(10,40,25,0.03)]">
       <div className="flex items-center justify-between mb-3">
-        <h3 className="text-sm font-bold text-[#0B3322]">Recent Activity</h3>
-        <span className="text-xs text-[#7B998A] font-medium">2 hours ago</span>
+        <h3 className="text-sm font-bold text-[#0B3322] dark:text-[#EEFAF3]">Recent Activity</h3>
+        <span className="text-xs text-[#7B998A] dark:text-[#6E9581] font-medium">2 hours ago</span>
       </div>
 
-      <div className="divide-y divide-[#EDF5F0]">
+      <div className="divide-y divide-[#EDF5F0] dark:divide-[#1A3326]">
         {items.map(item => (
           <div key={item.id} className="py-3 first:pt-1 last:pb-0 flex items-center justify-between gap-3">
             <div className="flex items-center gap-3">
-              <div className="w-8 h-8 rounded-full bg-[#EBF5EE] text-[#075C3B] flex items-center justify-center shrink-0">
+              <div className="w-8 h-8 rounded-full bg-[#EBF5EE] dark:bg-[#163828] text-[#075C3B] dark:text-[#34D399] flex items-center justify-center shrink-0">
                 <User className="w-4 h-4" />
               </div>
               <div>
-                <p className="text-xs font-bold text-[#0B3322]">{item.title}</p>
-                <p className="text-[11px] text-[#6B8B7B] mt-0.5">{item.subtitle}</p>
+                <p className="text-xs font-bold text-[#0B3322] dark:text-[#EEFAF3]">{item.title}</p>
+                <p className="text-[11px] text-[#6B8B7B] dark:text-[#88B8A0] mt-0.5">{item.subtitle}</p>
               </div>
             </div>
 
             <div className="flex items-center gap-3 text-right">
               <div>
-                {item.fee && <p className="text-xs font-bold text-[#0B3322]">{item.fee}</p>}
-                <p className="text-[11px] text-[#8EA89B]">{item.time}</p>
+                {item.fee && <p className="text-xs font-bold text-[#0B3322] dark:text-[#EEFAF3]">{item.fee}</p>}
+                <p className="text-[11px] text-[#8EA89B] dark:text-[#6E9581]">{item.time}</p>
               </div>
-              <ChevronRight className="w-4 h-4 text-[#A0BAAC]" />
+              <ChevronRight className="w-4 h-4 text-[#A0BAAC] dark:text-[#4A705E]" />
             </div>
           </div>
         ))}
@@ -530,9 +530,9 @@ function FullRouteModal({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-200">
-      <div className="bg-white rounded-3xl max-w-lg w-full overflow-hidden shadow-2xl border border-[#E3EDE6] flex flex-col max-h-[90vh]">
+      <div className="bg-white dark:bg-[#0D2118] rounded-3xl max-w-lg w-full overflow-hidden shadow-2xl border border-[#E3EDE6] dark:border-[#1E4130] flex flex-col max-h-[90vh]">
         {/* Modal Header */}
-        <div className="px-6 py-4 bg-[#083827] text-white flex items-center justify-between">
+        <div className="px-6 py-4 bg-[#083827] dark:bg-[#062419] text-white flex items-center justify-between">
           <div className="flex items-center gap-2">
             <Compass className="w-5 h-5 text-emerald-400" />
             <div>
@@ -552,27 +552,27 @@ function FullRouteModal({
 
         {/* Modal Body */}
         <div className="p-6 overflow-y-auto space-y-4">
-          <div className="bg-[#E8F6EE] p-3 rounded-2xl flex items-center justify-between text-xs font-bold text-[#075C3B]">
+          <div className="bg-[#E8F6EE] dark:bg-[#133A27] p-3 rounded-2xl flex items-center justify-between text-xs font-bold text-[#075C3B] dark:text-[#34D399]">
             <span>Traffic status: Light</span>
             <span>Total Earnings for route: ETB 310</span>
           </div>
 
-          <div className="space-y-3 relative pl-4 before:absolute before:left-6 before:top-3 before:bottom-3 before:w-0.5 before:bg-[#D4E8DC]">
+          <div className="space-y-3 relative pl-4 before:absolute before:left-6 before:top-3 before:bottom-3 before:w-0.5 before:bg-[#D4E8DC] dark:before:bg-[#1E4130]">
             {stops.map(s => (
-              <div key={s.step} className="relative flex items-start gap-3 bg-[#F9FCFA] p-3.5 rounded-2xl border border-[#E6F0EA]">
+              <div key={s.step} className="relative flex items-start gap-3 bg-[#F9FCFA] dark:bg-[#12281E] p-3.5 rounded-2xl border border-[#E6F0EA] dark:border-[#1C3E2C]">
                 <div className="w-6 h-6 rounded-full bg-[#075C3B] text-white text-xs font-bold flex items-center justify-center shrink-0 z-10">
                   {s.step}
                 </div>
                 <div className="min-w-0 flex-1">
                   <div className="flex items-center justify-between">
-                    <span className="text-[11px] font-bold uppercase tracking-wider text-[#075C3B] bg-[#E3F4EA] px-2 py-0.5 rounded-md">
+                    <span className="text-[11px] font-bold uppercase tracking-wider text-[#075C3B] dark:text-[#34D399] bg-[#E3F4EA] dark:bg-[#163828] px-2 py-0.5 rounded-md">
                       {s.type}
                     </span>
-                    <span className="text-[11px] text-[#6B8B7B] font-medium">{s.status}</span>
+                    <span className="text-[11px] text-[#6B8B7B] dark:text-[#88B8A0] font-medium">{s.status}</span>
                   </div>
-                  <p className="text-sm font-bold text-[#0B3322] mt-1">{s.location}</p>
-                  <p className="text-xs text-[#517663] mt-0.5 font-medium">{s.product}</p>
-                  <p className="text-[11px] text-[#7B998A] mt-0.5">{s.farmer || s.customer}</p>
+                  <p className="text-sm font-bold text-[#0B3322] dark:text-[#EEFAF3] mt-1">{s.location}</p>
+                  <p className="text-xs text-[#517663] dark:text-[#97C2AC] mt-0.5 font-medium">{s.product}</p>
+                  <p className="text-[11px] text-[#7B998A] dark:text-[#6E9581] mt-0.5">{s.farmer || s.customer}</p>
                 </div>
               </div>
             ))}
@@ -580,10 +580,10 @@ function FullRouteModal({
         </div>
 
         {/* Modal Footer */}
-        <div className="p-5 border-t border-[#E3EDE6] flex gap-3 bg-slate-50">
+        <div className="p-5 border-t border-[#E3EDE6] dark:border-[#1E4130] flex gap-3 bg-slate-50 dark:bg-[#0A1812]">
           <button
             onClick={onClose}
-            className="flex-1 py-2.5 rounded-xl border border-[#D5E2DA] text-xs font-bold text-[#375747] hover:bg-white transition-colors cursor-pointer"
+            className="flex-1 py-2.5 rounded-xl border border-[#D5E2DA] dark:border-[#1E4130] text-xs font-bold text-[#375747] dark:text-[#88B8A0] hover:bg-white dark:hover:bg-[#12281E] transition-colors cursor-pointer"
           >
             Close
           </button>
@@ -628,8 +628,8 @@ function EditVehicleModal({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-200">
-      <div className="bg-white rounded-3xl max-w-sm w-full overflow-hidden shadow-2xl border border-[#E3EDE6] flex flex-col">
-        <div className="px-6 py-4 bg-[#083827] text-white flex items-center justify-between">
+      <div className="bg-white dark:bg-[#0D2118] rounded-3xl max-w-sm w-full overflow-hidden shadow-2xl border border-[#E3EDE6] dark:border-[#1E4130] flex flex-col">
+        <div className="px-6 py-4 bg-[#083827] dark:bg-[#062419] text-white flex items-center justify-between">
           <h3 className="text-base font-bold">Edit Vehicle Details</h3>
           <button onClick={onClose} className="text-white/80 hover:text-white cursor-pointer">
             <X className="w-5 h-5" />
@@ -638,11 +638,11 @@ function EditVehicleModal({
 
         <div className="p-6 space-y-4">
           <div>
-            <label className="text-xs font-bold text-[#0B3322] block mb-1">Vehicle Type</label>
+            <label className="text-xs font-bold text-[#0B3322] dark:text-[#EEFAF3] block mb-1">Vehicle Type</label>
             <select
               value={vehicleType}
               onChange={e => setVehicleType(e.target.value)}
-              className="w-full text-xs font-medium bg-[#F2F7F4] border border-[#D7E6DD] rounded-xl px-3 py-2.5 text-[#0B3322] focus:outline-none focus:border-[#075C3B]"
+              className="w-full text-xs font-medium bg-[#F2F7F4] dark:bg-[#12281E] border border-[#D7E6DD] dark:border-[#1E4130] rounded-xl px-3 py-2.5 text-[#0B3322] dark:text-[#EEFAF3] focus:outline-none focus:border-[#075C3B]"
             >
               <option value="Motorcycle">Motorcycle</option>
               <option value="Pickup Truck">Pickup Truck</option>
@@ -653,30 +653,30 @@ function EditVehicleModal({
           </div>
 
           <div>
-            <label className="text-xs font-bold text-[#0B3322] block mb-1">Carrying Capacity (kg)</label>
+            <label className="text-xs font-bold text-[#0B3322] dark:text-[#EEFAF3] block mb-1">Carrying Capacity (kg)</label>
             <input
               type="number"
               value={capacityKg}
               onChange={e => setCapacityKg(Number(e.target.value))}
-              className="w-full text-xs font-medium bg-[#F2F7F4] border border-[#D7E6DD] rounded-xl px-3 py-2 text-[#0B3322] focus:outline-none focus:border-[#075C3B]"
+              className="w-full text-xs font-medium bg-[#F2F7F4] dark:bg-[#12281E] border border-[#D7E6DD] dark:border-[#1E4130] rounded-xl px-3 py-2 text-[#0B3322] dark:text-[#EEFAF3] focus:outline-none focus:border-[#075C3B]"
             />
           </div>
 
           <div>
-            <label className="text-xs font-bold text-[#0B3322] block mb-1">License Plate Number</label>
+            <label className="text-xs font-bold text-[#0B3322] dark:text-[#EEFAF3] block mb-1">License Plate Number</label>
             <input
               type="text"
               value={plate}
               onChange={e => setPlate(e.target.value)}
-              className="w-full text-xs font-medium bg-[#F2F7F4] border border-[#D7E6DD] rounded-xl px-3 py-2 text-[#0B3322] focus:outline-none focus:border-[#075C3B]"
+              className="w-full text-xs font-medium bg-[#F2F7F4] dark:bg-[#12281E] border border-[#D7E6DD] dark:border-[#1E4130] rounded-xl px-3 py-2 text-[#0B3322] dark:text-[#EEFAF3] focus:outline-none focus:border-[#075C3B]"
             />
           </div>
         </div>
 
-        <div className="p-4 border-t border-[#E3EDE6] flex gap-2 bg-slate-50">
+        <div className="p-4 border-t border-[#E3EDE6] dark:border-[#1E4130] flex gap-2 bg-slate-50 dark:bg-[#0A1812]">
           <button
             onClick={onClose}
-            className="flex-1 py-2.5 rounded-xl border border-[#D5E2DA] text-xs font-bold text-[#375747] hover:bg-white transition-colors cursor-pointer"
+            className="flex-1 py-2.5 rounded-xl border border-[#D5E2DA] dark:border-[#1E4130] text-xs font-bold text-[#375747] dark:text-[#88B8A0] hover:bg-white dark:hover:bg-[#12281E] transition-colors cursor-pointer"
           >
             Cancel
           </button>
@@ -705,8 +705,8 @@ function ContactSupportModal({ open, onClose }: { open: boolean; onClose: () => 
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-200">
-      <div className="bg-white rounded-3xl max-w-sm w-full overflow-hidden shadow-2xl border border-[#E3EDE6] flex flex-col">
-        <div className="px-6 py-4 bg-[#083827] text-white flex items-center justify-between">
+      <div className="bg-white dark:bg-[#0D2118] rounded-3xl max-w-sm w-full overflow-hidden shadow-2xl border border-[#E3EDE6] dark:border-[#1E4130] flex flex-col">
+        <div className="px-6 py-4 bg-[#083827] dark:bg-[#062419] text-white flex items-center justify-between">
           <div className="flex items-center gap-2">
             <Headphones className="w-5 h-5 text-emerald-400" />
             <h3 className="text-base font-bold">AgriMarket Support</h3>
@@ -717,36 +717,36 @@ function ContactSupportModal({ open, onClose }: { open: boolean; onClose: () => 
         </div>
 
         <div className="p-5 space-y-4">
-          <div className="bg-[#EBF7F0] p-3 rounded-2xl text-xs text-[#075C3B] space-y-1">
+          <div className="bg-[#EBF7F0] dark:bg-[#133A27] p-3 rounded-2xl text-xs text-[#075C3B] dark:text-[#34D399] space-y-1">
             <p className="font-bold flex items-center gap-1.5">
               <PhoneCall className="w-3.5 h-3.5" />
               Direct Driver Hotline: 8899 / +251 911 234 567
             </p>
-            <p className="text-[11px] text-[#4F7360]">Available 24/7 for delivery workers on active routes.</p>
+            <p className="text-[11px] text-[#4F7360] dark:text-[#88B8A0]">Available 24/7 for delivery workers on active routes.</p>
           </div>
 
           <div>
-            <label className="text-xs font-bold text-[#0B3322] block mb-1">Send a quick dispatch note</label>
+            <label className="text-xs font-bold text-[#0B3322] dark:text-[#EEFAF3] block mb-1">Send a quick dispatch note</label>
             <textarea
               rows={3}
               value={msg}
               onChange={e => setMsg(e.target.value)}
               placeholder="E.g., Traffic delay on Bole road, or customer not answering..."
-              className="w-full text-xs font-medium bg-[#F2F7F4] border border-[#D7E6DD] rounded-xl p-3 text-[#0B3322] focus:outline-none focus:border-[#075C3B]"
+              className="w-full text-xs font-medium bg-[#F2F7F4] dark:bg-[#12281E] border border-[#D7E6DD] dark:border-[#1E4130] rounded-xl p-3 text-[#0B3322] dark:text-[#EEFAF3] placeholder-[#8EA89B] dark:placeholder-[#4E7361] focus:outline-none focus:border-[#075C3B]"
             />
           </div>
 
           {sent && (
-            <p className="text-xs font-bold text-emerald-700 bg-emerald-50 p-2 rounded-lg text-center">
+            <p className="text-xs font-bold text-emerald-700 dark:text-emerald-300 bg-emerald-50 dark:bg-emerald-950/40 p-2 rounded-lg text-center">
               Message dispatched! Support agent will call you within 2 minutes.
             </p>
           )}
         </div>
 
-        <div className="p-4 border-t border-[#E3EDE6] flex gap-2 bg-slate-50">
+        <div className="p-4 border-t border-[#E3EDE6] dark:border-[#1E4130] flex gap-2 bg-slate-50 dark:bg-[#0A1812]">
           <button
             onClick={onClose}
-            className="flex-1 py-2 rounded-xl border border-[#D5E2DA] text-xs font-bold text-[#375747] hover:bg-white transition-colors cursor-pointer"
+            className="flex-1 py-2 rounded-xl border border-[#D5E2DA] dark:border-[#1E4130] text-xs font-bold text-[#375747] dark:text-[#88B8A0] hover:bg-white dark:hover:bg-[#12281E] transition-colors cursor-pointer"
           >
             Close
           </button>
@@ -799,23 +799,23 @@ function DashboardSection({
   return (
     <div className="space-y-5">
       {/* ─── Hero Greeting Banner with Background Van Graphic ─── */}
-      <div className="relative rounded-3xl overflow-hidden bg-gradient-to-r from-[#D7EFE2] via-[#E4F5EB] to-[#E9F6ED] border border-[#CCE8D7] shadow-[0_4px_16px_rgba(10,40,25,0.04)] p-6 sm:p-7 flex items-center justify-between min-h-[140px]">
+      <div className="relative rounded-3xl overflow-hidden bg-gradient-to-r from-[#D7EFE2] via-[#E4F5EB] to-[#E9F6ED] dark:from-[#0E2E20] dark:via-[#133A29] dark:to-[#0F3123] border border-[#CCE8D7] dark:border-[#1B4B36] shadow-[0_4px_16px_rgba(10,40,25,0.04)] p-6 sm:p-7 flex items-center justify-between min-h-[140px]">
         {/* Left text column */}
         <div className="relative z-10 max-w-lg">
-          <h1 className="text-xl sm:text-2xl font-black text-[#0A3322] tracking-tight flex items-center gap-2">
+          <h1 className="text-xl sm:text-2xl font-black text-[#0A3322] dark:text-[#EEFAF3] tracking-tight flex items-center gap-2">
             <span>Good day, {workerFirstName}!</span>
             <span className="text-2xl" role="img" aria-label="van">
               🚐
             </span>
           </h1>
-          <p className="text-xs sm:text-sm text-[#38624E] font-medium mt-1">
+          <p className="text-xs sm:text-sm text-[#38624E] dark:text-[#97C2AC] font-medium mt-1">
             Keep moving. Keep delivering. Ongoing orders await you.
           </p>
         </div>
 
         {/* Right side banner image with soft transparent gradient blend */}
         <div className="hidden md:block absolute right-0 top-0 bottom-0 w-[48%] pointer-events-none select-none">
-          <div className="absolute inset-0 bg-gradient-to-r from-[#D7EFE2] via-[#E4F5EB]/60 to-transparent z-10" />
+          <div className="absolute inset-0 bg-gradient-to-r from-[#D7EFE2] via-[#E4F5EB]/60 to-transparent dark:from-[#0E2E20] dark:via-[#133A29]/70 z-10" />
           <img
             src="/images/worker_banner_van.jpg"
             alt="Delivery van on rural scenic road"
@@ -995,12 +995,12 @@ function OffersSection({
     <div className="space-y-4">
       <div className="flex items-center justify-between">
         <div>
-          <h2 className="text-lg font-black text-[#0B3322]">Available Delivery Orders</h2>
-          <p className="text-xs text-[#517663]">Orders broadcasted near your location matching your vehicle capacity.</p>
+          <h2 className="text-lg font-black text-[#0B3322] dark:text-[#EEFAF3]">Available Delivery Orders</h2>
+          <p className="text-xs text-[#517663] dark:text-[#88B8A0]">Orders broadcasted near your location matching your vehicle capacity.</p>
         </div>
         <button
           onClick={loadOffers}
-          className="p-2 rounded-xl bg-white border border-[#D7E6DD] text-[#075C3B] hover:bg-[#EBF6EE] transition-colors cursor-pointer"
+          className="p-2 rounded-xl bg-white dark:bg-[#0D2118] border border-[#D7E6DD] dark:border-[#1E4130] text-[#075C3B] dark:text-[#34D399] hover:bg-[#EBF6EE] dark:hover:bg-[#163828] transition-colors cursor-pointer"
         >
           <RefreshCw className="w-4 h-4" />
         </button>
@@ -1010,11 +1010,11 @@ function OffersSection({
         {offers.map(offer => (
           <div
             key={offer.offerId}
-            className="bg-white rounded-2xl border border-[#E3EDE6] p-5 shadow-sm hover:shadow-md transition-shadow flex flex-col justify-between"
+            className="bg-white dark:bg-[#0D2118] rounded-2xl border border-[#E3EDE6] dark:border-[#1E4130] p-5 shadow-sm hover:shadow-md transition-shadow flex flex-col justify-between"
           >
             <div>
               <div className="flex items-center gap-3">
-                <div className="relative w-12 h-12 rounded-full overflow-hidden shrink-0 border border-[#E3EDE6]">
+                <div className="relative w-12 h-12 rounded-full overflow-hidden shrink-0 border border-[#E3EDE6] dark:border-[#1E4130] bg-slate-100 dark:bg-slate-800">
                   <img
                     src={offer.productImage || '/images/prod_tomatoes.jpg'}
                     alt={offer.product}
@@ -1022,27 +1022,27 @@ function OffersSection({
                   />
                 </div>
                 <div>
-                  <h4 className="text-sm font-bold text-[#0B3322]">{offer.product}</h4>
-                  <p className="text-xs text-[#6B8B7B]">
-                    {offer.quantityKg} kg &bull; Fee: <span className="text-[#075C3B] font-bold">ETB {offer.deliveryFee}</span>
+                  <h4 className="text-sm font-bold text-[#0B3322] dark:text-[#EEFAF3]">{offer.product}</h4>
+                  <p className="text-xs text-[#6B8B7B] dark:text-[#88B8A0]">
+                    {offer.quantityKg} kg &bull; Fee: <span className="text-[#075C3B] dark:text-[#34D399] font-bold">ETB {offer.deliveryFee}</span>
                   </p>
                 </div>
               </div>
 
               <div className="mt-4 space-y-2 text-xs">
-                <div className="flex items-start gap-2 text-[#517663]">
-                  <MapPin className="w-3.5 h-3.5 text-[#075C3B] shrink-0 mt-0.5" />
+                <div className="flex items-start gap-2 text-[#517663] dark:text-[#97C2AC]">
+                  <MapPin className="w-3.5 h-3.5 text-[#075C3B] dark:text-[#34D399] shrink-0 mt-0.5" />
                   <span>Pickup: {offer.pickupAddress}</span>
                 </div>
-                <div className="flex items-start gap-2 text-[#517663]">
-                  <Navigation className="w-3.5 h-3.5 text-blue-600 shrink-0 mt-0.5" />
+                <div className="flex items-start gap-2 text-[#517663] dark:text-[#97C2AC]">
+                  <Navigation className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400 shrink-0 mt-0.5" />
                   <span>Dropoff: {offer.dropoffAddress}</span>
                 </div>
               </div>
             </div>
 
-            <div className="mt-5 pt-3 border-t border-[#EDF5F0] flex items-center justify-between">
-              <span className="text-xs text-[#7B998A] font-medium">Expires in {Math.round(offer.secondsLeft / 60)} min</span>
+            <div className="mt-5 pt-3 border-t border-[#EDF5F0] dark:border-[#1E4130] flex items-center justify-between">
+              <span className="text-xs text-[#7B998A] dark:text-[#6E9581] font-medium">Expires in {Math.round(offer.secondsLeft / 60)} min</span>
               <button
                 onClick={() => onAcceptOrder(offer)}
                 className="px-4 py-2 rounded-xl bg-[#075C3B] hover:bg-[#05462D] text-white text-xs font-bold transition-colors cursor-pointer"
@@ -1141,8 +1141,8 @@ function DeliveriesSection() {
   return (
     <div className="space-y-4">
       <div>
-        <h2 className="text-lg font-black text-[#0B3322]">My Deliveries</h2>
-        <p className="text-xs text-[#517663]">Manage ongoing pickups, in-transit orders, and completion receipts.</p>
+        <h2 className="text-lg font-black text-[#0B3322] dark:text-[#EEFAF3]">My Deliveries</h2>
+        <p className="text-xs text-[#517663] dark:text-[#88B8A0]">Manage ongoing pickups, in-transit orders, and completion receipts.</p>
       </div>
 
       <div className="space-y-3">
@@ -1151,10 +1151,10 @@ function DeliveriesSection() {
           return (
             <div
               key={job.id}
-              className="bg-white rounded-2xl border border-[#E3EDE6] p-5 shadow-sm flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4"
+              className="bg-white dark:bg-[#0D2118] rounded-2xl border border-[#E3EDE6] dark:border-[#1E4130] p-5 shadow-sm flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4"
             >
               <div className="flex items-center gap-3.5">
-                <div className="relative w-12 h-12 rounded-full overflow-hidden shrink-0 border border-[#E3EDE6]">
+                <div className="relative w-12 h-12 rounded-full overflow-hidden shrink-0 border border-[#E3EDE6] dark:border-[#1E4130] bg-slate-100 dark:bg-slate-800">
                   <img
                     src={job.productImage || '/images/prod_tomatoes.jpg'}
                     alt={job.product}
@@ -1163,13 +1163,13 @@ function DeliveriesSection() {
                 </div>
                 <div>
                   <div className="flex items-center gap-2">
-                    <h4 className="text-sm font-bold text-[#0B3322]">{job.product}</h4>
-                    <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-[#EBF6EE] text-[#075C3B]">
+                    <h4 className="text-sm font-bold text-[#0B3322] dark:text-[#EEFAF3]">{job.product}</h4>
+                    <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-[#EBF6EE] dark:bg-[#133A27] text-[#075C3B] dark:text-[#34D399]">
                       {STATUS_LABELS[job.status]}
                     </span>
                   </div>
-                  <p className="text-xs text-[#6B8B7B] mt-0.5">
-                    {job.dropoffAddress} &bull; Fee: <span className="text-[#0B3322] font-bold">ETB {job.deliveryFee}</span>
+                  <p className="text-xs text-[#6B8B7B] dark:text-[#88B8A0] mt-0.5">
+                    {job.dropoffAddress} &bull; Fee: <span className="text-[#0B3322] dark:text-[#EEFAF3] font-bold">ETB {job.deliveryFee}</span>
                   </p>
                 </div>
               </div>
@@ -1183,7 +1183,7 @@ function DeliveriesSection() {
                     {next.label}
                   </button>
                 ) : (
-                  <span className="text-xs text-[#088647] font-bold flex items-center gap-1">
+                  <span className="text-xs text-[#088647] dark:text-[#34D399] font-bold flex items-center gap-1">
                     <CheckCircle2 className="w-4 h-4" />
                     Completed
                   </span>
@@ -1206,16 +1206,18 @@ function EarningsSection() {
     <div className="space-y-5">
       <div className="flex items-center justify-between">
         <div>
-          <h2 className="text-lg font-black text-[#0B3322]">Earnings & Cash Reconciliation</h2>
-          <p className="text-xs text-[#517663]">Track completed deliveries, COD cash balance, and weekly payouts.</p>
+          <h2 className="text-lg font-black text-[#0B3322] dark:text-[#EEFAF3]">Earnings & Cash Reconciliation</h2>
+          <p className="text-xs text-[#517663] dark:text-[#88B8A0]">Track completed deliveries, COD cash balance, and weekly payouts.</p>
         </div>
-        <div className="flex bg-[#EBF5EF] p-1 rounded-xl text-xs font-bold text-[#075C3B]">
+        <div className="flex bg-[#EBF5EF] dark:bg-[#12281E] p-1 rounded-xl text-xs font-bold text-[#075C3B] dark:text-[#34D399]">
           {(['today', 'week', 'month'] as const).map(p => (
             <button
               key={p}
               onClick={() => setPeriod(p)}
               className={`px-3 py-1.5 rounded-lg capitalize cursor-pointer transition-colors ${
-                period === p ? 'bg-[#075C3B] text-white' : 'text-[#47705B] hover:text-[#075C3B]'
+                period === p
+                  ? 'bg-[#075C3B] text-white'
+                  : 'text-[#47705B] dark:text-[#88B8A0] hover:text-[#075C3B] dark:hover:text-white'
               }`}
             >
               {p}
@@ -1225,20 +1227,20 @@ function EarningsSection() {
       </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-        <div className="bg-white rounded-2xl border border-[#E3EDE6] p-5 shadow-xs">
-          <p className="text-xs text-[#6B8B7B] font-medium">Net Payout</p>
-          <p className="text-2xl font-black text-[#0B3322] mt-1">ETB 2,450</p>
-          <p className="text-[11px] text-[#088647] font-bold mt-1">+15% vs yesterday</p>
+        <div className="bg-white dark:bg-[#0D2118] rounded-2xl border border-[#E3EDE6] dark:border-[#1E4130] p-5 shadow-xs">
+          <p className="text-xs text-[#6B8B7B] dark:text-[#88B8A0] font-medium">Net Payout</p>
+          <p className="text-2xl font-black text-[#0B3322] dark:text-[#EEFAF3] mt-1">ETB 2,450</p>
+          <p className="text-[11px] text-[#088647] dark:text-[#34D399] font-bold mt-1">+15% vs yesterday</p>
         </div>
-        <div className="bg-white rounded-2xl border border-[#E3EDE6] p-5 shadow-xs">
-          <p className="text-xs text-[#6B8B7B] font-medium">Completed Jobs</p>
-          <p className="text-2xl font-black text-[#0B3322] mt-1">5 Deliveries</p>
-          <p className="text-[11px] text-[#6B8B7B] mt-1">100% on-time completion</p>
+        <div className="bg-white dark:bg-[#0D2118] rounded-2xl border border-[#E3EDE6] dark:border-[#1E4130] p-5 shadow-xs">
+          <p className="text-xs text-[#6B8B7B] dark:text-[#88B8A0] font-medium">Completed Jobs</p>
+          <p className="text-2xl font-black text-[#0B3322] dark:text-[#EEFAF3] mt-1">5 Deliveries</p>
+          <p className="text-[11px] text-[#6B8B7B] dark:text-[#88B8A0] mt-1">100% on-time completion</p>
         </div>
-        <div className="bg-white rounded-2xl border border-[#E3EDE6] p-5 shadow-xs">
-          <p className="text-xs text-[#6B8B7B] font-medium">Cash On Delivery Held</p>
-          <p className="text-2xl font-black text-[#B45309] mt-1">ETB 680</p>
-          <p className="text-[11px] text-[#6B8B7B] mt-1">Ready for bank deposit / Telebirr</p>
+        <div className="bg-white dark:bg-[#0D2118] rounded-2xl border border-[#E3EDE6] dark:border-[#1E4130] p-5 shadow-xs">
+          <p className="text-xs text-[#6B8B7B] dark:text-[#88B8A0] font-medium">Cash On Delivery Held</p>
+          <p className="text-2xl font-black text-[#B45309] dark:text-[#F59E0B] mt-1">ETB 680</p>
+          <p className="text-[11px] text-[#6B8B7B] dark:text-[#88B8A0] mt-1">Ready for bank deposit / Telebirr</p>
         </div>
       </div>
     </div>
@@ -1259,19 +1261,19 @@ function VehicleSection({
   return (
     <div className="space-y-5">
       <div>
-        <h2 className="text-lg font-black text-[#0B3322]">Vehicle & Profile Settings</h2>
-        <p className="text-xs text-[#517663]">Manage delivery status, vehicle specs, license documents, and work zones.</p>
+        <h2 className="text-lg font-black text-[#0B3322] dark:text-[#EEFAF3]">Vehicle & Profile Settings</h2>
+        <p className="text-xs text-[#517663] dark:text-[#88B8A0]">Manage delivery status, vehicle specs, license documents, and work zones.</p>
       </div>
 
-      <div className="bg-white rounded-2xl border border-[#E3EDE6] p-5 shadow-xs flex items-center justify-between">
+      <div className="bg-white dark:bg-[#0D2118] rounded-2xl border border-[#E3EDE6] dark:border-[#1E4130] p-5 shadow-xs flex items-center justify-between">
         <div>
-          <h4 className="text-sm font-bold text-[#0B3322]">Worker Availability</h4>
-          <p className="text-xs text-[#6B8B7B] mt-0.5">Toggle online to receive real-time order broadcast offers.</p>
+          <h4 className="text-sm font-bold text-[#0B3322] dark:text-[#EEFAF3]">Worker Availability</h4>
+          <p className="text-xs text-[#6B8B7B] dark:text-[#88B8A0] mt-0.5">Toggle online to receive real-time order broadcast offers.</p>
         </div>
         <button
           onClick={() => setOnline(p => !p)}
           className={`px-4 py-2 rounded-xl text-xs font-bold transition-colors cursor-pointer flex items-center gap-2 ${
-            online ? 'bg-[#075C3B] text-white' : 'bg-slate-200 text-slate-700'
+            online ? 'bg-[#075C3B] text-white' : 'bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-300'
           }`}
         >
           <span className={`w-2 h-2 rounded-full ${online ? 'bg-emerald-300' : 'bg-slate-400'}`} />
@@ -1279,25 +1281,25 @@ function VehicleSection({
         </button>
       </div>
 
-      <div className="bg-white rounded-2xl border border-[#E3EDE6] p-5 shadow-xs space-y-4">
+      <div className="bg-white dark:bg-[#0D2118] rounded-2xl border border-[#E3EDE6] dark:border-[#1E4130] p-5 shadow-xs space-y-4">
         <div className="flex items-center justify-between">
-          <h4 className="text-sm font-bold text-[#0B3322]">Registered Vehicle</h4>
-          <button onClick={onOpenVehicleModal} className="text-xs font-bold text-[#075C3B] hover:underline cursor-pointer">
+          <h4 className="text-sm font-bold text-[#0B3322] dark:text-[#EEFAF3]">Registered Vehicle</h4>
+          <button onClick={onOpenVehicleModal} className="text-xs font-bold text-[#075C3B] dark:text-[#34D399] hover:underline cursor-pointer">
             Edit
           </button>
         </div>
         <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 text-xs">
-          <div className="bg-[#F7FAF8] p-3 rounded-xl border border-[#E8F0EB]">
-            <p className="text-[#6B8B7B]">Type</p>
-            <p className="font-bold text-[#0B3322] mt-0.5">{data?.profile?.vehicleType || 'Motorcycle'}</p>
+          <div className="bg-[#F7FAF8] dark:bg-[#12281E] p-3 rounded-xl border border-[#E8F0EB] dark:border-[#1E4130]">
+            <p className="text-[#6B8B7B] dark:text-[#88B8A0]">Type</p>
+            <p className="font-bold text-[#0B3322] dark:text-[#EEFAF3] mt-0.5">{data?.profile?.vehicleType || 'Motorcycle'}</p>
           </div>
-          <div className="bg-[#F7FAF8] p-3 rounded-xl border border-[#E8F0EB]">
-            <p className="text-[#6B8B7B]">Capacity</p>
-            <p className="font-bold text-[#0B3322] mt-0.5">{data?.profile?.vehicleCapacityKg || 50} kg</p>
+          <div className="bg-[#F7FAF8] dark:bg-[#12281E] p-3 rounded-xl border border-[#E8F0EB] dark:border-[#1E4130]">
+            <p className="text-[#6B8B7B] dark:text-[#88B8A0]">Capacity</p>
+            <p className="font-bold text-[#0B3322] dark:text-[#EEFAF3] mt-0.5">{data?.profile?.vehicleCapacityKg || 50} kg</p>
           </div>
-          <div className="bg-[#F7FAF8] p-3 rounded-xl border border-[#E8F0EB]">
-            <p className="text-[#6B8B7B]">Plate Number</p>
-            <p className="font-bold text-[#0B3322] mt-0.5">{data?.profile?.vehiclePlate || '3-A45129 ET'}</p>
+          <div className="bg-[#F7FAF8] dark:bg-[#12281E] p-3 rounded-xl border border-[#E8F0EB] dark:border-[#1E4130]">
+            <p className="text-[#6B8B7B] dark:text-[#88B8A0]">Plate Number</p>
+            <p className="font-bold text-[#0B3322] dark:text-[#EEFAF3] mt-0.5">{data?.profile?.vehiclePlate || '3-A45129 ET'}</p>
           </div>
         </div>
       </div>
@@ -1513,7 +1515,7 @@ export default function WorkerDashboardPage() {
   );
 
   return (
-    <div className="min-h-screen bg-[#F4F7F5] flex font-sans text-slate-800">
+    <div className="min-h-screen bg-[#F4F7F5] dark:bg-[#07130D] flex font-sans text-slate-800 dark:text-[#E6F4ED] transition-colors duration-200">
       {/* ─── Desktop Left Sidebar ─── */}
       <aside className="hidden lg:flex lg:flex-col lg:fixed lg:left-0 lg:top-0 lg:bottom-0 lg:w-60 lg:z-30 shadow-[4px_0_24px_rgba(0,0,0,0.06)]">
         <SidebarContent />
@@ -1528,7 +1530,7 @@ export default function WorkerDashboardPage() {
           </div>
           <button
             onClick={() => setSidebarOpen(false)}
-            className="absolute top-4 right-4 w-9 h-9 rounded-full bg-white/90 text-slate-800 flex items-center justify-center shadow-md cursor-pointer z-20"
+            className="absolute top-4 right-4 w-9 h-9 rounded-full bg-white/90 dark:bg-[#0D2118] text-slate-800 dark:text-white flex items-center justify-center shadow-md cursor-pointer z-20"
           >
             <X className="w-5 h-5" />
           </button>
@@ -1537,24 +1539,24 @@ export default function WorkerDashboardPage() {
 
       {/* ─── Main Content Container ─── */}
       <div className="flex-1 flex flex-col lg:ml-60 min-w-0">
-        {/* Top Header Navigation Bar (Matching Reference Image) */}
-        <header className="sticky top-0 z-20 bg-white border-b border-[#E3EDE6] h-16 px-4 sm:px-6 flex items-center justify-between gap-4 shadow-xs">
+        {/* Top Header Navigation Bar (Sticky with blurred backdrop) */}
+        <header className="sticky top-0 z-40 bg-white/95 dark:bg-[#0A1812]/95 backdrop-blur-md border-b border-[#E3EDE6] dark:border-[#1A3326] h-16 px-4 sm:px-6 flex items-center justify-between gap-4 shadow-xs transition-colors">
           {/* Left: Mobile hamburger */}
           <div className="flex items-center gap-3">
             <button
               onClick={() => setSidebarOpen(true)}
-              className="lg:hidden p-2 rounded-xl text-[#0B3322] hover:bg-[#EBF6EE] transition-colors cursor-pointer"
+              className="lg:hidden p-2 rounded-xl text-[#0B3322] dark:text-[#EEFAF3] hover:bg-[#EBF6EE] dark:hover:bg-[#163828] transition-colors cursor-pointer"
             >
               <Menu className="w-5 h-5" />
             </button>
 
             {/* Search Pill Input (Matching Reference image) */}
-            <div className="hidden sm:flex items-center gap-2 px-3.5 py-2 rounded-full bg-[#F0F5F2] w-64 lg:w-72 border border-transparent focus-within:border-[#BDE0CB] focus-within:bg-white transition-all">
-              <Search className="w-4 h-4 text-[#7B998A]" />
+            <div className="hidden sm:flex items-center gap-2 px-3.5 py-2 rounded-full bg-[#F0F5F2] dark:bg-[#12281E] w-64 lg:w-72 border border-transparent dark:border-[#1E4130] focus-within:border-[#BDE0CB] dark:focus-within:border-[#224A37] focus-within:bg-white dark:focus-within:bg-[#0D2118] transition-all">
+              <Search className="w-4 h-4 text-[#7B998A] dark:text-[#5B806E]" />
               <input
                 type="text"
                 placeholder="Search orders..."
-                className="w-full bg-transparent text-xs text-[#0B3322] placeholder-[#8EA89B] focus:outline-none"
+                className="w-full bg-transparent text-xs text-[#0B3322] dark:text-[#EEFAF3] placeholder-[#8EA89B] dark:placeholder-[#4E7361] focus:outline-none"
               />
             </div>
           </div>
@@ -1577,9 +1579,9 @@ export default function WorkerDashboardPage() {
             <div className="relative">
               <button
                 onClick={() => setProfileDropdownOpen(p => !p)}
-                className="flex items-center gap-2.5 p-1 sm:pr-3 rounded-full hover:bg-[#F0F5F2] transition-colors cursor-pointer"
+                className="flex items-center gap-2.5 p-1 sm:pr-3 rounded-full hover:bg-[#F0F5F2] dark:hover:bg-[#163828] transition-colors cursor-pointer"
               >
-                <div className="relative w-8 h-8 rounded-full overflow-hidden border border-[#D5E6DC] bg-slate-100 shrink-0">
+                <div className="relative w-8 h-8 rounded-full overflow-hidden border border-[#D5E6DC] dark:border-[#1E4130] bg-slate-100 dark:bg-slate-800 shrink-0">
                   <img
                     src="/images/avatar_mekonnen_hd.jpg"
                     alt="Abebe Mekonnen"
@@ -1587,25 +1589,25 @@ export default function WorkerDashboardPage() {
                   />
                 </div>
                 <div className="hidden md:block text-left leading-tight">
-                  <p className="text-xs font-bold text-[#0B3322]">
+                  <p className="text-xs font-bold text-[#0B3322] dark:text-[#EEFAF3]">
                     {dashData?.worker?.fullName || 'Abebe Mekonnen'}
                   </p>
-                  <p className="text-[10px] text-[#719985] font-semibold">Delivery Worker</p>
+                  <p className="text-[10px] text-[#719985] dark:text-[#88B8A0] font-semibold">Delivery Worker</p>
                 </div>
-                <ChevronDown className="w-3.5 h-3.5 text-[#719985]" />
+                <ChevronDown className="w-3.5 h-3.5 text-[#719985] dark:text-[#88B8A0]" />
               </button>
 
               {/* Profile dropdown */}
               {profileDropdownOpen && (
-                <div className="absolute right-0 mt-2 w-48 bg-white rounded-2xl border border-[#E3EDE6] shadow-xl p-2 z-30 animate-in fade-in duration-150">
+                <div className="absolute right-0 mt-2 w-48 bg-white dark:bg-[#0D2118] rounded-2xl border border-[#E3EDE6] dark:border-[#1E4130] shadow-xl p-2 z-30 animate-in fade-in duration-150">
                   <button
                     onClick={() => {
                       setActiveSection('vehicle');
                       setProfileDropdownOpen(false);
                     }}
-                    className="w-full text-left px-3 py-2 text-xs font-semibold text-[#0B3322] hover:bg-[#F0F5F2] rounded-xl flex items-center gap-2"
+                    className="w-full text-left px-3 py-2 text-xs font-semibold text-[#0B3322] dark:text-[#EEFAF3] hover:bg-[#F0F5F2] dark:hover:bg-[#163828] rounded-xl flex items-center gap-2"
                   >
-                    <User className="w-3.5 h-3.5 text-[#075C3B]" />
+                    <User className="w-3.5 h-3.5 text-[#075C3B] dark:text-[#34D399]" />
                     Profile & Vehicle
                   </button>
                   <button
@@ -1613,15 +1615,15 @@ export default function WorkerDashboardPage() {
                       setSupportModalOpen(true);
                       setProfileDropdownOpen(false);
                     }}
-                    className="w-full text-left px-3 py-2 text-xs font-semibold text-[#0B3322] hover:bg-[#F0F5F2] rounded-xl flex items-center gap-2"
+                    className="w-full text-left px-3 py-2 text-xs font-semibold text-[#0B3322] dark:text-[#EEFAF3] hover:bg-[#F0F5F2] dark:hover:bg-[#163828] rounded-xl flex items-center gap-2"
                   >
-                    <Headphones className="w-3.5 h-3.5 text-[#075C3B]" />
+                    <Headphones className="w-3.5 h-3.5 text-[#075C3B] dark:text-[#34D399]" />
                     Support Desk
                   </button>
-                  <div className="my-1 border-t border-[#EDF5F0]" />
+                  <div className="my-1 border-t border-[#EDF5F0] dark:border-[#1A3326]" />
                   <button
                     onClick={handleLogout}
-                    className="w-full text-left px-3 py-2 text-xs font-semibold text-rose-600 hover:bg-rose-50 rounded-xl flex items-center gap-2"
+                    className="w-full text-left px-3 py-2 text-xs font-semibold text-rose-600 dark:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/30 rounded-xl flex items-center gap-2"
                   >
                     <LogOut className="w-3.5 h-3.5" />
                     Sign Out
@@ -1667,33 +1669,33 @@ export default function WorkerDashboardPage() {
           )}
 
           {activeSection === 'messages' && (
-            <div className="bg-white rounded-2xl border border-[#E3EDE6] p-12 text-center">
-              <MessageSquare className="w-10 h-10 text-[#075C3B] mx-auto mb-3 opacity-60" />
-              <h3 className="text-sm font-bold text-[#0B3322]">Driver & Dispatch Chat</h3>
-              <p className="text-xs text-[#6B8B7B] mt-1 max-w-sm mx-auto">
+            <div className="bg-white dark:bg-[#0D2118] rounded-2xl border border-[#E3EDE6] dark:border-[#1E4130] p-12 text-center">
+              <MessageSquare className="w-10 h-10 text-[#075C3B] dark:text-[#34D399] mx-auto mb-3 opacity-60" />
+              <h3 className="text-sm font-bold text-[#0B3322] dark:text-[#EEFAF3]">Driver & Dispatch Chat</h3>
+              <p className="text-xs text-[#6B8B7B] dark:text-[#88B8A0] mt-1 max-w-sm mx-auto">
                 Direct in-app messaging with pickup hub managers and buyers is connected.
               </p>
             </div>
           )}
 
           {activeSection === 'settings' && (
-            <div className="bg-white rounded-2xl border border-[#E3EDE6] p-6 max-w-lg space-y-4">
-              <h3 className="text-base font-black text-[#0B3322]">Driver Preferences</h3>
+            <div className="bg-white dark:bg-[#0D2118] rounded-2xl border border-[#E3EDE6] dark:border-[#1E4130] p-6 max-w-lg space-y-4">
+              <h3 className="text-base font-black text-[#0B3322] dark:text-[#EEFAF3]">Driver Preferences</h3>
               <div className="space-y-3 text-xs">
-                <label className="flex items-center justify-between p-3 rounded-xl bg-[#F8FAF9] border border-[#E8F0EB]">
-                  <span className="font-bold text-[#0B3322]">Sound Alerts on New Order Offer</span>
-                  <input type="checkbox" defaultChecked className="accent-[#075C3B]" />
-                </label>
-                <label className="flex items-center justify-between p-3 rounded-xl bg-[#F8FAF9] border border-[#E8F0EB]">
-                  <span className="font-bold text-[#0B3322]">Auto-calculate Toll Routes</span>
+                <label className="flex items-center justify-between p-3 rounded-xl bg-[#F8FAF9] dark:bg-[#12281E] border border-[#E8F0EB] dark:border-[#1E4130]">
+                  <span className="font-bold text-[#0B3322] dark:text-[#EEFAF3]">Sound Alerts on New Order Offer</span>
                   <input type="checkbox" defaultChecked className="accent-[#075C3B]" />
                 </label>
                 <label className="flex items-center justify-between p-3 rounded-xl bg-[#F8FAF9] dark:bg-[#12281E] border border-[#E8F0EB] dark:border-[#1E4130]">
-                  <span className="font-bold text-[#0B3322] dark:text-[#E6F4ED]">Theme Mode (Light / Dark)</span>
+                  <span className="font-bold text-[#0B3322] dark:text-[#EEFAF3]">Auto-calculate Toll Routes</span>
+                  <input type="checkbox" defaultChecked className="accent-[#075C3B]" />
+                </label>
+                <label className="flex items-center justify-between p-3 rounded-xl bg-[#F8FAF9] dark:bg-[#12281E] border border-[#E8F0EB] dark:border-[#1E4130]">
+                  <span className="font-bold text-[#0B3322] dark:text-[#EEFAF3]">Theme Mode (Light / Dark)</span>
                   <ThemeToggle />
                 </label>
                 <label className="flex items-center justify-between p-3 rounded-xl bg-[#F8FAF9] dark:bg-[#12281E] border border-[#E8F0EB] dark:border-[#1E4130]">
-                  <span className="font-bold text-[#0B3322] dark:text-[#E6F4ED]">Language: Amharic (አማርኛ) / English</span>
+                  <span className="font-bold text-[#0B3322] dark:text-[#EEFAF3]">Language: Amharic (አማርኛ) / English</span>
                   <span className="text-[#075C3B] dark:text-[#34D399] font-bold">English (Default)</span>
                 </label>
               </div>
