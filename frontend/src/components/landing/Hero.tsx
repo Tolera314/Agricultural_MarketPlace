@@ -44,7 +44,7 @@ export const Hero: React.FC<HeroProps> = ({
           overflow: hidden;
         }
 
-        /* ── Desktop & Mobile Photo Backgrounds ── */
+        /* ── Desktop & Mobile Photo Background (Single Responsive Image) ── */
         .agri-hero-bg {
           position: absolute;
           inset: 0;
@@ -66,7 +66,6 @@ export const Hero: React.FC<HeroProps> = ({
             min-height: 560px;
           }
           .agri-hero-bg {
-            background-image: url('/images/hero_farm_mobile_bg.jpg');
             background-position: center bottom;
             background-size: cover;
           }

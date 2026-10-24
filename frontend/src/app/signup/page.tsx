@@ -203,13 +203,13 @@ export default function SignupPage() {
     <div className="min-h-screen bg-[#FAF8F5] dark:bg-[#07130D] text-[#1D2B22] dark:text-[#E6F4ED] flex flex-col font-sans transition-colors duration-200">
       
       {/* ============================================================== */}
-      {/* 1. TOP HEADER (Clean Solid Logo Bar — No Blurs)                 */}
+      {/* 1. TOP HEADER (Sticky Solid Logo Bar)                          */}
       {/* ============================================================== */}
-      <header className="w-full bg-white dark:bg-[#0A1812] border-b border-[#E8EFEA] dark:border-[#1A3326] z-40 transition-colors">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 sm:h-20 flex items-center justify-between">
+      <header className="sticky top-0 z-50 w-full bg-white/95 dark:bg-[#0A1812]/95 backdrop-blur-md border-b border-[#E8EFEA] dark:border-[#1A3326] transition-colors">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-14 sm:h-16 lg:h-20 flex items-center justify-between">
           
           {/* Mobile Back Button */}
-          <div className="flex items-center gap-3 lg:hidden">
+          <div className="flex items-center lg:hidden">
             <Link
               href="/"
               className="p-2 -ml-2 rounded-lg text-[#075C3B] dark:text-[#34D399] hover:bg-[#EAF5EE] dark:hover:bg-[#132A20] transition-colors"
@@ -219,84 +219,123 @@ export default function SignupPage() {
             </Link>
           </div>
 
-          {/* AgriMarket Logo */}
-          <Link href="/" className="flex items-center gap-2.5 sm:gap-3 group">
-            <div className="w-9 h-9 sm:w-10 sm:h-10 flex items-center justify-center shrink-0">
-              <svg
-                className="w-8 h-8 sm:w-9 sm:h-9"
-                viewBox="0 0 36 36"
-                fill="none"
-                xmlns="http://www.w3.org/2000/svg"
-                aria-hidden="true"
-              >
-                <path
-                  d="M18 4C18 4 23 11 23 18C23 21 21 24 18 25C15 24 13 21 13 18C13 11 18 4 18 4Z"
-                  fill="#10B981"
-                />
-                <path
-                  d="M16 26C16 26 9 24 7 18C5 12 11 9 11 9C11 9 13 16 17 21C17.5 21.6 18 22.2 18 22.2"
-                  fill="#059669"
-                />
-                <path
-                  d="M20 26C20 26 27 24 29 18C31 12 25 9 25 9C25 9 23 16 19 21C18.5 21.6 18 22.2 18 22.2"
-                  fill="#34D399"
-                />
-                <path
-                  d="M18 25V30"
-                  stroke="#059669"
-                  strokeWidth="2.5"
-                  strokeLinecap="round"
-                />
-              </svg>
-            </div>
+          {/* Mobile Centered Brand */}
+          <div className="lg:hidden flex-1 flex justify-center">
+            <Link href="/" className="flex items-center gap-2 group">
+              <div className="w-8 h-8 flex items-center justify-center shrink-0">
+                <svg className="w-7 h-7" viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+                  <path d="M18 4C18 4 23 11 23 18C23 21 21 24 18 25C15 24 13 21 13 18C13 11 18 4 18 4Z" fill="#10B981" />
+                  <path d="M16 26C16 26 9 24 7 18C5 12 11 9 11 9C11 9 13 16 17 21C17.5 21.6 18 22.2 18 22.2" fill="#059669" />
+                  <path d="M20 26C20 26 27 24 29 18C31 12 25 9 25 9C25 9 23 16 19 21C18.5 21.6 18 22.2 18 22.2" fill="#34D399" />
+                  <path d="M18 25V30" stroke="#059669" strokeWidth="2.5" strokeLinecap="round" />
+                </svg>
+              </div>
+              <div className="flex flex-col">
+                <span className="font-extrabold text-lg text-[#075C3B] dark:text-[#34D399] tracking-tight leading-none">AgriMarket</span>
+                <span className="text-[9px] text-[#476C57] dark:text-[#88B8A0] font-semibold tracking-wider uppercase mt-0.5">Farmers · Buyers · Better Tomorrow</span>
+              </div>
+            </Link>
+          </div>
 
-            <div className="flex flex-col">
-              <span className="font-extrabold text-xl sm:text-2xl text-[#075C3B] dark:text-[#34D399] tracking-tight group-hover:text-[#05462D] dark:group-hover:text-[#6EE7B7] transition-colors leading-none">
-                AgriMarket
-              </span>
-              <span className="text-[10px] sm:text-[11px] text-[#476C57] dark:text-[#88B8A0] font-semibold tracking-wide uppercase mt-0.5">
-                Farmers · Buyers · Better Tomorrow
-              </span>
-            </div>
-          </Link>
+          {/* Desktop Left Brand */}
+          <div className="hidden lg:flex items-center">
+            <Link href="/" className="flex items-center gap-2.5 sm:gap-3 group">
+              <div className="w-9 h-9 sm:w-10 sm:h-10 flex items-center justify-center shrink-0">
+                <svg
+                  className="w-8 h-8 sm:w-9 sm:h-9"
+                  viewBox="0 0 36 36"
+                  fill="none"
+                  xmlns="http://www.w3.org/2000/svg"
+                  aria-hidden="true"
+                >
+                  <path
+                    d="M18 4C18 4 23 11 23 18C23 21 21 24 18 25C15 24 13 21 13 18C13 11 18 4 18 4Z"
+                    fill="#10B981"
+                  />
+                  <path
+                    d="M16 26C16 26 9 24 7 18C5 12 11 9 11 9C11 9 13 16 17 21C17.5 21.6 18 22.2 18 22.2"
+                    fill="#059669"
+                  />
+                  <path
+                    d="M20 26C20 26 27 24 29 18C31 12 25 9 25 9C25 9 23 16 19 21C18.5 21.6 18 22.2 18 22.2"
+                    fill="#34D399"
+                  />
+                  <path
+                    d="M18 25V30"
+                    stroke="#059669"
+                    strokeWidth="2.5"
+                    strokeLinecap="round"
+                  />
+                </svg>
+              </div>
+
+              <div className="flex flex-col">
+                <span className="font-extrabold text-xl sm:text-2xl text-[#075C3B] dark:text-[#34D399] tracking-tight group-hover:text-[#05462D] dark:group-hover:text-[#6EE7B7] transition-colors leading-none">
+                  AgriMarket
+                </span>
+                <span className="text-[10px] sm:text-[11px] text-[#476C57] dark:text-[#88B8A0] font-semibold tracking-wide uppercase mt-0.5">
+                  Farmers · Buyers · Better Tomorrow
+                </span>
+              </div>
+            </Link>
+          </div>
 
           {/* Right actions */}
-          <div className="flex items-center gap-3">
-            <span className="hidden sm:inline-block text-xs text-[#527563] dark:text-[#8BB39D]">
-              Already a member?
-            </span>
-            <Link
-              href="/login"
-              className="text-xs sm:text-sm font-bold text-[#075C3B] dark:text-[#34D399] hover:underline px-2.5 py-1.5 rounded-lg hover:bg-[#EAF5EE] dark:hover:bg-[#132A20] transition-colors"
-            >
-              Log In
-            </Link>
-            <ThemeToggle />
+          <div className="flex items-center justify-end">
+            <div className="hidden lg:flex items-center gap-3">
+              <span className="text-xs text-[#527563] dark:text-[#8BB39D]">
+                Already a member?
+              </span>
+              <Link
+                href="/login"
+                className="text-sm font-bold text-[#075C3B] dark:text-[#34D399] hover:underline px-2.5 py-1.5 rounded-lg hover:bg-[#EAF5EE] dark:hover:bg-[#132A20] transition-colors"
+              >
+                Log In
+              </Link>
+            </div>
+            <div className="lg:ml-3">
+              <ThemeToggle />
+            </div>
           </div>
         </div>
       </header>
 
       {/* ============================================================== */}
-      {/* 2. MAIN HERO SECTION (Crystal Clear — Zero Fog/Blur)           */}
+      {/* 2. MAIN HERO SECTION                                           */}
       {/* ============================================================== */}
-      <main className="flex-1 relative overflow-hidden flex flex-col justify-center py-8 sm:py-12 lg:py-14">
+      <main className="flex-1 relative flex flex-col justify-start lg:justify-center overflow-x-hidden">
         
-        {/* Full-width Scenic Landscape Hero Background (Pure Sharp Focus, No Blur Filter) */}
-        <div className="absolute inset-0 z-0 pointer-events-none">
+        {/* Mobile Scenic Landscape Banner (Lush terraced hills of signup_landscape_hero.jpg fading softly to page background) */}
+        <div className="lg:hidden relative w-full h-44 sm:h-52 overflow-hidden shrink-0 pointer-events-none">
+          <div className="absolute inset-0 w-[180%] -left-[80%] h-full">
+            <Image
+              src="/images/signup_landscape_hero.jpg"
+              alt="Scenic terraced farm landscape"
+              fill
+              priority
+              loading="eager"
+              sizes="(max-width: 1023px) 180vw, 0vw"
+              className="object-cover object-top"
+            />
+          </div>
+          <div className="absolute inset-0 bg-gradient-to-b from-transparent via-[#FAF8F5]/50 to-[#FAF8F5] dark:via-[#07130D]/70 dark:to-[#07130D]" />
+        </div>
+
+        {/* Desktop Full-Width Scenic Landscape Background */}
+        <div className="hidden lg:block absolute inset-0 z-0 pointer-events-none">
           <Image
-            src="/images/signup_landscape_hero_v2.jpg"
+            src="/images/signup_landscape_hero.jpg"
             alt="Scenic Ethiopian farm terraces with smiling farmer holding fresh produce"
             fill
-            priority
-            sizes="100vw"
+            priority={false}
+            sizes="(min-width: 1024px) 100vw, 0vw"
             className="object-cover object-bottom"
           />
-          {/* Minimal Dark-Mode Protective Tint Only — Light Mode remains crisp and bright */}
           <div className="hidden dark:block absolute inset-0 bg-[#07130D]/75" />
         </div>
 
         {/* Content Grid */}
-        <div className="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 w-full">
+        <div className="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 w-full py-0 lg:py-14">
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-14 items-center">
             
             {/* -------------------------------------------------------- */}
@@ -321,13 +360,13 @@ export default function SignupPage() {
                   <span className="text-[#075C3B] dark:text-[#34D399]">Account</span>
                 </h1>
 
-                {/* Subtitle paragraph — Crisp and perfectly readable */}
+                {/* Subtitle paragraph */}
                 <p className="text-sm xl:text-base text-[#1A402E] dark:text-[#A7CEBC] leading-relaxed max-w-lg font-semibold">
                   Be part of a trusted agricultural marketplace that connects farmers and buyers for a healthier and more prosperous future.
                 </p>
               </div>
 
-              {/* 3 Value Pillars (Crisp, highly readable feature cards) */}
+              {/* 3 Value Pillars */}
               <div className="space-y-3 pt-1 max-w-md">
                 
                 {/* Feature 1: Buy Fresh & Local */}
@@ -376,7 +415,7 @@ export default function SignupPage() {
                 </div>
               </div>
 
-              {/* Tagline Cursive text matching reference image with clear high-contrast shadow */}
+              {/* Tagline Cursive text */}
               <div className="pt-2">
                 <span className="font-serif italic text-2xl font-bold text-white drop-shadow-[0_2px_4px_rgba(0,0,0,0.85)] tracking-wide">
                   Better Farmers · Brighter Future
@@ -385,11 +424,11 @@ export default function SignupPage() {
             </div>
 
             {/* -------------------------------------------------------- */}
-            {/* RIGHT COLUMN: The Floating Card (Solid Clean White Card) */}
+            {/* RIGHT COLUMN: Signup Form Panel                         */}
             {/* -------------------------------------------------------- */}
             <div className="lg:col-span-6 w-full max-w-md mx-auto lg:ml-auto">
               
-              <div className="bg-white dark:bg-[#0D2118] rounded-[24px] sm:rounded-[28px] p-6 sm:p-8 shadow-2xl shadow-emerald-950/20 dark:shadow-black/60 border border-[#DEECE2] dark:border-[#1E4130] transition-all">
+              <div className="bg-transparent lg:bg-white lg:dark:bg-[#0D2118] rounded-none lg:rounded-[28px] p-1 sm:p-4 lg:p-8 shadow-none lg:shadow-2xl shadow-emerald-950/20 dark:shadow-black/60 border-0 lg:border lg:border-[#DEECE2] lg:dark:border-[#1E4130] transition-all">
                 
                 {/* Success Banner Overlay if registered */}
                 {successData ? (
@@ -424,19 +463,18 @@ export default function SignupPage() {
                   </div>
                 ) : (
                   <>
-                    {/* Card Header (Matches Reference: "Join Our Growing Community" on mobile, "Welcome to AgriMarket" on desktop) */}
-                    <div className="mb-5 space-y-1.5">
-                      <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-[#EAF5EE] dark:bg-[#143224] text-[#075C3B] dark:text-[#34D399] text-xs font-bold">
+                    {/* Header Details (Exact styling from phone screenshot) */}
+                    <div className="mb-5 space-y-2">
+                      <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-[#EAF5EE] dark:bg-[#143224] border border-[#B8D8C5] dark:border-[#204735] text-[#075C3B] dark:text-[#34D399] text-xs font-bold shadow-2xs">
                         <Sprout className="w-3.5 h-3.5" />
-                        <span className="lg:hidden">Join Our Growing Community</span>
-                        <span className="hidden lg:inline">Welcome to AgriMarket</span>
+                        <span>Join Our Growing Community</span>
                       </div>
                       
-                      <h1 className="text-2xl sm:text-[26px] font-extrabold text-[#0D3823] dark:text-[#EEFAF3] tracking-tight">
+                      <h1 className="text-2xl sm:text-[28px] font-extrabold text-[#0D3823] dark:text-[#EEFAF3] tracking-tight leading-snug">
                         Create Your Account
                       </h1>
                       
-                      <p className="text-xs text-[#527563] dark:text-[#90B8A3] font-medium">
+                      <p className="text-xs sm:text-sm text-[#527563] dark:text-[#90B8A3] font-medium leading-relaxed">
                         Fill in your details to get started.
                       </p>
                     </div>
@@ -676,7 +714,7 @@ export default function SignupPage() {
                       <button
                         type="submit"
                         disabled={isLoading}
-                        className="w-full mt-2 py-3 px-6 rounded-xl bg-[#075C3B] hover:bg-[#05462D] text-white font-bold text-sm flex items-center justify-center gap-2 shadow-md shadow-emerald-950/20 active:scale-[0.99] disabled:opacity-70 disabled:cursor-not-allowed transition-all cursor-pointer"
+                        className="w-full mt-2 py-3.5 px-6 rounded-xl bg-[#075C3B] hover:bg-[#05462D] text-white font-bold text-sm flex items-center justify-center gap-2 shadow-md shadow-emerald-950/20 active:scale-[0.99] disabled:opacity-70 disabled:cursor-not-allowed transition-all cursor-pointer"
                       >
                         {isLoading ? (
                           <>
@@ -692,9 +730,9 @@ export default function SignupPage() {
                       </button>
 
                       {/* Divider "or" */}
-                      <div className="relative py-1.5 flex items-center justify-center">
+                      <div className="relative py-2 flex items-center justify-center">
                         <div className="border-t border-[#E3EDE6] dark:border-[#1E4130] w-full" />
-                        <span className="bg-white dark:bg-[#0D2118] px-3 text-xs text-[#8BA799] dark:text-[#6E9581] font-medium lowercase absolute">
+                        <span className="bg-[#FAF8F5] lg:bg-white dark:bg-[#07130D] lg:dark:bg-[#0D2118] px-3 text-xs text-[#8BA799] dark:text-[#6E9581] font-medium lowercase absolute">
                           or
                         </span>
                       </div>
@@ -703,7 +741,7 @@ export default function SignupPage() {
                       <button
                         type="button"
                         onClick={handleGoogleAuth}
-                        className="w-full py-2.5 px-6 rounded-xl bg-white dark:bg-[#12281E] border border-[#D5E2DA] dark:border-[#224A37] hover:bg-gray-50 dark:hover:bg-[#183528] text-xs sm:text-sm font-semibold text-[#183E2C] dark:text-[#D5EADF] flex items-center justify-center gap-3 transition-colors shadow-xs cursor-pointer"
+                        className="w-full py-3 px-6 rounded-xl bg-white dark:bg-[#12281E] border border-[#D5E2DA] dark:border-[#224A37] hover:bg-gray-50 dark:hover:bg-[#183528] text-xs sm:text-sm font-semibold text-[#183E2C] dark:text-[#D5EADF] flex items-center justify-center gap-3 transition-colors shadow-2xs cursor-pointer"
                       >
                         {/* Google Multicolor "G" Logo SVG */}
                         <svg className="w-4 h-4" viewBox="0 0 24 24">
@@ -728,7 +766,7 @@ export default function SignupPage() {
                       </button>
 
                       {/* Card Footer: Already have an account? Login */}
-                      <div className="pt-1.5 text-center text-xs text-[#527563] dark:text-[#8BB39D]">
+                      <div className="pt-2 text-center text-xs sm:text-sm text-[#527563] dark:text-[#8BB39D]">
                         Already have an account?{' '}
                         <Link
                           href="/login"
@@ -746,6 +784,21 @@ export default function SignupPage() {
             </div>
 
           </div>
+        </div>
+
+        {/* Mobile Decorative Botanical Leaves & Terraced Hills Footer */}
+        <div className="lg:hidden relative w-full h-24 -mt-2 overflow-hidden pointer-events-none">
+          <div className="absolute inset-0 w-[180%] -left-[80%] h-full">
+            <Image
+              src="/images/signup_landscape_hero.jpg"
+              alt="Fresh farm tea leaves and landscape"
+              fill
+              priority={false}
+              sizes="(max-width: 1023px) 180vw, 0vw"
+              className="object-cover object-bottom"
+            />
+          </div>
+          <div className="absolute inset-0 bg-gradient-to-t from-transparent via-[#FAF8F5]/30 to-[#FAF8F5] dark:via-[#07130D]/40 dark:to-[#07130D]" />
         </div>
       </main>
 

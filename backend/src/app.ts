@@ -3,6 +3,7 @@ import cors from 'cors';
 import dotenv from 'dotenv';
 
 import authRouter from './routes/auth.routes.js';
+import workerRouter from './routes/worker.routes.js';
 
 dotenv.config();
 
@@ -18,6 +19,7 @@ app.get('/health', (req, res) => {
 });
 
 app.use('/api/auth', authRouter);
+app.use('/api/worker', workerRouter);
 
 // Global Error Handler
 app.use((err: any, req: Request, res: Response, next: NextFunction) => {
