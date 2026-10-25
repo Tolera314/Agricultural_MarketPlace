@@ -129,7 +129,7 @@ export default function LoginPage() {
         if (data.data?.user?.role === 'DELIVERY_WORKER') {
           router.push('/dashboard/worker');
         } else if (data.data?.user?.role === 'ADMIN' || data.data?.user?.role === 'SUPERADMIN') {
-          router.push('/admin/locations');
+          router.push('/admin');
         } else {
           router.push('/');
         }

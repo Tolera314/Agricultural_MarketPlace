@@ -5,6 +5,7 @@ import dotenv from 'dotenv';
 import authRouter from './routes/auth.routes.js';
 import workerRouter from './routes/worker.routes.js';
 import locationRouter from './routes/location.routes.js';
+import adminRouter from './routes/admin.routes.js';
 
 dotenv.config();
 
@@ -38,6 +39,7 @@ app.get('/', (req: Request, res: Response) => {
       auth: '/api/auth',
       worker: '/api/worker',
       location: '/api/location',
+      admin: '/api/admin',
     },
   });
 });
@@ -57,6 +59,7 @@ app.get('/health', (req: Request, res: Response) => {
 app.use('/api/auth', authRouter);
 app.use('/api/worker', workerRouter);
 app.use('/api/location', locationRouter);
+app.use('/api/admin', adminRouter);
 
 // Catch-all 404 JSON handler (prevents default HTML 404 with default-src 'none')
 app.use((req: Request, res: Response) => {

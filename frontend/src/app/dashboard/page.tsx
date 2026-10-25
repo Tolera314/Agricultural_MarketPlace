@@ -12,7 +12,7 @@ export default function DashboardIndexPage() {
       if (rawUser) {
         const u = JSON.parse(rawUser);
         if (u.role === 'ADMIN' || u.role === 'SUPERADMIN') {
-          router.replace('/admin/locations');
+          router.replace('/admin');
           return;
         }
       }
