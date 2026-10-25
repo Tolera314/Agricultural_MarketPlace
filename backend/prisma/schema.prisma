@@ -1,15 +1,15 @@
 // ============================================================
-// Agricultural Marketplace Platform — Prisma Schema
+// Agricultural Marketplace Platform - Prisma Schema
 // PostgreSQL + PostGIS | Prisma v7
 // ============================================================
 // Design principles:
-//  • Farmer-controlled pricing — prices are never silently overridden.
-//  • Order snapshots — agreed prices are locked at order creation.
-//  • Location-aware — coordinates stored as Float pairs; PostGIS
+//  - Farmer-controlled pricing - prices are never silently overridden.
+//  - Order snapshots - agreed prices are locked at order creation.
+//  - Location-aware - coordinates stored as Float pairs; PostGIS
 //    spatial queries are issued from raw SQL at the application layer.
-//  • Exact decimals — all monetary values use Decimal(14,4).
-//  • Validated state machines — enums enforce lifecycle transitions.
-//  • Full audit trail — every financial/admin action is logged.
+//  - Exact decimals - all monetary values use Decimal(14,4).
+//  - Validated state machines - enums enforce lifecycle transitions.
+//  - Full audit trail - every financial/admin action is logged.
 // ============================================================
 
 generator client {
@@ -261,6 +261,7 @@ model User {
   notifications     Notification[]
   otpVerifications  OTPVerification[]
   auditLogs         AuditLog[]            @relation("ActorLogs")
+  locationRecords   UserLocationRecord[]  @relation("UserLocations")
 
   @@index([role])
   @@index([phone])
@@ -324,7 +325,7 @@ model BuyerProfile {
   @@map("buyer_profiles")
 }
 
-/// Delivery worker profile — vehicle, capacity, and live location.
+/// Delivery worker profile - vehicle, capacity, and live location.
 model DeliveryWorkerProfile {
   id                 String             @id @default(uuid())
   userId             String             @unique
@@ -332,11 +333,14 @@ model DeliveryWorkerProfile {
   vehiclePlate       String?
   vehicleCapacityKg  Float?
   availability       WorkerAvailability @default(OFFLINE)
-  verificationStatus VerificationStatus @default(PENDING)
-  lastLatitude       Float?
-  lastLongitude      Float?
-  lastLocationAt     DateTime?
-  deliveryZoneId     String?
+  verificationStatus     VerificationStatus @default(PENDING)
+  lastLatitude           Float?
+  lastLongitude          Float?
+  lastAccuracy           Float?
+  lastLocationAt         DateTime?
+  locationConsentGranted Boolean            @default(false)
+  locationConsentAt      DateTime?
+  deliveryZoneId         String?
   activeJobCount     Int                @default(0)
   createdAt          DateTime           @default(now())
   updatedAt          DateTime           @updatedAt
@@ -905,4 +909,37 @@ model AuditLog {
   @@index([entityType, entityId])
   @@index([occurredAt])
   @@map("audit_logs")
+}
+
+// ============================================================
+// -----------------  CONSENT-BASED GEOLOCATION  -------------
+// ============================================================
+
+/// Consent-based geolocation records shared explicitly by platform participants (e.g., delivery workers).
+model UserLocationRecord {
+  id             String   @id @default(uuid())
+  userId         String
+  latitude       Float
+  longitude      Float
+  accuracy       Float?
+  altitude       Float?
+  heading        Float?
+  speed          Float?
+  consentGranted Boolean  @default(true)
+  consentPurpose String   @default("DELIVERY_DISPATCH")
+  consentVersion String   @default("1.0")
+  ipAddress      String?
+  userAgent      String?
+  capturedAt     DateTime @default(now())
+  isRevoked      Boolean  @default(false)
+  revokedAt      DateTime?
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  user           User     @relation("UserLocations", fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, capturedAt])
+  @@index([latitude, longitude])
+  @@index([isRevoked])
+  @@map("user_location_records")
 }
