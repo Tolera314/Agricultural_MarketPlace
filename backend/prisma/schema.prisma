@@ -262,6 +262,11 @@ model User {
   otpVerifications  OTPVerification[]
   auditLogs         AuditLog[]            @relation("ActorLogs")
   locationRecords   UserLocationRecord[]  @relation("UserLocations")
+  buyerAddresses    BuyerAddress[]        @relation("BuyerAddresses")
+  savedFarmers      SavedFarmer[]         @relation("BuyerSavedFarmers")
+  farmerFollowers   SavedFarmer[]         @relation("FarmerFollowers")
+  productFavorites  ProductFavorite[]     @relation("BuyerFavorites")
+  supportTickets    SupportTicket[]       @relation("BuyerTickets")
 
   @@index([role])
   @@index([phone])
@@ -482,6 +487,7 @@ model ProductListing {
   images          ListingImage[]
   orderItems      OrderItem[]
   reviews         Review[]
+  favorites       ProductFavorite[]
 
   @@index([farmerId])
   @@index([categoryId])
@@ -606,6 +612,7 @@ model Order {
   deliveryJob         DeliveryJob?
   adminApproval       AdminApproval?
   disputes            Dispute[]
+  supportTickets      SupportTicket[]
 
   @@index([buyerId])
   @@index([status])
@@ -943,3 +950,79 @@ model UserLocationRecord {
   @@index([isRevoked])
   @@map("user_location_records")
 }
+
+// ============================================================
+// -----------------  BUYER DASHBOARD MODULES  ---------------
+// ============================================================
+
+/// Delivery addresses configured by the buyer.
+model BuyerAddress {
+  id             String   @id @default(uuid())
+  buyerId        String
+  label          String   @default("Home")
+  streetAddress  String
+  city           String   @default("Addis Ababa")
+  subcity        String?
+  latitude       Float
+  longitude      Float
+  isDefault      Boolean  @default(false)
+  deliveryNotes  String?
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  buyer          User     @relation("BuyerAddresses", fields: [buyerId], references: [id], onDelete: Cascade)
+
+  @@index([buyerId])
+  @@map("buyer_addresses")
+}
+
+/// Farmers saved by the buyer.
+model SavedFarmer {
+  id         String   @id @default(uuid())
+  buyerId    String
+  farmerId   String
+  createdAt  DateTime @default(now())
+
+  buyer      User     @relation("BuyerSavedFarmers", fields: [buyerId], references: [id], onDelete: Cascade)
+  farmer     User     @relation("FarmerFollowers", fields: [farmerId], references: [id], onDelete: Cascade)
+
+  @@unique([buyerId, farmerId])
+  @@index([buyerId])
+  @@map("saved_farmers")
+}
+
+/// Product listings favorited by the buyer.
+model ProductFavorite {
+  id         String         @id @default(uuid())
+  buyerId    String
+  listingId  String
+  createdAt  DateTime       @default(now())
+
+  buyer      User           @relation("BuyerFavorites", fields: [buyerId], references: [id], onDelete: Cascade)
+  listing    ProductListing @relation(fields: [listingId], references: [id], onDelete: Cascade)
+
+  @@unique([buyerId, listingId])
+  @@index([buyerId])
+  @@map("product_favorites")
+}
+
+/// Support tickets and order issue reports raised by the buyer.
+model SupportTicket {
+  id          String   @id @default(uuid())
+  buyerId     String
+  orderId     String?
+  subject     String
+  message     String
+  category    String   @default("ORDER_ISSUE")
+  status      String   @default("OPEN")
+  reply       String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  buyer       User     @relation("BuyerTickets", fields: [buyerId], references: [id], onDelete: Cascade)
+  order       Order?   @relation(fields: [orderId], references: [id], onDelete: SetNull)
+
+  @@index([buyerId])
+  @@map("support_tickets")
+}
+

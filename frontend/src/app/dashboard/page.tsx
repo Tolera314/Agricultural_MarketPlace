@@ -15,11 +15,15 @@ export default function DashboardIndexPage() {
           router.replace('/admin');
           return;
         }
+        if (u.role === 'DELIVERY_WORKER') {
+          router.replace('/dashboard/worker');
+          return;
+        }
       }
     } catch {
       // fallback
     }
-    router.replace('/dashboard/worker');
+    router.replace('/dashboard/buyer');
   }, [router]);
 
   return (

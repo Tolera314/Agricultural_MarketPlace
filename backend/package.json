@@ -7,7 +7,9 @@
     "dev": "node --loader ts-node/esm --watch src/index.ts",
     "build": "rimraf dist && tsc",
     "start": "node dist/index.js",
-    "test": "node --loader ts-node/esm src/tests/location.test.ts"
+    "test": "node --loader ts-node/esm src/tests/location.test.ts && node --loader ts-node/esm src/tests/delivery.test.ts",
+    "test:location": "node --loader ts-node/esm src/tests/location.test.ts",
+    "test:delivery": "node --loader ts-node/esm src/tests/delivery.test.ts"
   },
   "keywords": [],
   "author": "",
