@@ -1,0 +1,23 @@
+import type { Request, Response, NextFunction } from 'express';
+export declare function getDashboardOverview(req: Request, res: Response, next: NextFunction): Promise<Response<any, Record<string, any>> | undefined>;
+export declare function getProducts(req: Request, res: Response, next: NextFunction): Promise<Response<any, Record<string, any>> | undefined>;
+export declare function updateProductStatus(req: Request, res: Response, next: NextFunction): Promise<Response<any, Record<string, any>> | undefined>;
+export declare function getFarmers(req: Request, res: Response, next: NextFunction): Promise<Response<any, Record<string, any>> | undefined>;
+export declare function verifyFarmer(req: Request, res: Response, next: NextFunction): Promise<Response<any, Record<string, any>> | undefined>;
+export declare function getBuyers(req: Request, res: Response, next: NextFunction): Promise<Response<any, Record<string, any>> | undefined>;
+export declare function updateBuyerStatus(req: Request, res: Response, next: NextFunction): Promise<Response<any, Record<string, any>> | undefined>;
+export declare function getWorkers(req: Request, res: Response, next: NextFunction): Promise<Response<any, Record<string, any>> | undefined>;
+export declare function verifyWorker(req: Request, res: Response, next: NextFunction): Promise<Response<any, Record<string, any>> | undefined>;
+export declare function getOrders(req: Request, res: Response, next: NextFunction): Promise<Response<any, Record<string, any>> | undefined>;
+export declare function getOrderById(req: Request, res: Response, next: NextFunction): Promise<Response<any, Record<string, any>> | undefined>;
+export declare function updateOrderStatus(req: Request, res: Response, next: NextFunction): Promise<Response<any, Record<string, any>> | undefined>;
+export declare function getIntercityRoutes(req: Request, res: Response, next: NextFunction): Promise<Response<any, Record<string, any>> | undefined>;
+export declare function getIntercityApprovals(req: Request, res: Response, next: NextFunction): Promise<Response<any, Record<string, any>> | undefined>;
+export declare function decideIntercityApproval(req: Request, res: Response, next: NextFunction): Promise<Response<any, Record<string, any>> | undefined>;
+export declare function getMarketsAndCities(req: Request, res: Response, next: NextFunction): Promise<Response<any, Record<string, any>> | undefined>;
+export declare function getTransactions(req: Request, res: Response, next: NextFunction): Promise<Response<any, Record<string, any>> | undefined>;
+export declare function getReports(req: Request, res: Response, next: NextFunction): Promise<Response<any, Record<string, any>> | undefined>;
+export declare function getSettings(req: Request, res: Response, next: NextFunction): Promise<Response<any, Record<string, any>> | undefined>;
+export declare function updatePricingRule(req: Request, res: Response, next: NextFunction): Promise<Response<any, Record<string, any>> | undefined>;
+export declare function getAuditLogs(req: Request, res: Response, next: NextFunction): Promise<Response<any, Record<string, any>> | undefined>;
+//# sourceMappingURL=admin.controller.d.ts.map

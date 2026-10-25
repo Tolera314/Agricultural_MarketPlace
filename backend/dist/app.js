@@ -4,7 +4,7 @@ import dotenv from 'dotenv';
 import authRouter from './routes/auth.routes.js';
 import workerRouter from './routes/worker.routes.js';
 import locationRouter from './routes/location.routes.js';
-import buyerRouter from './routes/buyer.routes.js';
+import adminRouter from './routes/admin.routes.js';
 dotenv.config();
 const app = express();
 // Security and CORS middleware
@@ -29,7 +29,7 @@ app.get('/', (req, res) => {
             auth: '/api/auth',
             worker: '/api/worker',
             location: '/api/location',
-            buyer: '/api/buyer',
+            admin: '/api/admin',
         },
     });
 });
@@ -46,7 +46,7 @@ app.get('/health', (req, res) => {
 app.use('/api/auth', authRouter);
 app.use('/api/worker', workerRouter);
 app.use('/api/location', locationRouter);
-app.use('/api/buyer', buyerRouter);
+app.use('/api/admin', adminRouter);
 // Catch-all 404 JSON handler (prevents default HTML 404 with default-src 'none')
 app.use((req, res) => {
     res.status(404).json({
