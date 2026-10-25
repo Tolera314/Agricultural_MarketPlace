@@ -126,7 +126,12 @@ export default function LoginPage() {
       setIsLoading(false);
 
       setTimeout(() => {
-        router.push('/');
+        const userRole = data.data?.user?.role;
+        if (userRole === 'farmer') {
+          router.push('/farmer/dashboard');
+        } else {
+          router.push('/');
+        }
       }, 2000);
     } catch {
       setIsLoading(false);
