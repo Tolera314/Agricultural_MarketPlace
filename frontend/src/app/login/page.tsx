@@ -131,7 +131,7 @@ export default function LoginPage() {
         } else if (data.data?.user?.role === 'ADMIN' || data.data?.user?.role === 'SUPERADMIN') {
           router.push('/admin/locations');
         } else {
-          router.push('/');
+          router.push('/dashboard/buyer');
         }
       }, 1500);
     } catch {
