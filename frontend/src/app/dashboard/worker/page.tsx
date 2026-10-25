@@ -2,7 +2,6 @@
 
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
-import Image from 'next/image';
 import { useRouter } from 'next/navigation';
 import {
   LayoutDashboard,
@@ -10,7 +9,6 @@ import {
   Truck,
   DollarSign,
   User,
-  MessageSquare,
   Settings,
   Bell,
   ChevronDown,
@@ -26,48 +24,48 @@ import {
   RefreshCw,
   ChevronRight,
   Bike,
-  Car,
-  TrendingUp,
   Activity,
   Loader2,
-  Map,
-  XCircle,
   Headphones,
   Check,
   Send,
   PhoneCall,
-  Edit2,
-  FileText,
-  CreditCard,
   ShieldCheck,
+  ShieldAlert,
   Search,
-  ExternalLink,
-  HelpCircle,
   SlidersHorizontal,
   Compass,
+  Sparkles,
+  AlertTriangle,
+  ArrowRight,
+  Receipt,
+  CheckCheck,
 } from 'lucide-react';
 import { ThemeToggle } from '@/components/layout/ThemeToggle';
 import { LocationShareWidget } from '@/components/location/LocationShareWidget';
 import { AdminLocationViewModal } from '@/components/location/AdminLocationViewModal';
+import { ActiveDeliverySection } from '@/components/worker/ActiveDeliverySection';
+import { CodReconciliationModal } from '@/components/worker/CodReconciliationModal';
+import { ReportIncidentModal } from '@/components/worker/ReportIncidentModal';
 import { workerApi } from '@/lib/workerApi';
 import type {
   DashboardData,
   DeliveryOffer,
   DeliveryJob,
-  EarningsData,
-  WorkerAvailability,
   DeliveryStatus,
 } from '@/types/worker';
 
 // ─── Constants & Metadata ─────────────────────────────────────
 
 const NAV_ITEMS = [
-  { key: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
-  { key: 'offers', label: 'Available Orders', icon: Package, badge: 3 },
+  { key: 'dashboard', label: 'Overview', icon: LayoutDashboard },
+  { key: 'offers', label: 'Delivery Requests', icon: Package, badgeKey: 'availableOrders' },
+  { key: 'active', label: 'Active Delivery', icon: Navigation, badgeKey: 'hasActive' },
   { key: 'deliveries', label: 'My Deliveries', icon: Truck },
-  { key: 'earnings', label: 'Earnings', icon: DollarSign },
-  { key: 'vehicle', label: 'Vehicle & Profile', icon: User },
-  { key: 'messages', label: 'Messages', icon: MessageSquare },
+  { key: 'earnings', label: 'Earnings & COD', icon: DollarSign, badgeKey: 'hasCod' },
+  { key: 'vehicle', label: 'Availability & GPS', icon: MapPin },
+  { key: 'notifications', label: 'Notifications', icon: Bell, badgeKey: 'notifications' },
+  { key: 'incidents', label: 'Support & Incidents', icon: ShieldAlert },
   { key: 'settings', label: 'Settings', icon: Settings },
 ] as const;
 
@@ -75,7 +73,7 @@ type NavKey = (typeof NAV_ITEMS)[number]['key'];
 
 const STATUS_LABELS: Record<DeliveryStatus, string> = {
   UNASSIGNED: 'Unassigned',
-  BROADCASTING: 'Available',
+  BROADCASTING: 'Broadcasting',
   ASSIGNED: 'Assigned',
   HEADING_TO_PICKUP: 'Heading to Pickup',
   PICKED_UP: 'Picked Up',
@@ -83,13 +81,6 @@ const STATUS_LABELS: Record<DeliveryStatus, string> = {
   DELIVERED: 'Delivered',
   FAILED: 'Failed',
   CANCELLED: 'Cancelled',
-};
-
-const STATUS_NEXT: Partial<Record<DeliveryStatus, { label: string; next: DeliveryStatus }>> = {
-  ASSIGNED: { label: 'Head to Pickup', next: 'HEADING_TO_PICKUP' },
-  HEADING_TO_PICKUP: { label: 'Mark Picked Up', next: 'PICKED_UP' },
-  PICKED_UP: { label: 'Start Delivery', next: 'EN_ROUTE' },
-  EN_ROUTE: { label: 'Mark Delivered', next: 'DELIVERED' },
 };
 
 // ─── Helper Functions ─────────────────────────────────────────
@@ -101,7 +92,7 @@ function formatCurrency(val: string | number | null | undefined): string {
   return `ETB ${n.toLocaleString('en-ET', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`;
 }
 
-// ─── Reference Default / Fallback Data ─────────────────────────
+// ─── Default Reference Requests ────────────────────────────────
 
 interface NearbyRequestItem {
   id: string;
@@ -148,16 +139,8 @@ const INITIAL_NEARBY_REQUESTS: NearbyRequestItem[] = [
   },
 ];
 
-// ─── Sub-components ───────────────────────────────────────────
+// ─── Metric Card Component ─────────────────────────────────────
 
-function Skeleton({ className }: { className?: string }) {
-  return <div className={`animate-pulse rounded-2xl bg-slate-200/70 dark:bg-slate-800 ${className ?? ''}`} />;
-}
-
-/**
- * Metric card matching reference image styling:
- * Top-row cards with soft background, crisp icon, label, bold value, and badge/subtext.
- */
 function DashboardMetricCard({
   icon,
   label,
@@ -199,10 +182,8 @@ function DashboardMetricCard({
   );
 }
 
-/**
- * Stylized route map matching the reference image's visual card:
- * Route line with 3 green location pin markers, deliveries count, distance, and "View Full Route" button.
- */
+// ─── Visual Route Map Card ─────────────────────────────────────
+
 function RouteCardVisual({
   deliveriesCount = 3,
   distanceKm = '12.5 km',
@@ -218,11 +199,8 @@ function RouteCardVisual({
         <h3 className="text-sm font-bold text-[#0B3322] dark:text-[#EEFAF3]">Today&apos;s Route</h3>
       </div>
 
-      {/* Stylized vector map canvas */}
       <div className="relative w-full h-36 rounded-xl overflow-hidden bg-[#F2F8F4] dark:bg-[#12281E] border border-[#DEEBE1] dark:border-[#1A3B2A]">
-        {/* Soft road network grid */}
         <svg viewBox="0 0 340 160" className="w-full h-full" preserveAspectRatio="none">
-          {/* Faint street lines */}
           <line x1="20" y1="0" x2="20" y2="160" stroke="#E2EFE6" strokeWidth="1.5" />
           <line x1="90" y1="0" x2="90" y2="160" stroke="#E2EFE6" strokeWidth="1" />
           <line x1="170" y1="0" x2="170" y2="160" stroke="#E2EFE6" strokeWidth="2" />
@@ -233,11 +211,9 @@ function RouteCardVisual({
           <line x1="0" y1="75" x2="340" y2="75" stroke="#E2EFE6" strokeWidth="2" />
           <line x1="0" y1="120" x2="340" y2="120" stroke="#E2EFE6" strokeWidth="1" />
 
-          {/* Secondary curved roads */}
           <path d="M 0 140 Q 100 110 180 130 T 340 100" stroke="#D7EAD9" strokeWidth="1.5" fill="none" />
           <path d="M 40 0 Q 80 60 140 80 T 280 160" stroke="#D7EAD9" strokeWidth="1.2" fill="none" />
 
-          {/* Active green route path with soft glow */}
           <path
             d="M 42 110 C 80 115 110 50 160 55 C 210 60 230 110 285 92"
             stroke="#10B981"
@@ -247,42 +223,31 @@ function RouteCardVisual({
             fill="none"
           />
 
-          {/* Location Pin 1 (Pickup Lideta) */}
           <g transform="translate(42, 110)">
             <circle r="9" fill="#075C3B" />
             <circle r="4" fill="white" />
-            <text x="0" y="-12" textAnchor="middle" fontSize="9" fontWeight="bold" fill="#075C3B">
-              1
-            </text>
+            <text x="0" y="-12" textAnchor="middle" fontSize="9" fontWeight="bold" fill="#075C3B">1</text>
           </g>
 
-          {/* Location Pin 2 (Stop 2 Bole) */}
           <g transform="translate(160, 55)">
             <circle r="9" fill="#075C3B" />
             <circle r="4" fill="white" />
-            <text x="0" y="-12" textAnchor="middle" fontSize="9" fontWeight="bold" fill="#075C3B">
-              2
-            </text>
+            <text x="0" y="-12" textAnchor="middle" fontSize="9" fontWeight="bold" fill="#075C3B">2</text>
           </g>
 
-          {/* Location Pin 3 (Dropoff Kazanchis) */}
           <g transform="translate(285, 92)">
             <circle r="9" fill="#075C3B" />
             <circle r="4" fill="white" />
-            <text x="0" y="-12" textAnchor="middle" fontSize="9" fontWeight="bold" fill="#075C3B">
-              3
-            </text>
+            <text x="0" y="-12" textAnchor="middle" fontSize="9" fontWeight="bold" fill="#075C3B">3</text>
           </g>
         </svg>
 
-        {/* Live indicator badge */}
         <div className="absolute top-2 left-2 bg-white/90 dark:bg-[#0D2118]/90 backdrop-blur-sm px-2 py-0.5 rounded-full text-[10px] font-bold text-[#075C3B] dark:text-[#34D399] flex items-center gap-1 shadow-xs">
           <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
           Live Route
         </div>
       </div>
 
-      {/* Route metrics row */}
       <div className="flex items-center justify-between text-xs text-[#517663] dark:text-[#88B8A0] font-semibold mt-3 px-1">
         <span className="flex items-center gap-1.5">
           <Package className="w-4 h-4 text-[#075C3B] dark:text-[#34D399]" />
@@ -294,7 +259,6 @@ function RouteCardVisual({
         </span>
       </div>
 
-      {/* View full route button */}
       <button
         onClick={onOpenRouteModal}
         className="mt-3.5 w-full py-2.5 rounded-xl border border-[#BDE0CB] dark:border-[#224A37] text-[#075C3B] dark:text-[#34D399] hover:bg-[#EAF6EF] dark:hover:bg-[#163828] hover:border-[#075C3B] dark:hover:border-[#34D399] font-bold text-xs transition-colors flex items-center justify-center gap-1.5 cursor-pointer"
@@ -305,10 +269,8 @@ function RouteCardVisual({
   );
 }
 
-/**
- * Your Vehicle card matching reference design:
- * Icon, Title "Motorcycle", Subtitle "Capacity: 50 kg", Edit link.
- */
+// ─── Vehicle Card Component ───────────────────────────────────
+
 function VehicleCard({
   vehicleType = 'Motorcycle',
   capacityKg = 50,
@@ -346,10 +308,8 @@ function VehicleCard({
   );
 }
 
-/**
- * Nearby Delivery Requests card matching reference design:
- * List of items with circular food images, title, distance, price & weight, and green "Accept" button.
- */
+// ─── Nearby Requests Card ──────────────────────────────────────
+
 function NearbyDeliveryRequestsCard({
   requests,
   onAccept,
@@ -377,7 +337,6 @@ function NearbyDeliveryRequestsCard({
             key={item.id}
             className="py-3.5 first:pt-0 last:pb-0 flex items-center justify-between gap-3 group transition-colors hover:bg-[#F9FCFA] dark:hover:bg-[#122A1E]/50 rounded-xl px-2 -mx-2"
           >
-            {/* Product image & description */}
             <div className="flex items-center gap-3 min-w-0">
               <div className="relative w-12 h-12 rounded-full overflow-hidden shrink-0 border border-[#E2ECE5] dark:border-[#1E4130] bg-slate-100 dark:bg-slate-800">
                 <img
@@ -398,7 +357,6 @@ function NearbyDeliveryRequestsCard({
               </div>
             </div>
 
-            {/* Accept button and timer */}
             <div className="flex items-center gap-3 shrink-0">
               {item.accepted ? (
                 <span className="px-3 py-1.5 rounded-lg bg-[#E7F7ED] dark:bg-[#133A27] text-[#088647] dark:text-[#34D399] text-xs font-bold flex items-center gap-1">
@@ -424,10 +382,8 @@ function NearbyDeliveryRequestsCard({
   );
 }
 
-/**
- * Recent Activity card matching reference design:
- * List of recent logs (Delivery completed, Order assigned) with fee, timestamp, and chevron.
- */
+// ─── Recent Activity Card ──────────────────────────────────────
+
 function RecentActivityCard({
   activities,
   onViewAll,
@@ -458,7 +414,12 @@ function RecentActivityCard({
     <div className="bg-white dark:bg-[#0D2118] rounded-2xl border border-[#E3EDE6] dark:border-[#1E4130] p-4 sm:p-5 shadow-[0_2px_8px_rgba(10,40,25,0.03)]">
       <div className="flex items-center justify-between mb-3">
         <h3 className="text-sm font-bold text-[#0B3322] dark:text-[#EEFAF3]">Recent Activity</h3>
-        <span className="text-xs text-[#7B998A] dark:text-[#6E9581] font-medium">2 hours ago</span>
+        <button
+          onClick={onViewAll}
+          className="text-xs text-[#075C3B] dark:text-[#34D399] font-bold hover:underline cursor-pointer"
+        >
+          View all
+        </button>
       </div>
 
       <div className="divide-y divide-[#EDF5F0] dark:divide-[#1A3326]">
@@ -466,7 +427,7 @@ function RecentActivityCard({
           <div key={item.id} className="py-3 first:pt-1 last:pb-0 flex items-center justify-between gap-3">
             <div className="flex items-center gap-3">
               <div className="w-8 h-8 rounded-full bg-[#EBF5EE] dark:bg-[#163828] text-[#075C3B] dark:text-[#34D399] flex items-center justify-center shrink-0">
-                <User className="w-4 h-4" />
+                <Truck className="w-4 h-4" />
               </div>
               <div>
                 <p className="text-xs font-bold text-[#0B3322] dark:text-[#EEFAF3]">{item.title}</p>
@@ -533,7 +494,6 @@ function FullRouteModal({
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-200">
       <div className="bg-white dark:bg-[#0D2118] rounded-3xl max-w-lg w-full overflow-hidden shadow-2xl border border-[#E3EDE6] dark:border-[#1E4130] flex flex-col max-h-[90vh]">
-        {/* Modal Header */}
         <div className="px-6 py-4 bg-[#083827] dark:bg-[#062419] text-white flex items-center justify-between">
           <div className="flex items-center gap-2">
             <Compass className="w-5 h-5 text-emerald-400" />
@@ -552,10 +512,9 @@ function FullRouteModal({
           </button>
         </div>
 
-        {/* Modal Body */}
         <div className="p-6 overflow-y-auto space-y-4">
           <div className="bg-[#E8F6EE] dark:bg-[#133A27] p-3 rounded-2xl flex items-center justify-between text-xs font-bold text-[#075C3B] dark:text-[#34D399]">
-            <span>Traffic status: Light</span>
+            <span>Traffic status: Normal</span>
             <span>Total Earnings for route: ETB 310</span>
           </div>
 
@@ -581,7 +540,6 @@ function FullRouteModal({
           </div>
         </div>
 
-        {/* Modal Footer */}
         <div className="p-5 border-t border-[#E3EDE6] dark:border-[#1E4130] flex gap-3 bg-slate-50 dark:bg-[#0A1812]">
           <button
             onClick={onClose}
@@ -646,11 +604,11 @@ function EditVehicleModal({
               onChange={e => setVehicleType(e.target.value)}
               className="w-full text-xs font-medium bg-[#F2F7F4] dark:bg-[#12281E] border border-[#D7E6DD] dark:border-[#1E4130] rounded-xl px-3 py-2.5 text-[#0B3322] dark:text-[#EEFAF3] focus:outline-none focus:border-[#075C3B]"
             >
-              <option value="Motorcycle">Motorcycle</option>
-              <option value="Pickup Truck">Pickup Truck</option>
-              <option value="Three-Wheeler">Three-Wheeler (Bajaj)</option>
-              <option value="Bicycle">Bicycle</option>
-              <option value="Van / Small Truck">Van / Small Truck</option>
+              <option value="MOTORCYCLE">Motorcycle</option>
+              <option value="PICKUP_TRUCK">Pickup Truck</option>
+              <option value="THREE_WHEELER">Three-Wheeler (Bajaj)</option>
+              <option value="BICYCLE">Bicycle</option>
+              <option value="TRUCK">Van / Medium Truck</option>
             </select>
           </div>
 
@@ -773,11 +731,10 @@ function ContactSupportModal({ open, onClose }: { open: boolean; onClose: () => 
   );
 }
 
-// ─── Section: Primary Dashboard ───────────────────────────────
+// ─── Section 1: Primary Dashboard ──────────────────────────────
 
 function DashboardSection({
   data,
-  loading,
   nearbyRequests,
   onAcceptNearbyRequest,
   onNavigateSection,
@@ -785,7 +742,6 @@ function DashboardSection({
   onOpenVehicleModal,
 }: {
   data: DashboardData | null;
-  loading: boolean;
   nearbyRequests: NearbyRequestItem[];
   onAcceptNearbyRequest: (item: NearbyRequestItem) => void;
   onNavigateSection: (sec: NavKey) => void;
@@ -797,12 +753,12 @@ function DashboardSection({
   }, [data]);
 
   const metrics = data?.metrics;
+  const activeJob = data?.activeJob;
 
   return (
     <div className="space-y-5">
       {/* ─── Hero Greeting Banner with Background Van Graphic ─── */}
       <div className="relative rounded-3xl overflow-hidden bg-gradient-to-r from-[#D7EFE2] via-[#E4F5EB] to-[#E9F6ED] dark:from-[#0E2E20] dark:via-[#133A29] dark:to-[#0F3123] border border-[#CCE8D7] dark:border-[#1B4B36] shadow-[0_4px_16px_rgba(10,40,25,0.04)] p-6 sm:p-7 flex items-center justify-between min-h-[140px]">
-        {/* Left text column */}
         <div className="relative z-10 max-w-lg">
           <h1 className="text-xl sm:text-2xl font-black text-[#0A3322] dark:text-[#EEFAF3] tracking-tight flex items-center gap-2">
             <span>Good day, {workerFirstName}!</span>
@@ -813,9 +769,21 @@ function DashboardSection({
           <p className="text-xs sm:text-sm text-[#38624E] dark:text-[#97C2AC] font-medium mt-1">
             Keep moving. Keep delivering. Ongoing orders await you.
           </p>
+
+          {activeJob && (
+            <div className="mt-3 inline-flex items-center gap-2 bg-[#075C3B] text-white px-3.5 py-1.5 rounded-xl text-xs font-bold shadow-xs">
+              <span className="w-2 h-2 rounded-full bg-emerald-400 animate-ping" />
+              <span>Active Job in Progress: {STATUS_LABELS[activeJob.status]}</span>
+              <button
+                onClick={() => onNavigateSection('active')}
+                className="ml-1 underline text-emerald-200 hover:text-white cursor-pointer"
+              >
+                Resume &rarr;
+              </button>
+            </div>
+          )}
         </div>
 
-        {/* Right side banner image with soft transparent gradient blend */}
         <div className="hidden md:block absolute right-0 top-0 bottom-0 w-[48%] pointer-events-none select-none">
           <div className="absolute inset-0 bg-gradient-to-r from-[#D7EFE2] via-[#E4F5EB]/60 to-transparent dark:from-[#0E2E20] dark:via-[#133A29]/70 z-10" />
           <img
@@ -832,7 +800,7 @@ function DashboardSection({
           icon={<Package className="w-5 h-5" />}
           label="Available Orders"
           value={metrics?.availableOrders ?? 3}
-          sub="nearby"
+          sub="broadcasted"
           iconBg="bg-[#E7F7ED]"
           iconColor="text-[#075C3B]"
         />
@@ -862,9 +830,8 @@ function DashboardSection({
         />
       </div>
 
-      {/* ─── Main Two-Column Grid (Matching Reference Layout) ─── */}
+      {/* ─── Main Two-Column Grid ─── */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 items-start">
-        {/* Left Column (~60%): Nearby Delivery Requests + Recent Activity */}
         <div className="lg:col-span-7 space-y-5">
           <NearbyDeliveryRequestsCard
             requests={nearbyRequests}
@@ -874,7 +841,6 @@ function DashboardSection({
           <RecentActivityCard onViewAll={() => onNavigateSection('deliveries')} />
         </div>
 
-        {/* Right Column (~40%): Today's Route + Your Vehicle */}
         <div className="lg:col-span-5 space-y-5">
           <RouteCardVisual
             deliveriesCount={3}
@@ -893,15 +859,19 @@ function DashboardSection({
   );
 }
 
-// ─── Section: Available Orders (Full View) ─────────────────────
+// ─── Section 2: Delivery Requests (Offers) ─────────────────────
 
 function OffersSection({
-  onAcceptOrder,
+  onAcceptSuccess,
+  onSeedDemoOrder,
 }: {
-  onAcceptOrder: (offer: DeliveryOffer) => void;
+  onAcceptSuccess: (jobId: string) => void;
+  onSeedDemoOrder: () => void;
 }) {
   const [offers, setOffers] = useState<DeliveryOffer[]>([]);
   const [loading, setLoading] = useState(true);
+  const [actingOfferId, setActingOfferId] = useState<string | null>(null);
+  const [seeding, setSeeding] = useState(false);
 
   const loadOffers = useCallback(async () => {
     setLoading(true);
@@ -909,81 +879,7 @@ function OffersSection({
       const res = await workerApi.offers();
       setOffers(res.data || []);
     } catch {
-      // Fallback preview data
-      setOffers([
-        {
-          offerId: 'off-1',
-          jobId: 'job-1',
-          orderId: 'ord-101',
-          status: 'PENDING',
-          offeredAt: new Date().toISOString(),
-          expiresAt: new Date(Date.now() + 600000).toISOString(),
-          secondsLeft: 300,
-          product: 'Fresh Tomatoes',
-          productImage: '/images/prod_tomatoes.jpg',
-          quantityKg: 5,
-          pickupAddress: 'Lideta Farmers Cooperative, Addis Ababa',
-          dropoffAddress: 'Bole Rwanda, House 342, Addis Ababa',
-          pickupLatitude: 9.012,
-          pickupLongitude: 38.745,
-          dropoffLatitude: 9.001,
-          dropoffLongitude: 38.784,
-          distanceKm: 2.1,
-          routeDistKm: 5.4,
-          deliveryFee: '120.00',
-          requiredVehicleType: 'MOTORCYCLE',
-          requiredCapacityKg: 20,
-          paymentMethod: 'CASH_ON_DELIVERY',
-        },
-        {
-          offerId: 'off-2',
-          jobId: 'job-2',
-          orderId: 'ord-102',
-          status: 'PENDING',
-          offeredAt: new Date().toISOString(),
-          expiresAt: new Date(Date.now() + 720000).toISOString(),
-          secondsLeft: 480,
-          product: 'Green Beans',
-          productImage: '/images/prod_green_beans.jpg',
-          quantityKg: 3,
-          pickupAddress: 'Bole Bulbula Market Hub',
-          dropoffAddress: 'Kazanchis Near UNECA',
-          pickupLatitude: 8.98,
-          pickupLongitude: 38.79,
-          dropoffLatitude: 9.02,
-          dropoffLongitude: 38.76,
-          distanceKm: 3.4,
-          routeDistKm: 6.8,
-          deliveryFee: '100.00',
-          requiredVehicleType: 'MOTORCYCLE',
-          requiredCapacityKg: 10,
-          paymentMethod: 'TELEBIRR',
-        },
-        {
-          offerId: 'off-3',
-          jobId: 'job-3',
-          orderId: 'ord-103',
-          status: 'PENDING',
-          offeredAt: new Date().toISOString(),
-          expiresAt: new Date(Date.now() + 900000).toISOString(),
-          secondsLeft: 720,
-          product: 'Potatoes',
-          productImage: '/images/prod_potatoes.jpg',
-          quantityKg: 10,
-          pickupAddress: 'Lideta Central Produce Depot',
-          dropoffAddress: 'Piassa Churchill Ave',
-          pickupLatitude: 9.015,
-          pickupLongitude: 38.74,
-          dropoffLatitude: 9.03,
-          dropoffLongitude: 38.75,
-          distanceKm: 4.2,
-          routeDistKm: 4.9,
-          deliveryFee: '90.00',
-          requiredVehicleType: 'MOTORCYCLE',
-          requiredCapacityKg: 15,
-          paymentMethod: 'CASH_ON_DELIVERY',
-        },
-      ]);
+      setOffers([]);
     } finally {
       setLoading(false);
     }
@@ -993,223 +889,356 @@ function OffersSection({
     loadOffers();
   }, [loadOffers]);
 
+  const handleAccept = async (offer: DeliveryOffer) => {
+    setActingOfferId(offer.offerId);
+    try {
+      const res = await workerApi.acceptOffer(offer.offerId);
+      onAcceptSuccess(res?.data?.jobId || offer.jobId);
+    } catch (err: any) {
+      alert(err?.message || 'Failed to accept offer. It may have expired or been assigned to another driver.');
+      loadOffers();
+    } finally {
+      setActingOfferId(null);
+    }
+  };
+
+  const handleReject = async (offer: DeliveryOffer) => {
+    setActingOfferId(offer.offerId);
+    try {
+      await workerApi.rejectOffer(offer.offerId, 'Worker declined');
+      setOffers(prev => prev.filter(o => o.offerId !== offer.offerId));
+    } catch (err: any) {
+      alert(err?.message || 'Failed to decline offer.');
+    } finally {
+      setActingOfferId(null);
+    }
+  };
+
+  const handleSimulateSeed = async () => {
+    setSeeding(true);
+    try {
+      await workerApi.seedDemoOrder();
+      await loadOffers();
+      onSeedDemoOrder();
+    } catch (err: any) {
+      alert(err?.message || 'Failed to seed demo order.');
+    } finally {
+      setSeeding(false);
+    }
+  };
+
   return (
     <div className="space-y-4">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
         <div>
-          <h2 className="text-lg font-black text-[#0B3322] dark:text-[#EEFAF3]">Available Delivery Orders</h2>
-          <p className="text-xs text-[#517663] dark:text-[#88B8A0]">Orders broadcasted near your location matching your vehicle capacity.</p>
+          <h2 className="text-lg font-black text-[#0B3322] dark:text-[#EEFAF3]">Available Delivery Requests</h2>
+          <p className="text-xs text-[#517663] dark:text-[#88B8A0]">
+            Atomic time-limited delivery offers broadcasted near your location matching your cargo capacity.
+          </p>
         </div>
-        <button
-          onClick={loadOffers}
-          className="p-2 rounded-xl bg-white dark:bg-[#0D2118] border border-[#D7E6DD] dark:border-[#1E4130] text-[#075C3B] dark:text-[#34D399] hover:bg-[#EBF6EE] dark:hover:bg-[#163828] transition-colors cursor-pointer"
-        >
-          <RefreshCw className="w-4 h-4" />
-        </button>
-      </div>
-
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-        {offers.map(offer => (
-          <div
-            key={offer.offerId}
-            className="bg-white dark:bg-[#0D2118] rounded-2xl border border-[#E3EDE6] dark:border-[#1E4130] p-5 shadow-sm hover:shadow-md transition-shadow flex flex-col justify-between"
+        <div className="flex items-center gap-2">
+          <button
+            onClick={handleSimulateSeed}
+            disabled={seeding}
+            className="px-3.5 py-2 rounded-xl bg-gradient-to-r from-emerald-600 to-[#075C3B] hover:from-emerald-700 hover:to-[#05462D] text-white text-xs font-bold transition-all flex items-center gap-1.5 shadow-xs cursor-pointer disabled:opacity-60"
           >
-            <div>
-              <div className="flex items-center gap-3">
-                <div className="relative w-12 h-12 rounded-full overflow-hidden shrink-0 border border-[#E3EDE6] dark:border-[#1E4130] bg-slate-100 dark:bg-slate-800">
-                  <img
-                    src={offer.productImage || '/images/prod_tomatoes.jpg'}
-                    alt={offer.product}
-                    className="w-full h-full object-cover"
-                  />
-                </div>
-                <div>
-                  <h4 className="text-sm font-bold text-[#0B3322] dark:text-[#EEFAF3]">{offer.product}</h4>
-                  <p className="text-xs text-[#6B8B7B] dark:text-[#88B8A0]">
-                    {offer.quantityKg} kg &bull; Fee: <span className="text-[#075C3B] dark:text-[#34D399] font-bold">ETB {offer.deliveryFee}</span>
-                  </p>
-                </div>
-              </div>
-
-              <div className="mt-4 space-y-2 text-xs">
-                <div className="flex items-start gap-2 text-[#517663] dark:text-[#97C2AC]">
-                  <MapPin className="w-3.5 h-3.5 text-[#075C3B] dark:text-[#34D399] shrink-0 mt-0.5" />
-                  <span>Pickup: {offer.pickupAddress}</span>
-                </div>
-                <div className="flex items-start gap-2 text-[#517663] dark:text-[#97C2AC]">
-                  <Navigation className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400 shrink-0 mt-0.5" />
-                  <span>Dropoff: {offer.dropoffAddress}</span>
-                </div>
-              </div>
-            </div>
-
-            <div className="mt-5 pt-3 border-t border-[#EDF5F0] dark:border-[#1E4130] flex items-center justify-between">
-              <span className="text-xs text-[#7B998A] dark:text-[#6E9581] font-medium">Expires in {Math.round(offer.secondsLeft / 60)} min</span>
-              <button
-                onClick={() => onAcceptOrder(offer)}
-                className="px-4 py-2 rounded-xl bg-[#075C3B] hover:bg-[#05462D] text-white text-xs font-bold transition-colors cursor-pointer"
-              >
-                Accept Order
-              </button>
-            </div>
-          </div>
-        ))}
+            {seeding ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Sparkles className="w-3.5 h-3.5" />}
+            <span>Simulate Order Dispatch</span>
+          </button>
+          <button
+            onClick={loadOffers}
+            className="p-2 rounded-xl bg-white dark:bg-[#0D2118] border border-[#D7E6DD] dark:border-[#1E4130] text-[#075C3B] dark:text-[#34D399] hover:bg-[#EBF6EE] dark:hover:bg-[#163828] transition-colors cursor-pointer"
+            title="Refresh Offers"
+          >
+            <RefreshCw className="w-4 h-4" />
+          </button>
+        </div>
       </div>
+
+      {loading ? (
+        <div className="py-16 text-center">
+          <Loader2 className="w-7 h-7 text-[#075C3B] dark:text-[#34D399] animate-spin mx-auto mb-2" />
+          <p className="text-xs text-[#517663] dark:text-[#88B8A0]">Scanning nearby farm hubs for delivery offers...</p>
+        </div>
+      ) : offers.length === 0 ? (
+        <div className="bg-white dark:bg-[#0D2118] rounded-2xl border border-[#E3EDE6] dark:border-[#1E4130] p-12 text-center">
+          <Package className="w-12 h-12 text-[#7B998A] dark:text-[#5B806E] mx-auto mb-3 opacity-60" />
+          <h3 className="text-sm font-bold text-[#0B3322] dark:text-[#EEFAF3]">No Available Requests Right Now</h3>
+          <p className="text-xs text-[#6B8B7B] dark:text-[#88B8A0] mt-1 max-w-sm mx-auto">
+            Make sure your availability is set to <strong>Online</strong> and your location is shared. You can also simulate an incoming dispatch!
+          </p>
+          <button
+            onClick={handleSimulateSeed}
+            disabled={seeding}
+            className="mt-4 px-4 py-2 rounded-xl bg-[#075C3B] hover:bg-[#05462D] text-white text-xs font-bold transition-colors cursor-pointer inline-flex items-center gap-1.5"
+          >
+            <Sparkles className="w-3.5 h-3.5" />
+            <span>Generate & Dispatch Test Order</span>
+          </button>
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          {offers.map(offer => {
+            const isActing = actingOfferId === offer.offerId;
+            return (
+              <div
+                key={offer.offerId}
+                className="bg-white dark:bg-[#0D2118] rounded-2xl border border-[#E3EDE6] dark:border-[#1E4130] p-5 shadow-sm hover:shadow-md transition-shadow flex flex-col justify-between"
+              >
+                <div>
+                  <div className="flex items-center gap-3">
+                    <div className="relative w-12 h-12 rounded-full overflow-hidden shrink-0 border border-[#E3EDE6] dark:border-[#1E4130] bg-slate-100 dark:bg-slate-800">
+                      <img
+                        src={offer.productImage || '/images/prod_tomatoes.jpg'}
+                        alt={offer.product}
+                        className="w-full h-full object-cover"
+                      />
+                    </div>
+                    <div className="min-w-0">
+                      <h4 className="text-sm font-bold text-[#0B3322] dark:text-[#EEFAF3] truncate">{offer.product}</h4>
+                      <p className="text-xs text-[#6B8B7B] dark:text-[#88B8A0]">
+                        {offer.quantityKg} kg &bull; Delivery Fee:{' '}
+                        <span className="text-[#075C3B] dark:text-[#34D399] font-bold">ETB {offer.deliveryFee}</span>
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="mt-4 space-y-2 text-xs">
+                    <div className="flex items-start gap-2 text-[#517663] dark:text-[#97C2AC]">
+                      <MapPin className="w-3.5 h-3.5 text-[#075C3B] dark:text-[#34D399] shrink-0 mt-0.5" />
+                      <span className="truncate">Pickup: {offer.pickupAddress || 'Farm Cooperative Depot'}</span>
+                    </div>
+                    <div className="flex items-start gap-2 text-[#517663] dark:text-[#97C2AC]">
+                      <Navigation className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400 shrink-0 mt-0.5" />
+                      <span className="truncate">Dropoff: {offer.dropoffAddress || 'Customer Destination'}</span>
+                    </div>
+                  </div>
+
+                  <div className="mt-3 flex items-center justify-between text-[11px] font-semibold text-[#6B8B7B] dark:text-[#88B8A0] bg-[#F4F9F6] dark:bg-[#12281E] p-2 rounded-xl">
+                    <span>Route: ~{offer.distanceKm || 3.2} km</span>
+                    <span className="uppercase text-[#075C3B] dark:text-[#34D399]">{offer.paymentMethod?.replace('_', ' ')}</span>
+                  </div>
+                </div>
+
+                <div className="mt-5 pt-3 border-t border-[#EDF5F0] dark:border-[#1E4130] flex items-center justify-between gap-2">
+                  <span className="text-[11px] text-[#B45309] dark:text-[#FBBF24] font-bold flex items-center gap-1">
+                    <Clock className="w-3.5 h-3.5" />
+                    {Math.max(1, Math.round(offer.secondsLeft / 60))}m left
+                  </span>
+                  <div className="flex items-center gap-2">
+                    <button
+                      onClick={() => handleReject(offer)}
+                      disabled={isActing}
+                      className="px-3 py-1.5 rounded-xl border border-rose-300 dark:border-rose-900/60 text-rose-600 dark:text-rose-400 text-xs font-bold hover:bg-rose-50 dark:hover:bg-rose-950/30 transition-colors cursor-pointer disabled:opacity-50"
+                    >
+                      Decline
+                    </button>
+                    <button
+                      onClick={() => handleAccept(offer)}
+                      disabled={isActing}
+                      className="px-4 py-1.5 rounded-xl bg-[#075C3B] hover:bg-[#05462D] text-white text-xs font-bold transition-colors cursor-pointer flex items-center gap-1 disabled:opacity-50"
+                    >
+                      {isActing && <Loader2 className="w-3 h-3 animate-spin" />}
+                      <span>Accept</span>
+                    </button>
+                  </div>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      )}
     </div>
   );
 }
 
-// ─── Section: My Deliveries (Lifecycle) ─────────────────────────
+// ─── Section 4: My Deliveries (History) ─────────────────────────
 
-function DeliveriesSection() {
+function DeliveriesSection({
+  onSelectActive,
+}: {
+  onSelectActive: () => void;
+}) {
   const [jobs, setJobs] = useState<DeliveryJob[]>([]);
   const [loading, setLoading] = useState(true);
+  const [filter, setFilter] = useState<string>('ALL');
 
   const loadDeliveries = useCallback(async () => {
     setLoading(true);
     try {
-      const res = await workerApi.deliveries();
-      setJobs(res.data.jobs || []);
+      const res = await workerApi.deliveries({ status: filter === 'ALL' ? undefined : filter });
+      setJobs(res?.data?.jobs || []);
     } catch {
-      // Default demo jobs
-      setJobs([
-        {
-          id: 'job-1',
-          orderId: 'ord-101',
-          status: 'EN_ROUTE',
-          pickupAddress: 'Lideta Farm Cooperative Hub',
-          dropoffAddress: 'Bole Rwanda, House 342, Addis Ababa',
-          pickupLatitude: 9.012,
-          pickupLongitude: 38.745,
-          dropoffLatitude: 9.001,
-          dropoffLongitude: 38.784,
-          acceptedAt: new Date(Date.now() - 3600000).toISOString(),
-          pickedUpAt: new Date(Date.now() - 1800000).toISOString(),
-          deliveredAt: null,
-          failedAt: null,
-          product: 'Fresh Tomatoes',
-          productImage: '/images/prod_tomatoes.jpg',
-          quantityKg: 5,
-          deliveryFee: '120.00',
-          paymentMethod: 'CASH_ON_DELIVERY',
-          cashCollected: null,
-          createdAt: new Date().toISOString(),
-          events: [],
-        },
-        {
-          id: 'job-2',
-          orderId: 'ord-098',
-          status: 'DELIVERED',
-          pickupAddress: 'Addis Ababa Veggie Depot',
-          dropoffAddress: 'Kazanchis, Addis Ababa',
-          pickupLatitude: 9.01,
-          pickupLongitude: 38.75,
-          dropoffLatitude: 9.02,
-          dropoffLongitude: 38.76,
-          acceptedAt: new Date(Date.now() - 7200000).toISOString(),
-          pickedUpAt: new Date(Date.now() - 5400000).toISOString(),
-          deliveredAt: new Date(Date.now() - 3600000).toISOString(),
-          failedAt: null,
-          product: 'Potatoes & Onions',
-          productImage: '/images/prod_potatoes.jpg',
-          quantityKg: 10,
-          deliveryFee: '140.00',
-          paymentMethod: 'TELEBIRR',
-          cashCollected: null,
-          createdAt: new Date(Date.now() - 7200000).toISOString(),
-          events: [],
-        },
-      ]);
+      setJobs([]);
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [filter]);
 
   useEffect(() => {
     loadDeliveries();
   }, [loadDeliveries]);
 
-  const handleUpdateStatus = async (jobId: string, nextStatus: DeliveryStatus) => {
-    try {
-      await workerApi.updateStatus(jobId, nextStatus);
-    } catch {
-      // update locally
-    }
-    setJobs(prev =>
-      prev.map(j => (j.id === jobId ? { ...j, status: nextStatus } : j))
-    );
-  };
-
   return (
     <div className="space-y-4">
-      <div>
-        <h2 className="text-lg font-black text-[#0B3322] dark:text-[#EEFAF3]">My Deliveries</h2>
-        <p className="text-xs text-[#517663] dark:text-[#88B8A0]">Manage ongoing pickups, in-transit orders, and completion receipts.</p>
-      </div>
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+        <div>
+          <h2 className="text-lg font-black text-[#0B3322] dark:text-[#EEFAF3]">My Deliveries</h2>
+          <p className="text-xs text-[#517663] dark:text-[#88B8A0]">
+            Complete audit trail of all assigned jobs, in-transit routes, and verified deliveries.
+          </p>
+        </div>
 
-      <div className="space-y-3">
-        {jobs.map(job => {
-          const next = STATUS_NEXT[job.status];
-          return (
-            <div
-              key={job.id}
-              className="bg-white dark:bg-[#0D2118] rounded-2xl border border-[#E3EDE6] dark:border-[#1E4130] p-5 shadow-sm flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4"
+        <div className="flex items-center gap-1.5 bg-[#EBF5EF] dark:bg-[#12281E] p-1 rounded-xl text-xs font-bold">
+          {['ALL', 'EN_ROUTE', 'DELIVERED', 'FAILED'].map(f => (
+            <button
+              key={f}
+              onClick={() => setFilter(f)}
+              className={`px-3 py-1.5 rounded-lg transition-colors cursor-pointer ${
+                filter === f
+                  ? 'bg-[#075C3B] text-white'
+                  : 'text-[#47705B] dark:text-[#88B8A0] hover:text-[#075C3B]'
+              }`}
             >
-              <div className="flex items-center gap-3.5">
-                <div className="relative w-12 h-12 rounded-full overflow-hidden shrink-0 border border-[#E3EDE6] dark:border-[#1E4130] bg-slate-100 dark:bg-slate-800">
-                  <img
-                    src={job.productImage || '/images/prod_tomatoes.jpg'}
-                    alt={job.product}
-                    className="w-full h-full object-cover"
-                  />
-                </div>
-                <div>
-                  <div className="flex items-center gap-2">
-                    <h4 className="text-sm font-bold text-[#0B3322] dark:text-[#EEFAF3]">{job.product}</h4>
-                    <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-[#EBF6EE] dark:bg-[#133A27] text-[#075C3B] dark:text-[#34D399]">
-                      {STATUS_LABELS[job.status]}
-                    </span>
-                  </div>
-                  <p className="text-xs text-[#6B8B7B] dark:text-[#88B8A0] mt-0.5">
-                    {job.dropoffAddress} &bull; Fee: <span className="text-[#0B3322] dark:text-[#EEFAF3] font-bold">ETB {job.deliveryFee}</span>
-                  </p>
-                </div>
-              </div>
-
-              <div className="flex items-center gap-2 self-end sm:self-auto">
-                {next ? (
-                  <button
-                    onClick={() => handleUpdateStatus(job.id, next.next)}
-                    className="px-4 py-2 rounded-xl bg-[#075C3B] hover:bg-[#05462D] text-white text-xs font-bold transition-colors cursor-pointer"
-                  >
-                    {next.label}
-                  </button>
-                ) : (
-                  <span className="text-xs text-[#088647] dark:text-[#34D399] font-bold flex items-center gap-1">
-                    <CheckCircle2 className="w-4 h-4" />
-                    Completed
-                  </span>
-                )}
-              </div>
-            </div>
-          );
-        })}
+              {f === 'ALL' ? 'All' : f === 'EN_ROUTE' ? 'In Transit' : f === 'DELIVERED' ? 'Delivered' : 'Exceptions'}
+            </button>
+          ))}
+        </div>
       </div>
+
+      {loading ? (
+        <div className="py-16 text-center">
+          <Loader2 className="w-7 h-7 text-[#075C3B] dark:text-[#34D399] animate-spin mx-auto mb-2" />
+          <p className="text-xs text-[#517663] dark:text-[#88B8A0]">Loading delivery records...</p>
+        </div>
+      ) : jobs.length === 0 ? (
+        <div className="bg-white dark:bg-[#0D2118] rounded-2xl border border-[#E3EDE6] dark:border-[#1E4130] p-12 text-center">
+          <Truck className="w-12 h-12 text-[#7B998A] dark:text-[#5B806E] mx-auto mb-3 opacity-60" />
+          <h3 className="text-sm font-bold text-[#0B3322] dark:text-[#EEFAF3]">No Deliveries Found</h3>
+          <p className="text-xs text-[#6B8B7B] dark:text-[#88B8A0] mt-1">
+            {filter === 'ALL' ? 'No delivery jobs assigned yet.' : `No jobs with status ${filter}.`}
+          </p>
+        </div>
+      ) : (
+        <div className="space-y-3">
+          {jobs.map(job => {
+            const isOngoing = ['ASSIGNED', 'HEADING_TO_PICKUP', 'PICKED_UP', 'EN_ROUTE'].includes(job.status);
+            return (
+              <div
+                key={job.id}
+                className="bg-white dark:bg-[#0D2118] rounded-2xl border border-[#E3EDE6] dark:border-[#1E4130] p-4 sm:p-5 shadow-xs flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4"
+              >
+                <div className="flex items-center gap-3.5 min-w-0">
+                  <div className="relative w-12 h-12 rounded-full overflow-hidden shrink-0 border border-[#E3EDE6] dark:border-[#1E4130] bg-slate-100 dark:bg-slate-800">
+                    <img
+                      src={job.productImage || '/images/prod_tomatoes.jpg'}
+                      alt={job.product}
+                      className="w-full h-full object-cover"
+                    />
+                  </div>
+                  <div className="min-w-0">
+                    <div className="flex items-center gap-2">
+                      <h4 className="text-sm font-bold text-[#0B3322] dark:text-[#EEFAF3] truncate">{job.product}</h4>
+                      <span
+                        className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
+                          job.status === 'DELIVERED'
+                            ? 'bg-emerald-100 dark:bg-emerald-950/60 text-emerald-800 dark:text-emerald-300'
+                            : isOngoing
+                            ? 'bg-blue-100 dark:bg-blue-950/60 text-blue-800 dark:text-blue-300'
+                            : 'bg-rose-100 dark:bg-rose-950/60 text-rose-800 dark:text-rose-300'
+                        }`}
+                      >
+                        {STATUS_LABELS[job.status] || job.status}
+                      </span>
+                    </div>
+                    <p className="text-xs text-[#6B8B7B] dark:text-[#88B8A0] mt-0.5 truncate">
+                      To: {job.dropoffAddress || 'Customer Destination'} &bull; Fee:{' '}
+                      <span className="text-[#0B3322] dark:text-[#EEFAF3] font-bold">ETB {job.deliveryFee}</span>
+                    </p>
+                    <p className="text-[11px] text-[#8EA89B] dark:text-[#6E9581] mt-0.5">
+                      Order: {job.orderId.slice(0, 10)} &bull; {new Date(job.createdAt).toLocaleDateString()}
+                    </p>
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-2 self-end sm:self-auto shrink-0">
+                  {isOngoing ? (
+                    <button
+                      onClick={onSelectActive}
+                      className="px-4 py-2 rounded-xl bg-[#075C3B] hover:bg-[#05462D] text-white text-xs font-bold transition-colors cursor-pointer flex items-center gap-1.5"
+                    >
+                      <Navigation className="w-3.5 h-3.5" />
+                      <span>Resume Active Delivery</span>
+                    </button>
+                  ) : job.status === 'DELIVERED' ? (
+                    <span className="text-xs text-[#088647] dark:text-[#34D399] font-bold flex items-center gap-1">
+                      <CheckCircle2 className="w-4 h-4" />
+                      Delivered
+                    </span>
+                  ) : (
+                    <span className="text-xs text-rose-600 dark:text-rose-400 font-bold flex items-center gap-1">
+                      <AlertTriangle className="w-4 h-4" />
+                      Failed / Cancelled
+                    </span>
+                  )}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      )}
     </div>
   );
 }
 
-// ─── Section: Earnings ────────────────────────────────────────
+// ─── Section 5: Earnings & COD Remittance ──────────────────────
 
 function EarningsSection() {
   const [period, setPeriod] = useState<'today' | 'week' | 'month'>('today');
+  const [earnings, setEarnings] = useState<any>(null);
+  const [reconciliations, setReconciliations] = useState<any[]>([]);
+  const [pendingCodTotal, setPendingCodTotal] = useState<number>(0);
+  const [loading, setLoading] = useState(true);
+  const [modalOpen, setModalOpen] = useState(false);
+
+  const loadData = useCallback(async () => {
+    setLoading(true);
+    try {
+      const [earnRes, recRes] = await Promise.all([
+        workerApi.earnings(period),
+        workerApi.reconciliations(),
+      ]);
+      setEarnings(earnRes?.data || null);
+      setReconciliations(recRes?.data?.records || []);
+      setPendingCodTotal(recRes?.data?.pendingTotal || 0);
+    } catch {
+      // Fallback
+      setEarnings({
+        totalEarnings: 2450,
+        deliveryCount: 5,
+        deliveries: [],
+      });
+      setPendingCodTotal(680);
+      setReconciliations([]);
+    } finally {
+      setLoading(false);
+    }
+  }, [period]);
+
+  useEffect(() => {
+    loadData();
+  }, [loadData]);
+
+  const pendingCodRecords = reconciliations.filter(r => r.status === 'PENDING');
 
   return (
     <div className="space-y-5">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
         <div>
           <h2 className="text-lg font-black text-[#0B3322] dark:text-[#EEFAF3]">Earnings & Cash Reconciliation</h2>
-          <p className="text-xs text-[#517663] dark:text-[#88B8A0]">Track completed deliveries, COD cash balance, and weekly payouts.</p>
+          <p className="text-xs text-[#517663] dark:text-[#88B8A0]">
+            Track delivery commissions, Cash on Delivery (COD) custody, and telebirr/bank remittances.
+          </p>
         </div>
         <div className="flex bg-[#EBF5EF] dark:bg-[#12281E] p-1 rounded-xl text-xs font-bold text-[#075C3B] dark:text-[#34D399]">
           {(['today', 'week', 'month'] as const).map(p => (
@@ -1219,7 +1248,7 @@ function EarningsSection() {
               className={`px-3 py-1.5 rounded-lg capitalize cursor-pointer transition-colors ${
                 period === p
                   ? 'bg-[#075C3B] text-white'
-                  : 'text-[#47705B] dark:text-[#88B8A0] hover:text-[#075C3B] dark:hover:text-white'
+                  : 'text-[#47705B] dark:text-[#88B8A0] hover:text-[#075C3B]'
               }`}
             >
               {p}
@@ -1228,91 +1257,374 @@ function EarningsSection() {
         </div>
       </div>
 
+      {/* 3 Metric Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
         <div className="bg-white dark:bg-[#0D2118] rounded-2xl border border-[#E3EDE6] dark:border-[#1E4130] p-5 shadow-xs">
-          <p className="text-xs text-[#6B8B7B] dark:text-[#88B8A0] font-medium">Net Payout</p>
-          <p className="text-2xl font-black text-[#0B3322] dark:text-[#EEFAF3] mt-1">ETB 2,450</p>
-          <p className="text-[11px] text-[#088647] dark:text-[#34D399] font-bold mt-1">+15% vs yesterday</p>
+          <p className="text-xs text-[#6B8B7B] dark:text-[#88B8A0] font-medium">Net Delivery Payout</p>
+          <p className="text-2xl font-black text-[#0B3322] dark:text-[#EEFAF3] mt-1">
+            {formatCurrency(earnings?.totalEarnings ?? 2450)}
+          </p>
+          <p className="text-[11px] text-[#088647] dark:text-[#34D399] font-bold mt-1">Worker commission earned</p>
         </div>
         <div className="bg-white dark:bg-[#0D2118] rounded-2xl border border-[#E3EDE6] dark:border-[#1E4130] p-5 shadow-xs">
-          <p className="text-xs text-[#6B8B7B] dark:text-[#88B8A0] font-medium">Completed Jobs</p>
-          <p className="text-2xl font-black text-[#0B3322] dark:text-[#EEFAF3] mt-1">5 Deliveries</p>
-          <p className="text-[11px] text-[#6B8B7B] dark:text-[#88B8A0] mt-1">100% on-time completion</p>
+          <p className="text-xs text-[#6B8B7B] dark:text-[#88B8A0] font-medium">Completed Deliveries</p>
+          <p className="text-2xl font-black text-[#0B3322] dark:text-[#EEFAF3] mt-1">
+            {earnings?.deliveryCount ?? 5} Deliveries
+          </p>
+          <p className="text-[11px] text-[#6B8B7B] dark:text-[#88B8A0] mt-1">100% verified proof of delivery</p>
         </div>
         <div className="bg-white dark:bg-[#0D2118] rounded-2xl border border-[#E3EDE6] dark:border-[#1E4130] p-5 shadow-xs">
-          <p className="text-xs text-[#6B8B7B] dark:text-[#88B8A0] font-medium">Cash On Delivery Held</p>
-          <p className="text-2xl font-black text-[#B45309] dark:text-[#F59E0B] mt-1">ETB 680</p>
-          <p className="text-[11px] text-[#6B8B7B] dark:text-[#88B8A0] mt-1">Ready for bank deposit / Telebirr</p>
+          <p className="text-xs text-[#6B8B7B] dark:text-[#88B8A0] font-medium">Cash on Delivery (COD) Held</p>
+          <p className="text-2xl font-black text-[#B45309] dark:text-[#F59E0B] mt-1">
+            {formatCurrency(pendingCodTotal)}
+          </p>
+          <p className="text-[11px] text-[#6B8B7B] dark:text-[#88B8A0] mt-1">
+            {pendingCodRecords.length} pending remittances
+          </p>
         </div>
       </div>
+
+      {/* COD Remittance Action Banner */}
+      {pendingCodTotal > 0 && (
+        <div className="bg-gradient-to-r from-amber-50 to-orange-50 dark:from-amber-950/30 dark:to-orange-950/30 border border-amber-200 dark:border-amber-900/50 rounded-2xl p-5 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+          <div className="flex items-start gap-3">
+            <div className="w-10 h-10 rounded-xl bg-amber-100 dark:bg-amber-900/50 text-amber-700 dark:text-amber-300 flex items-center justify-center shrink-0">
+              <Receipt className="w-5 h-5" />
+            </div>
+            <div>
+              <h4 className="text-sm font-bold text-[#0B3322] dark:text-[#EEFAF3]">
+                Pending Cash on Delivery Custody: {formatCurrency(pendingCodTotal)}
+              </h4>
+              <p className="text-xs text-[#6B8B7B] dark:text-[#88B8A0] mt-0.5">
+                Marketplace financial integrity requires depositing collected cash within 24 hours via Telebirr or CBE Birr.
+              </p>
+            </div>
+          </div>
+          <button
+            onClick={() => setModalOpen(true)}
+            className="px-4 py-2.5 rounded-xl bg-[#075C3B] hover:bg-[#05462D] text-white text-xs font-bold transition-colors cursor-pointer shrink-0 shadow-xs"
+          >
+            Remit Cash on Delivery
+          </button>
+        </div>
+      )}
+
+      {/* Cash Reconciliations Audit Table */}
+      <div className="bg-white dark:bg-[#0D2118] rounded-2xl border border-[#E3EDE6] dark:border-[#1E4130] p-5 shadow-xs space-y-4">
+        <h3 className="text-sm font-bold text-[#0B3322] dark:text-[#EEFAF3]">Cash Reconciliation Audit Log</h3>
+        {reconciliations.length === 0 ? (
+          <p className="text-xs text-[#6B8B7B] dark:text-[#88B8A0] py-4 text-center">
+            No COD cash collection records logged.
+          </p>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full text-xs text-left">
+              <thead>
+                <tr className="border-b border-[#EDF5F0] dark:border-[#1A3326] text-[#6B8B7B] dark:text-[#88B8A0]">
+                  <th className="py-2.5 font-bold">Record ID</th>
+                  <th className="py-2.5 font-bold">Amount</th>
+                  <th className="py-2.5 font-bold">Status</th>
+                  <th className="py-2.5 font-bold">Date Collected</th>
+                  <th className="py-2.5 font-bold">Audit Memo</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-[#EDF5F0] dark:divide-[#1A3326]">
+                {reconciliations.map(r => (
+                  <tr key={r.id} className="text-[#0B3322] dark:text-[#EEFAF3]">
+                    <td className="py-3 font-mono text-[11px]">{r.id.slice(0, 10)}</td>
+                    <td className="py-3 font-bold text-[#075C3B] dark:text-[#34D399]">ETB {r.amount}</td>
+                    <td className="py-3">
+                      <span
+                        className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
+                          r.status === 'VERIFIED'
+                            ? 'bg-emerald-100 dark:bg-emerald-950/60 text-emerald-800 dark:text-emerald-300'
+                            : r.status === 'SUBMITTED'
+                            ? 'bg-blue-100 dark:bg-blue-950/60 text-blue-800 dark:text-blue-300'
+                            : 'bg-amber-100 dark:bg-amber-950/60 text-amber-800 dark:text-amber-300'
+                        }`}
+                      >
+                        {r.status}
+                      </span>
+                    </td>
+                    <td className="py-3 text-[#6B8B7B] dark:text-[#88B8A0]">
+                      {new Date(r.createdAt).toLocaleDateString()}
+                    </td>
+                    <td className="py-3 text-[#6B8B7B] dark:text-[#88B8A0] max-w-xs truncate">
+                      {r.notes || 'Awaiting remittance'}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </div>
+
+      <CodReconciliationModal
+        open={modalOpen}
+        onClose={() => setModalOpen(false)}
+        pendingRecords={pendingCodRecords}
+        onRemitted={() => {
+          setModalOpen(false);
+          loadData();
+        }}
+      />
     </div>
   );
 }
 
-// ─── Section: Vehicle & Profile ───────────────────────────────
+// ─── Section 6: Availability & GPS ─────────────────────────────
 
 function VehicleSection({
   data,
   onOpenVehicleModal,
   onLocationUpdated,
+  onAvailabilityChanged,
 }: {
   data: DashboardData | null;
   onOpenVehicleModal: () => void;
   onLocationUpdated?: () => void;
+  onAvailabilityChanged?: (online: boolean) => void;
 }) {
-  const [online, setOnline] = useState(true);
+  const [online, setOnline] = useState(data?.profile?.availability === 'ONLINE');
+  const [updating, setUpdating] = useState(false);
+
+  useEffect(() => {
+    if (data?.profile?.availability) {
+      setOnline(data.profile.availability === 'ONLINE');
+    }
+  }, [data?.profile?.availability]);
+
+  const toggleAvailability = async () => {
+    const next = !online;
+    setUpdating(true);
+    try {
+      await workerApi.updateProfile({ availability: next ? 'ONLINE' : 'OFFLINE' });
+      setOnline(next);
+      onAvailabilityChanged?.(next);
+    } catch (err: any) {
+      alert(err?.message || 'Failed to update availability.');
+    } finally {
+      setUpdating(false);
+    }
+  };
 
   return (
     <div className="space-y-5">
       <div>
-        <h2 className="text-lg font-black text-[#0B3322] dark:text-[#EEFAF3]">Vehicle & Profile Settings</h2>
-        <p className="text-xs text-[#517663] dark:text-[#88B8A0]">Manage delivery status, vehicle specs, license documents, and work zones.</p>
+        <h2 className="text-lg font-black text-[#0B3322] dark:text-[#EEFAF3]">Availability & Location Tracking</h2>
+        <p className="text-xs text-[#517663] dark:text-[#88B8A0]">
+          Manage broadcast eligibility, cargo specifications, and consent-based browser GPS sharing.
+        </p>
       </div>
 
       <div className="bg-white dark:bg-[#0D2118] rounded-2xl border border-[#E3EDE6] dark:border-[#1E4130] p-5 shadow-xs flex items-center justify-between">
         <div>
-          <h4 className="text-sm font-bold text-[#0B3322] dark:text-[#EEFAF3]">Worker Availability</h4>
-          <p className="text-xs text-[#6B8B7B] dark:text-[#88B8A0] mt-0.5">Toggle online to receive real-time order broadcast offers.</p>
+          <h4 className="text-sm font-bold text-[#0B3322] dark:text-[#EEFAF3]">Order Dispatch Availability</h4>
+          <p className="text-xs text-[#6B8B7B] dark:text-[#88B8A0] mt-0.5">
+            When online, our dispatch algorithm broadcasts nearby matching agricultural orders to your app.
+          </p>
         </div>
         <button
-          onClick={() => setOnline(p => !p)}
+          onClick={toggleAvailability}
+          disabled={updating}
           className={`px-4 py-2 rounded-xl text-xs font-bold transition-colors cursor-pointer flex items-center gap-2 ${
             online ? 'bg-[#075C3B] text-white' : 'bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-300'
           }`}
         >
-          <span className={`w-2 h-2 rounded-full ${online ? 'bg-emerald-300' : 'bg-slate-400'}`} />
-          {online ? 'Online & Available' : 'Offline'}
+          {updating ? (
+            <Loader2 className="w-3.5 h-3.5 animate-spin" />
+          ) : (
+            <span className={`w-2 h-2 rounded-full ${online ? 'bg-emerald-300' : 'bg-slate-400'}`} />
+          )}
+          <span>{online ? 'Online & Available' : 'Offline'}</span>
         </button>
       </div>
 
       <div className="bg-white dark:bg-[#0D2118] rounded-2xl border border-[#E3EDE6] dark:border-[#1E4130] p-5 shadow-xs space-y-4">
         <div className="flex items-center justify-between">
-          <h4 className="text-sm font-bold text-[#0B3322] dark:text-[#EEFAF3]">Registered Vehicle</h4>
-          <button onClick={onOpenVehicleModal} className="text-xs font-bold text-[#075C3B] dark:text-[#34D399] hover:underline cursor-pointer">
+          <h4 className="text-sm font-bold text-[#0B3322] dark:text-[#EEFAF3]">Registered Cargo Vehicle</h4>
+          <button
+            onClick={onOpenVehicleModal}
+            className="text-xs font-bold text-[#075C3B] dark:text-[#34D399] hover:underline cursor-pointer"
+          >
             Edit
           </button>
         </div>
         <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 text-xs">
           <div className="bg-[#F7FAF8] dark:bg-[#12281E] p-3 rounded-xl border border-[#E8F0EB] dark:border-[#1E4130]">
-            <p className="text-[#6B8B7B] dark:text-[#88B8A0]">Type</p>
-            <p className="font-bold text-[#0B3322] dark:text-[#EEFAF3] mt-0.5">{data?.profile?.vehicleType || 'Motorcycle'}</p>
+            <p className="text-[#6B8B7B] dark:text-[#88B8A0]">Vehicle Type</p>
+            <p className="font-bold text-[#0B3322] dark:text-[#EEFAF3] mt-0.5">
+              {data?.profile?.vehicleType || 'Motorcycle'}
+            </p>
           </div>
           <div className="bg-[#F7FAF8] dark:bg-[#12281E] p-3 rounded-xl border border-[#E8F0EB] dark:border-[#1E4130]">
-            <p className="text-[#6B8B7B] dark:text-[#88B8A0]">Capacity</p>
-            <p className="font-bold text-[#0B3322] dark:text-[#EEFAF3] mt-0.5">{data?.profile?.vehicleCapacityKg || 50} kg</p>
+            <p className="text-[#6B8B7B] dark:text-[#88B8A0]">Payload Capacity</p>
+            <p className="font-bold text-[#0B3322] dark:text-[#EEFAF3] mt-0.5">
+              {data?.profile?.vehicleCapacityKg || 50} kg
+            </p>
           </div>
           <div className="bg-[#F7FAF8] dark:bg-[#12281E] p-3 rounded-xl border border-[#E8F0EB] dark:border-[#1E4130]">
-            <p className="text-[#6B8B7B] dark:text-[#88B8A0]">Plate Number</p>
-            <p className="font-bold text-[#0B3322] dark:text-[#EEFAF3] mt-0.5">{data?.profile?.vehiclePlate || '3-A45129 ET'}</p>
+            <p className="text-[#6B8B7B] dark:text-[#88B8A0]">License Plate</p>
+            <p className="font-bold text-[#0B3322] dark:text-[#EEFAF3] mt-0.5">
+              {data?.profile?.vehiclePlate || '3-A45129 ET'}
+            </p>
           </div>
         </div>
       </div>
 
-      {/* ─── Consent-Based GPS Location Sharing Card ─── */}
       <LocationShareWidget
         variant="card"
         onLocationUpdated={onLocationUpdated}
       />
+    </div>
+  );
+}
+
+// ─── Section 7: Notifications ──────────────────────────────────
+
+function NotificationsSection() {
+  const [notifications, setNotifications] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  const loadNotifications = useCallback(async () => {
+    setLoading(true);
+    try {
+      const res = await workerApi.notifications();
+      setNotifications(res?.data || []);
+    } catch {
+      setNotifications([]);
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    loadNotifications();
+  }, [loadNotifications]);
+
+  return (
+    <div className="space-y-4">
+      <div className="flex items-center justify-between">
+        <div>
+          <h2 className="text-lg font-black text-[#0B3322] dark:text-[#EEFAF3]">System Alerts & Broadcasts</h2>
+          <p className="text-xs text-[#517663] dark:text-[#88B8A0]">
+            Important notifications on order assignments, route adjustments, and cash remittance audits.
+          </p>
+        </div>
+        <button
+          onClick={loadNotifications}
+          className="p-2 rounded-xl bg-white dark:bg-[#0D2118] border border-[#D7E6DD] dark:border-[#1E4130] text-[#075C3B] dark:text-[#34D399] hover:bg-[#EBF6EE] dark:hover:bg-[#163828] transition-colors cursor-pointer"
+        >
+          <RefreshCw className="w-4 h-4" />
+        </button>
+      </div>
+
+      {loading ? (
+        <div className="py-16 text-center">
+          <Loader2 className="w-7 h-7 text-[#075C3B] dark:text-[#34D399] animate-spin mx-auto mb-2" />
+          <p className="text-xs text-[#517663] dark:text-[#88B8A0]">Loading notifications...</p>
+        </div>
+      ) : notifications.length === 0 ? (
+        <div className="bg-white dark:bg-[#0D2118] rounded-2xl border border-[#E3EDE6] dark:border-[#1E4130] p-12 text-center">
+          <Bell className="w-10 h-10 text-[#7B998A] dark:text-[#5B806E] mx-auto mb-3 opacity-60" />
+          <h3 className="text-sm font-bold text-[#0B3322] dark:text-[#EEFAF3]">No New Notifications</h3>
+          <p className="text-xs text-[#6B8B7B] dark:text-[#88B8A0] mt-1">
+            You are all caught up!
+          </p>
+        </div>
+      ) : (
+        <div className="divide-y divide-[#EDF5F0] dark:divide-[#1A3326] bg-white dark:bg-[#0D2118] rounded-2xl border border-[#E3EDE6] dark:border-[#1E4130] p-4">
+          {notifications.map(n => (
+            <div key={n.id} className="py-3.5 first:pt-1 last:pb-1 flex items-start gap-3">
+              <div className="w-8 h-8 rounded-full bg-[#EBF5EE] dark:bg-[#163828] text-[#075C3B] dark:text-[#34D399] flex items-center justify-center shrink-0 mt-0.5">
+                <Bell className="w-4 h-4" />
+              </div>
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center justify-between">
+                  <h4 className="text-xs font-bold text-[#0B3322] dark:text-[#EEFAF3]">{n.title}</h4>
+                  <span className="text-[10px] text-[#7B998A] dark:text-[#6E9581]">
+                    {new Date(n.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                  </span>
+                </div>
+                <p className="text-xs text-[#517663] dark:text-[#97C2AC] mt-0.5">{n.message}</p>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ─── Section 8: Support & Incidents ────────────────────────────
+
+function IncidentsSection({
+  activeJobId,
+  onOpenReportModal,
+}: {
+  activeJobId: string | null;
+  onOpenReportModal: () => void;
+}) {
+  return (
+    <div className="space-y-5">
+      <div>
+        <h2 className="text-lg font-black text-[#0B3322] dark:text-[#EEFAF3]">Support & Incident Management</h2>
+        <p className="text-xs text-[#517663] dark:text-[#88B8A0]">
+          24/7 delivery hotline, exception reporting, and cargo dispute resolution.
+        </p>
+      </div>
+
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div className="bg-white dark:bg-[#0D2118] rounded-2xl border border-[#E3EDE6] dark:border-[#1E4130] p-5 shadow-xs space-y-3">
+          <div className="w-10 h-10 rounded-xl bg-[#E8F6EE] dark:bg-[#163828] text-[#075C3B] dark:text-[#34D399] flex items-center justify-center">
+            <PhoneCall className="w-5 h-5" />
+          </div>
+          <div>
+            <h4 className="text-sm font-bold text-[#0B3322] dark:text-[#EEFAF3]">Direct Dispatch Hotline</h4>
+            <p className="text-xs text-[#6B8B7B] dark:text-[#88B8A0] mt-0.5">
+              For live road emergencies, mechanical breakdowns, or hostile route conditions:
+            </p>
+            <p className="text-base font-black text-[#075C3B] dark:text-[#34D399] mt-2">
+              8899 / +251 911 234 567
+            </p>
+          </div>
+        </div>
+
+        <div className="bg-white dark:bg-[#0D2118] rounded-2xl border border-[#E3EDE6] dark:border-[#1E4130] p-5 shadow-xs space-y-3">
+          <div className="w-10 h-10 rounded-xl bg-amber-100 dark:bg-amber-900/50 text-amber-700 dark:text-amber-300 flex items-center justify-center">
+            <ShieldAlert className="w-5 h-5" />
+          </div>
+          <div>
+            <h4 className="text-sm font-bold text-[#0B3322] dark:text-[#EEFAF3]">File Incident Report</h4>
+            <p className="text-xs text-[#6B8B7B] dark:text-[#88B8A0] mt-0.5">
+              Log handover quantity mismatches, damaged agricultural goods, unreachable buyers, or road closures.
+            </p>
+            <button
+              onClick={onOpenReportModal}
+              disabled={!activeJobId}
+              className="mt-3 px-4 py-2 rounded-xl bg-[#075C3B] hover:bg-[#05462D] text-white text-xs font-bold transition-colors cursor-pointer disabled:opacity-50"
+            >
+              {activeJobId ? 'Report Incident on Active Delivery' : 'No Active Job to Report'}
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <div className="bg-white dark:bg-[#0D2118] rounded-2xl border border-[#E3EDE6] dark:border-[#1E4130] p-5 shadow-xs space-y-3">
+        <h4 className="text-sm font-bold text-[#0B3322] dark:text-[#EEFAF3]">Logistics Exception Guidelines</h4>
+        <ul className="text-xs text-[#517663] dark:text-[#88B8A0] space-y-2 list-disc pl-4">
+          <li>
+            <strong>Perishable Produce Protection:</strong> If a buyer cannot be reached within 15 minutes, never leave perishable produce unattended. File an incident and return the batch to the designated pickup cooperative hub.
+          </li>
+          <li>
+            <strong>Cash on Delivery (COD) Protection:</strong> Never release goods before receiving the exact cash total or confirming digital payment verification.
+          </li>
+          <li>
+            <strong>Weight & Packaging Discrepancies:</strong> Verify agricultural batch weight on pickup handover. If the actual weight exceeds your vehicle capacity, reject pickup immediately via the incident report tool.
+          </li>
+        </ul>
+      </div>
     </div>
   );
 }
@@ -1332,13 +1644,14 @@ export default function WorkerDashboardPage() {
   const [supportModalOpen, setSupportModalOpen] = useState(false);
   const [profileDropdownOpen, setProfileDropdownOpen] = useState(false);
   const [adminModalOpen, setAdminModalOpen] = useState(false);
+  const [incidentModalOpen, setIncidentModalOpen] = useState(false);
 
   // Nearby requests state (synced with reference image)
   const [nearbyRequests, setNearbyRequests] = useState<NearbyRequestItem[]>(INITIAL_NEARBY_REQUESTS);
 
   // Vehicle settings state
   const [vehicleState, setVehicleState] = useState({
-    vehicleType: 'Motorcycle',
+    vehicleType: 'MOTORCYCLE',
     capacityKg: 50,
     plate: '3-A45129 ET',
   });
@@ -1351,23 +1664,19 @@ export default function WorkerDashboardPage() {
     setTimeout(() => setToastMessage(null), 3500);
   };
 
-  // Auth & Session Guarantee: If no demo user in localStorage, set default Abebe Mekonnen so /worker renders perfectly
+  // Auth Guarantee: Automatically log in demo worker Abebe Mekonnen with real JWT if token is missing
   useEffect(() => {
-    try {
-      const raw = localStorage.getItem('agrimarket_user');
-      if (!raw) {
-        const demoWorker = {
-          id: 'worker-demo-abebe',
-          fullName: 'Abebe Mekonnen',
-          email: 'abebe.delivery@agrimarket.et',
-          phone: '+251 911 234 567',
-          role: 'DELIVERY_WORKER',
-        };
-        localStorage.setItem('agrimarket_user', JSON.stringify(demoWorker));
+    const ensureAuth = async () => {
+      try {
+        const token = localStorage.getItem('agrimarket_token');
+        if (!token) {
+          await workerApi.demoAuth();
+        }
+      } catch {
+        // silent fallback
       }
-    } catch {
-      // ignore
-    }
+    };
+    ensureAuth();
   }, []);
 
   // Load Dashboard Data from backend
@@ -1379,7 +1688,7 @@ export default function WorkerDashboardPage() {
         setDashData(res.data);
       }
     } catch {
-      // Fallback data matching reference image
+      // Fallback data matching reference
       setDashData({
         worker: {
           id: 'worker-demo-abebe',
@@ -1395,7 +1704,7 @@ export default function WorkerDashboardPage() {
           lastLatitude: 9.01,
           lastLongitude: 38.75,
           lastLocationAt: new Date().toISOString(),
-          activeJobCount: 3,
+          activeJobCount: 0,
           verificationStatus: 'VERIFIED',
         },
         metrics: {
@@ -1436,6 +1745,7 @@ export default function WorkerDashboardPage() {
     setVehicleState(v);
     try {
       await workerApi.updateProfile({
+        vehicleType: v.vehicleType,
         vehiclePlate: v.plate,
         vehicleCapacityKg: v.capacityKg,
       });
@@ -1443,6 +1753,7 @@ export default function WorkerDashboardPage() {
       // saved locally
     }
     showToast('Vehicle information updated successfully!');
+    loadDashboard();
   };
 
   const handleLogout = () => {
@@ -1454,6 +1765,9 @@ export default function WorkerDashboardPage() {
     }
     router.push('/login');
   };
+
+  // Active delivery job ID if exists
+  const activeJobId = dashData?.activeJob?.id || null;
 
   // Sidebar Component
   const SidebarContent = () => (
@@ -1471,17 +1785,27 @@ export default function WorkerDashboardPage() {
           <div>
             <span className="font-black text-white text-base tracking-tight leading-none">AgriMarket</span>
             <p className="text-[9px] text-[#71A88F] font-semibold tracking-wider uppercase mt-0.5">
-              Farmers &bull; Buyers &bull; Delivery
+              Delivery Worker Hub
             </p>
           </div>
         </Link>
       </div>
 
-      {/* Navigation Items */}
+      {/* Navigation Items (All 9 sections from delivery.md) */}
       <nav className="flex-1 px-3 py-4 space-y-1 overflow-y-auto">
         {NAV_ITEMS.map(item => {
           const Icon = item.icon;
           const isActive = activeSection === item.key;
+
+          let badgeText: string | number | null = null;
+          if ('badgeKey' in item) {
+            if (item.badgeKey === 'availableOrders' && (dashData?.metrics?.availableOrders ?? 0) > 0) {
+              badgeText = dashData?.metrics?.availableOrders ?? 3;
+            } else if (item.badgeKey === 'hasActive' && dashData?.activeJob) {
+              badgeText = 'LIVE';
+            }
+          }
+
           return (
             <button
               key={item.key}
@@ -1499,20 +1823,24 @@ export default function WorkerDashboardPage() {
                 <Icon className={`w-4 h-4 ${isActive ? 'text-emerald-300' : 'text-[#8AA899]'}`} />
                 <span>{item.label}</span>
               </div>
-              {'badge' in item && item.badge ? (
-                <span className="px-2 py-0.5 rounded-full text-[10px] font-extrabold bg-[#10B981] text-white">
-                  {item.badge}
+              {badgeText && (
+                <span
+                  className={`px-2 py-0.5 rounded-full text-[10px] font-extrabold ${
+                    badgeText === 'LIVE' ? 'bg-amber-500 text-white animate-pulse' : 'bg-[#10B981] text-white'
+                  }`}
+                >
+                  {badgeText}
                 </span>
-              ) : null}
+              )}
             </button>
           );
         })}
       </nav>
 
-      {/* Need Help Card (Matching reference image bottom sidebar) */}
+      {/* Need Help Card */}
       <div className="p-3.5 border-t border-[#124230]">
         <div className="bg-[#0E3D2B] rounded-2xl p-3.5 border border-[#164C37]">
-          <p className="text-[11px] font-bold text-white mb-2">Need Help?</p>
+          <p className="text-[11px] font-bold text-white mb-2">Dispatch Desk</p>
           <button
             onClick={() => setSupportModalOpen(true)}
             className="w-full py-2 px-3 rounded-xl bg-[#134D37] hover:bg-[#1A5E44] text-white text-xs font-bold transition-colors flex items-center justify-center gap-2 cursor-pointer shadow-xs"
@@ -1527,12 +1855,12 @@ export default function WorkerDashboardPage() {
 
   return (
     <div className="min-h-screen bg-[#F4F7F5] dark:bg-[#07130D] flex font-sans text-slate-800 dark:text-[#E6F4ED] transition-colors duration-200">
-      {/* ─── Desktop Left Sidebar ─── */}
+      {/* Desktop Left Sidebar */}
       <aside className="hidden lg:flex lg:flex-col lg:fixed lg:left-0 lg:top-0 lg:bottom-0 lg:w-60 lg:z-30 shadow-[4px_0_24px_rgba(0,0,0,0.06)]">
         <SidebarContent />
       </aside>
 
-      {/* ─── Mobile Sidebar Overlay Drawer ─── */}
+      {/* Mobile Sidebar Overlay Drawer */}
       {sidebarOpen && (
         <div className="lg:hidden fixed inset-0 z-50 flex">
           <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={() => setSidebarOpen(false)} />
@@ -1548,11 +1876,9 @@ export default function WorkerDashboardPage() {
         </div>
       )}
 
-      {/* ─── Main Content Container ─── */}
+      {/* Main Content Container */}
       <div className="flex-1 flex flex-col lg:ml-60 min-w-0">
-        {/* Top Header Navigation Bar (Sticky with blurred backdrop) */}
         <header className="sticky top-0 z-40 bg-white/95 dark:bg-[#0A1812]/95 backdrop-blur-md border-b border-[#E3EDE6] dark:border-[#1A3326] h-16 px-4 sm:px-6 flex items-center justify-between gap-4 shadow-xs transition-colors">
-          {/* Left: Mobile hamburger */}
           <div className="flex items-center gap-3">
             <button
               onClick={() => setSidebarOpen(true)}
@@ -1561,38 +1887,32 @@ export default function WorkerDashboardPage() {
               <Menu className="w-5 h-5" />
             </button>
 
-            {/* Search Pill Input (Matching Reference image) */}
             <div className="hidden sm:flex items-center gap-2 px-3.5 py-2 rounded-full bg-[#F0F5F2] dark:bg-[#12281E] w-64 lg:w-72 border border-transparent dark:border-[#1E4130] focus-within:border-[#BDE0CB] dark:focus-within:border-[#224A37] focus-within:bg-white dark:focus-within:bg-[#0D2118] transition-all">
               <Search className="w-4 h-4 text-[#7B998A] dark:text-[#5B806E]" />
               <input
                 type="text"
-                placeholder="Search orders..."
+                placeholder="Search orders or addresses..."
                 className="w-full bg-transparent text-xs text-[#0B3322] dark:text-[#EEFAF3] placeholder-[#8EA89B] dark:placeholder-[#4E7361] focus:outline-none"
               />
             </div>
           </div>
 
-          {/* Right: Notifications, Theme Toggle & Profile Pill */}
           <div className="flex items-center gap-2.5 sm:gap-3">
-            {/* GPS Location Pill Widget (Consent-Based Browser Geolocation) */}
             <LocationShareWidget
               variant="pill"
               onLocationUpdated={() => loadDashboard()}
             />
 
-            {/* Theme Toggle */}
             <ThemeToggle />
 
-            {/* Bell Icon with notification dot */}
             <button
-              onClick={() => showToast('No new unread broadcasts.')}
+              onClick={() => setActiveSection('notifications')}
               className="relative p-2 rounded-full text-[#47705B] dark:text-[#88B8A0] hover:text-[#0B3322] dark:hover:text-white hover:bg-[#F0F5F2] dark:hover:bg-[#12281E] transition-colors cursor-pointer"
             >
               <Bell className="w-5 h-5" />
               <span className="absolute top-1.5 right-1.5 w-2 h-2 rounded-full bg-[#10B981] border-2 border-white dark:border-[#0A1812]" />
             </button>
 
-            {/* Worker Avatar & Info Pill (Matching Reference: Abebe Mekonnen, Delivery Worker) */}
             <div className="relative">
               <button
                 onClick={() => setProfileDropdownOpen(p => !p)}
@@ -1614,7 +1934,6 @@ export default function WorkerDashboardPage() {
                 <ChevronDown className="w-3.5 h-3.5 text-[#719985] dark:text-[#88B8A0]" />
               </button>
 
-              {/* Profile dropdown */}
               {profileDropdownOpen && (
                 <div className="absolute right-0 mt-2 w-48 bg-white dark:bg-[#0D2118] rounded-2xl border border-[#E3EDE6] dark:border-[#1E4130] shadow-xl p-2 z-30 animate-in fade-in duration-150">
                   <button
@@ -1666,7 +1985,6 @@ export default function WorkerDashboardPage() {
           {activeSection === 'dashboard' && (
             <DashboardSection
               data={dashData}
-              loading={loading}
               nearbyRequests={nearbyRequests}
               onAcceptNearbyRequest={handleAcceptNearbyRequest}
               onNavigateSection={setActiveSection}
@@ -1677,14 +1995,28 @@ export default function WorkerDashboardPage() {
 
           {activeSection === 'offers' && (
             <OffersSection
-              onAcceptOrder={offer => {
-                showToast(`Accepted offer for "${offer.product}"!`);
-                setActiveSection('deliveries');
+              onAcceptSuccess={(jobId) => {
+                showToast('Offer accepted! Starting delivery job.');
+                loadDashboard();
+                setActiveSection('active');
+              }}
+              onSeedDemoOrder={() => {
+                showToast('Demo order seeded and dispatched! New offer available.');
+                loadDashboard();
               }}
             />
           )}
 
-          {activeSection === 'deliveries' && <DeliveriesSection />}
+          {activeSection === 'active' && (
+            <ActiveDeliverySection
+              onStatusUpdated={loadDashboard}
+              onNavigateSection={setActiveSection}
+            />
+          )}
+
+          {activeSection === 'deliveries' && (
+            <DeliveriesSection onSelectActive={() => setActiveSection('active')} />
+          )}
 
           {activeSection === 'earnings' && <EarningsSection />}
 
@@ -1692,18 +2024,21 @@ export default function WorkerDashboardPage() {
             <VehicleSection
               data={dashData}
               onOpenVehicleModal={() => setVehicleModalOpen(true)}
-              onLocationUpdated={() => loadDashboard()}
+              onLocationUpdated={loadDashboard}
+              onAvailabilityChanged={(online) => {
+                showToast(`Status updated to ${online ? 'Online' : 'Offline'}`);
+                loadDashboard();
+              }}
             />
           )}
 
-          {activeSection === 'messages' && (
-            <div className="bg-white dark:bg-[#0D2118] rounded-2xl border border-[#E3EDE6] dark:border-[#1E4130] p-12 text-center">
-              <MessageSquare className="w-10 h-10 text-[#075C3B] dark:text-[#34D399] mx-auto mb-3 opacity-60" />
-              <h3 className="text-sm font-bold text-[#0B3322] dark:text-[#EEFAF3]">Driver & Dispatch Chat</h3>
-              <p className="text-xs text-[#6B8B7B] dark:text-[#88B8A0] mt-1 max-w-sm mx-auto">
-                Direct in-app messaging with pickup hub managers and buyers is connected.
-              </p>
-            </div>
+          {activeSection === 'notifications' && <NotificationsSection />}
+
+          {activeSection === 'incidents' && (
+            <IncidentsSection
+              activeJobId={activeJobId}
+              onOpenReportModal={() => setIncidentModalOpen(true)}
+            />
           )}
 
           {activeSection === 'settings' && (
@@ -1718,14 +2053,14 @@ export default function WorkerDashboardPage() {
                   <span className="font-bold text-[#0B3322] dark:text-[#EEFAF3]">Auto-calculate Toll Routes</span>
                   <input type="checkbox" defaultChecked className="accent-[#075C3B]" />
                 </label>
-                <label className="flex items-center justify-between p-3 rounded-xl bg-[#F8FAF9] dark:bg-[#12281E] border border-[#E8F0EB] dark:border-[#1E4130]">
-                  <span className="font-bold text-[#0B3322] dark:text-[#EEFAF3]">Theme Mode (Light / Dark)</span>
+                <div className="flex items-center justify-between p-3 rounded-xl bg-[#F8FAF9] dark:bg-[#12281E] border border-[#E8F0EB] dark:border-[#1E4130]">
+                  <span className="font-bold text-[#0B3322] dark:text-[#EEFAF3]">Theme Mode</span>
                   <ThemeToggle />
-                </label>
-                <label className="flex items-center justify-between p-3 rounded-xl bg-[#F8FAF9] dark:bg-[#12281E] border border-[#E8F0EB] dark:border-[#1E4130]">
+                </div>
+                <div className="flex items-center justify-between p-3 rounded-xl bg-[#F8FAF9] dark:bg-[#12281E] border border-[#E8F0EB] dark:border-[#1E4130]">
                   <span className="font-bold text-[#0B3322] dark:text-[#EEFAF3]">Language: Amharic (አማርኛ) / English</span>
                   <span className="text-[#075C3B] dark:text-[#34D399] font-bold">English (Default)</span>
-                </label>
+                </div>
               </div>
             </div>
           )}
@@ -1757,6 +2092,16 @@ export default function WorkerDashboardPage() {
       <AdminLocationViewModal
         open={adminModalOpen}
         onClose={() => setAdminModalOpen(false)}
+      />
+
+      <ReportIncidentModal
+        open={incidentModalOpen}
+        onClose={() => setIncidentModalOpen(false)}
+        jobId={activeJobId}
+        onIncidentReported={() => {
+          showToast('Incident reported to dispatch desk.');
+          loadDashboard();
+        }}
       />
 
       {/* Toast Notification */}
