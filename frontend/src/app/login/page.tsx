@@ -126,8 +126,14 @@ export default function LoginPage() {
       setIsLoading(false);
 
       setTimeout(() => {
-        router.push('/');
-      }, 2000);
+        if (data.data?.user?.role === 'DELIVERY_WORKER') {
+          router.push('/dashboard/worker');
+        } else if (data.data?.user?.role === 'ADMIN' || data.data?.user?.role === 'SUPERADMIN') {
+          router.push('/admin/locations');
+        } else {
+          router.push('/');
+        }
+      }, 1500);
     } catch {
       setIsLoading(false);
       setErrors({
