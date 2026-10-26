@@ -108,7 +108,7 @@ export function AdminHeader({ onSearch }: AdminHeaderProps) {
                 <p className="text-[11px] text-gray-500 dark:text-gray-400">{adminRole}</p>
               </div>
               <button
-                onClick={() => router.push('/admin/settings')}
+                onClick={() => router.push('/dashboard/admin/settings')}
                 className="w-full text-left px-4 py-2 text-xs font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-[#0E261D] flex items-center gap-2"
               >
                 <Shield className="w-3.5 h-3.5 text-emerald-600" />

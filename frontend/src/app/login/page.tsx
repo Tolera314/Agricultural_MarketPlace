@@ -126,10 +126,13 @@ export default function LoginPage() {
       setIsLoading(false);
 
       setTimeout(() => {
-        if (data.data?.user?.role === 'DELIVERY_WORKER') {
+        const userRole = data.data?.user?.role;
+        if (userRole === 'DELIVERY_WORKER') {
           router.push('/dashboard/worker');
-        } else if (data.data?.user?.role === 'ADMIN' || data.data?.user?.role === 'SUPERADMIN') {
-          router.push('/admin');
+        } else if (userRole === 'ADMIN' || userRole === 'SUPERADMIN') {
+          router.push('/dashboard/admin');
+        } else if (userRole === 'FARMER') {
+          router.push('/dashboard/farmer');
         } else {
           router.push('/dashboard/buyer');
         }

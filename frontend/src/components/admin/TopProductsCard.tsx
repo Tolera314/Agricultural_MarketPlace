@@ -35,7 +35,7 @@ export function TopProductsCard({ products = [] }: TopProductsCardProps) {
           Top Products
         </h3>
         <Link
-          href="/admin/products"
+          href="/dashboard/admin/products"
           className="text-xs font-semibold text-[#0B9660] dark:text-[#34D399] hover:underline"
         >
           View All

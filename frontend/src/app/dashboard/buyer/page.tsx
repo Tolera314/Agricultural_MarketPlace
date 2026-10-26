@@ -3,7 +3,7 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
+import { useRouter, useParams, usePathname } from 'next/navigation';
 import {
   LayoutDashboard,
   Search,
@@ -38,9 +38,23 @@ import {
   Compass,
   Check,
   Building,
+  ChevronRight,
+  Menu,
 } from 'lucide-react';
 import { ThemeToggle } from '@/components/layout/ThemeToggle';
 import { buyerApi } from '@/lib/buyerApi';
+
+const BUYER_NAV_ITEMS = [
+  { id: 'dashboard', label: 'Overview', href: '/dashboard/buyer', icon: LayoutDashboard },
+  { id: 'products', label: 'Browse Products', href: '/dashboard/buyer/products', icon: Search },
+  { id: 'orders', label: 'My Orders', href: '/dashboard/buyer/orders', icon: Package },
+  { id: 'farmers', label: 'Saved Farmers', href: '/dashboard/buyer/farmers', icon: Store },
+  { id: 'favorites', label: 'Favorites', href: '/dashboard/buyer/favorites', icon: Heart },
+  { id: 'addresses', label: 'Delivery Addresses', href: '/dashboard/buyer/addresses', icon: MapPin },
+  { id: 'messages', label: 'Messages', href: '/dashboard/buyer/messages', icon: MessageSquare },
+  { id: 'profile', label: 'Profile', href: '/dashboard/buyer/profile', icon: User },
+  { id: 'settings', label: 'Settings', href: '/dashboard/buyer/settings', icon: Settings },
+] as const;
 
 // ─── Interfaces ───────────────────────────────────────────────
 
@@ -76,13 +90,61 @@ const POPULAR_CATEGORIES = [
   { id: 'seeds-inputs', name: 'Seeds & Inputs', image: '/images/cat_seeds.jpg', count: '85+ Items' },
 ];
 
-export default function BuyerDashboardPage() {
-  const router = useRouter();
+export type BuyerTab =
+  | 'dashboard'
+  | 'products'
+  | 'orders'
+  | 'farmers'
+  | 'favorites'
+  | 'addresses'
+  | 'messages'
+  | 'profile'
+  | 'settings';
 
-  // Navigation State
-  const [activeTab, setActiveTab] = useState<
-    'dashboard' | 'products' | 'orders' | 'farmers' | 'favorites' | 'addresses' | 'messages' | 'profile' | 'settings'
-  >('dashboard');
+export default function BuyerDashboardPage({
+  initialTab,
+}: {
+  initialTab?: BuyerTab;
+}) {
+  const router = useRouter();
+  const params = useParams();
+  const pathname = usePathname();
+
+  const currentTab: BuyerTab = useMemo(() => {
+    if (initialTab) return initialTab;
+    const urlTab = params?.tab as string;
+    const validTabs: BuyerTab[] = [
+      'dashboard',
+      'products',
+      'orders',
+      'farmers',
+      'favorites',
+      'addresses',
+      'messages',
+      'profile',
+      'settings',
+    ];
+    if (urlTab && validTabs.includes(urlTab as BuyerTab)) {
+      return urlTab as BuyerTab;
+    }
+    const matched = validTabs.find(
+      (t) => t !== 'dashboard' && pathname?.includes(`/dashboard/buyer/${t}`)
+    );
+    if (matched) return matched;
+    return 'dashboard';
+  }, [initialTab, params, pathname]);
+
+  const [activeTab, setActiveTab] = useState<BuyerTab>(currentTab);
+  const [sidebarOpen, setSidebarOpen] = useState(false);
+
+  useEffect(() => {
+    setActiveTab(currentTab);
+  }, [currentTab]);
+
+  const navigateToTab = (tab: BuyerTab) => {
+    setActiveTab(tab);
+    router.push(tab === 'dashboard' ? '/dashboard/buyer' : `/dashboard/buyer/${tab}`);
+  };
 
   // Core Data States
   const [dashboardData, setDashboardData] = useState<any>(null);
@@ -219,9 +281,11 @@ export default function BuyerDashboardPage() {
           category: selectedCategory === 'all' ? undefined : selectedCategory,
           sortBy,
         });
-        if (res?.data) setProducts(res.data);
+        if (res?.data && res.data.length > 0) {
+          setProducts(res.data);
+        }
       } catch (err) {
-        console.error(err);
+        console.warn('Unable to reach products service:', err);
       }
     };
     fetchFiltered();
@@ -404,9 +468,81 @@ export default function BuyerDashboardPage() {
     }
   };
 
+  const SidebarContent = () => (
+    <div className="flex flex-col h-full bg-[#0A3323] text-white">
+      {/* Brand Header */}
+      <div className="px-5 py-5 border-b border-[#124230] flex items-center justify-between">
+        <Link href="/" className="flex items-center gap-2.5">
+          <div className="w-8 h-8 rounded-xl bg-[#10B981]/20 flex items-center justify-center shrink-0">
+            <svg className="w-5 h-5" viewBox="0 0 36 36" fill="none">
+              <path d="M18 4C18 4 23 11 23 18C23 21 21 24 18 25C15 24 13 21 13 18C13 11 18 4 18 4Z" fill="#10B981" />
+              <path d="M16 26C16 26 9 24 7 18C5 12 11 9 11 9C11 9 13 16 17 21C17.5 21.6 18 22.2 18 22.2" fill="#059669" />
+              <path d="M20 26C20 26 27 24 29 18C31 12 25 9 25 9C25 9 23 16 19 21C18.5 21.6 18 22.2 18 22.2" fill="#34D399" />
+            </svg>
+          </div>
+          <div>
+            <span className="font-black text-white text-base tracking-tight leading-none">AgriMarket</span>
+            <p className="text-[9px] text-[#71A88F] font-semibold tracking-wider uppercase mt-0.5">
+              Buyer Portal
+            </p>
+          </div>
+        </Link>
+        <button
+          onClick={() => setSidebarOpen(false)}
+          className="lg:hidden text-white/70 hover:text-white cursor-pointer"
+          aria-label="Close menu"
+        >
+          <X className="w-5 h-5" />
+        </button>
+      </div>
+
+      {/* Navigation Items */}
+      <nav className="flex-1 px-3 py-4 space-y-1 overflow-y-auto">
+        {BUYER_NAV_ITEMS.map((item) => {
+          const Icon = item.icon;
+          const isActive = activeTab === item.id;
+
+          return (
+            <Link
+              key={item.id}
+              href={item.href}
+              onClick={() => {
+                setActiveTab(item.id as BuyerTab);
+                setSidebarOpen(false);
+              }}
+              className={`w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+                isActive
+                  ? 'bg-[#134D37] text-white shadow-sm'
+                  : 'text-[#9BB8AA] hover:bg-[#0E3D2B] hover:text-white'
+              }`}
+            >
+              <div className="flex items-center gap-3">
+                <Icon className={`w-4 h-4 ${isActive ? 'text-emerald-300' : 'text-[#8AA899]'}`} />
+                <span>{item.label}</span>
+              </div>
+            </Link>
+          );
+        })}
+      </nav>
+
+      {/* Need Help Card */}
+      <div className="p-3.5 border-t border-[#124230]">
+        <div className="bg-[#0E3D2B] rounded-2xl p-3.5 border border-[#164C37]">
+          <p className="text-[11px] font-bold text-white mb-2">Buyer Help Desk</p>
+          <button
+            onClick={() => setIsSupportOpen(true)}
+            className="w-full py-2 px-3 rounded-xl bg-[#134D37] hover:bg-[#1A5E44] text-white text-xs font-bold transition-colors flex items-center justify-center gap-2 cursor-pointer shadow-xs"
+          >
+            <HelpCircle className="w-3.5 h-3.5 text-emerald-300" />
+            <span>Contact Support</span>
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+
   return (
-    <div className="min-h-screen bg-[#F4F7F5] dark:bg-[#07130D] text-[#1E2923] dark:text-[#E8F7EE] font-sans transition-colors duration-200">
-      
+    <div className="min-h-screen bg-[#F4F7F5] dark:bg-[#07130D] text-[#1E2923] dark:text-[#E8F7EE] font-sans transition-colors duration-200 flex">
       {/* Toast Feedback */}
       {feedbackMessage && (
         <div
@@ -425,245 +561,122 @@ export default function BuyerDashboardPage() {
         </div>
       )}
 
-      {/* ─── Top Header Navigation Bar ────────────────────────────── */}
-      <header className="sticky top-0 z-40 bg-white/95 dark:bg-[#0A1A14]/95 backdrop-blur-md border-b border-[#E5EDE7] dark:border-[#132A20] px-4 sm:px-6 py-2.5 flex items-center justify-between gap-4">
-        {/* Left: Brand Identity */}
-        <div className="flex items-center gap-3">
-          <Link href="/" className="flex items-center gap-2 group">
-            <div className="w-9 h-9 rounded-xl bg-[#075C3B] dark:bg-[#10B981] flex items-center justify-center text-white shadow-xs group-hover:scale-105 transition-transform">
-              {/* Sprout Icon matching logo in screenshot */}
-              <svg className="w-5 h-5 fill-current" viewBox="0 0 24 24">
-                <path d="M12 2a10 10 0 0 0-10 10c0 4.41 2.87 8.14 6.84 9.47.5.09.68-.22.68-.48v-1.7c-2.78.6-3.37-1.34-3.37-1.34-.46-1.16-1.11-1.47-1.11-1.47-.91-.62.07-.61.07-.61 1 .07 1.53 1.03 1.53 1.03.87 1.52 2.34 1.07 2.91.83.09-.65.35-1.09.63-1.34-2.22-.25-4.55-1.11-4.55-4.92 0-1.11.38-2 1.03-2.71-.1-.25-.45-1.29.1-2.64 0 0 .84-.27 2.75 1.02.79-.22 1.65-.33 2.5-.33.85 0 1.71.11 2.5.33 1.91-1.29 2.75-1.02 2.75-1.02.55 1.35.2 2.39.1 2.64.65.71 1.03 1.6 1.03 2.71 0 3.82-2.34 4.66-4.57 4.91.36.31.69.92.69 1.85V21c0 .27.18.57.69.48A10.02 10.02 0 0 0 22 12 10 10 0 0 0 12 2z" />
-              </svg>
-            </div>
-            <div>
-              <div className="font-display font-bold text-base text-[#075C3B] dark:text-[#34D399] tracking-tight leading-none flex items-center gap-1">
-                AgriMarket
-              </div>
-              <p className="text-[10px] text-[#557766] dark:text-[#88B8A0] font-medium leading-tight">
-                Farmers • Buyers • Better Tomorrow
-              </p>
-            </div>
-          </Link>
-        </div>
+      {/* Desktop Left Sidebar (Fixed and Sticky - does not scroll) */}
+      <aside className="hidden lg:flex lg:flex-col lg:fixed lg:left-0 lg:top-0 lg:bottom-0 lg:w-60 lg:z-30 shadow-[4px_0_24px_rgba(0,0,0,0.06)]">
+        <SidebarContent />
+      </aside>
 
-        {/* Center: Search Bar */}
-        <div className="flex-1 max-w-xl mx-2 hidden sm:block">
-          <div className="relative">
-            <Search className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-[#7A9988] dark:text-[#64947C]" />
-            <input
-              type="text"
-              value={searchQuery}
-              onChange={(e) => {
-                setSearchQuery(e.target.value);
-                if (activeTab === 'dashboard') setActiveTab('products');
-              }}
-              placeholder="Search products, farmers..."
-              className="w-full pl-10 pr-4 py-2 text-xs rounded-full bg-[#EBF2EE] dark:bg-[#11241B] border border-transparent focus:border-[#075C3B] dark:focus:border-[#34D399] focus:bg-white dark:focus:bg-[#07130D] outline-none text-[#1E2923] dark:text-[#E8F7EE] placeholder-[#7A9988] dark:placeholder-[#64947C] transition-all"
-            />
+      {/* Mobile Sidebar Overlay Drawer */}
+      {sidebarOpen && (
+        <div className="lg:hidden fixed inset-0 z-50 flex">
+          <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={() => setSidebarOpen(false)} />
+          <div className="relative w-64 max-w-full h-full z-10">
+            <SidebarContent />
           </div>
+          <button
+            onClick={() => setSidebarOpen(false)}
+            className="absolute top-4 right-4 w-9 h-9 rounded-full bg-white/90 dark:bg-[#0D2118] text-slate-800 dark:text-white flex items-center justify-center shadow-md cursor-pointer z-20"
+          >
+            <X className="w-5 h-5" />
+          </button>
         </div>
+      )}
 
-        {/* Right: Actions & User Badge */}
-        <div className="flex items-center gap-3">
-          {/* Theme Toggle */}
-          <ThemeToggle />
+      {/* Main Content Container with lg:ml-60 */}
+      <div className="flex-1 flex flex-col lg:ml-60 min-w-0">
+        {/* Top Header Navigation Bar */}
+        <header className="sticky top-0 z-40 bg-white/95 dark:bg-[#0A1A14]/95 backdrop-blur-md border-b border-[#E5EDE7] dark:border-[#132A20] px-4 sm:px-6 py-2.5 flex items-center justify-between gap-4">
+          <div className="flex items-center gap-3">
+            <button
+              onClick={() => setSidebarOpen(true)}
+              className="lg:hidden p-2 rounded-xl text-[#0B3322] dark:text-[#EEFAF3] hover:bg-[#EBF6EE] dark:hover:bg-[#163828] transition-colors cursor-pointer"
+              aria-label="Open sidebar"
+            >
+              <Menu className="w-5 h-5" />
+            </button>
 
-          {/* Cart Trigger */}
-          <button
-            onClick={() => {
-              setCheckoutStep('cart');
-              setIsCartOpen(true);
-            }}
-            className="relative p-2 rounded-xl text-[#517663] dark:text-[#88B8A0] hover:bg-[#EBF2EE] dark:hover:bg-[#11241B] transition-colors cursor-pointer"
-            title="Shopping Cart"
-          >
-            <ShoppingBag className="w-5 h-5" />
-            {totalCartCount > 0 && (
-              <span className="absolute -top-1 -right-1 w-4 h-4 rounded-full bg-[#075C3B] dark:bg-[#10B981] text-white text-[10px] font-bold flex items-center justify-center">
-                {totalCartCount}
-              </span>
-            )}
-          </button>
+            {/* Mobile Logo Fallback */}
+            <Link href="/" className="lg:hidden flex items-center gap-2">
+              <span className="font-bold text-base text-[#075C3B] dark:text-[#34D399]">AgriMarket</span>
+            </Link>
+          </div>
 
-          {/* Notification Bell */}
-          <button
-            onClick={() => setIsNotificationsOpen(true)}
-            className="relative p-2 rounded-xl text-[#517663] dark:text-[#88B8A0] hover:bg-[#EBF2EE] dark:hover:bg-[#11241B] transition-colors cursor-pointer"
-            title="Notifications"
-          >
-            <Bell className="w-5 h-5" />
-            {dashboardData?.unreadNotificationsCount > 0 && (
-              <span className="absolute top-1.5 right-1.5 w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
-            )}
-          </button>
-
-          {/* User Profile Pill */}
-          <div className="flex items-center gap-2.5 pl-2 border-l border-[#E5EDE7] dark:border-[#132A20]">
-            <div className="w-8 h-8 rounded-full overflow-hidden border border-[#075C3B]/20 relative shrink-0">
-              <Image
-                src="/images/avatar_selamawit_hd.jpg"
-                alt="Selamawit Kebede"
-                width={32}
-                height={32}
-                className="w-full h-full object-cover"
+          {/* Center: Search Bar */}
+          <div className="flex-1 max-w-xl mx-2 hidden sm:block">
+            <div className="relative">
+              <Search className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-[#7A9988] dark:text-[#64947C]" />
+              <input
+                type="text"
+                value={searchQuery}
+                onChange={(e) => {
+                  setSearchQuery(e.target.value);
+                  if (activeTab === 'dashboard') setActiveTab('products');
+                }}
+                placeholder="Search products, farmers..."
+                className="w-full pl-10 pr-4 py-2 text-xs rounded-full bg-[#EBF2EE] dark:bg-[#11241B] border border-transparent focus:border-[#075C3B] dark:focus:border-[#34D399] focus:bg-white dark:focus:bg-[#07130D] outline-none text-[#1E2923] dark:text-[#E8F7EE] placeholder-[#7A9988] dark:placeholder-[#64947C] transition-all"
               />
             </div>
-            <div className="hidden md:block text-left">
-              <div className="text-xs font-bold text-[#1E2923] dark:text-[#EDF7F1] leading-tight">
-                {userProfile.fullName}
-              </div>
-              <div className="text-[10px] text-[#517663] dark:text-[#88B8A0] font-medium leading-tight">
-                Buyer
-              </div>
-            </div>
-            <ChevronDown className="w-3.5 h-3.5 text-[#7A9988] hidden md:block" />
-          </div>
-        </div>
-      </header>
-
-      {/* ─── Main Layout: Sidebar + Content ────────────────────────── */}
-      <div className="flex min-h-[calc(100vh-57px)]">
-        
-        {/* Left Sidebar (Forest Green #073828) */}
-        <aside className="w-64 bg-[#052F23] dark:bg-[#042018] text-white flex flex-col justify-between p-4 shrink-0 shadow-lg">
-          <div className="space-y-1">
-            
-            {/* Sidebar Item 1: Dashboard */}
-            <button
-              onClick={() => setActiveTab('dashboard')}
-              className={`w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-xs font-semibold transition-all cursor-pointer ${
-                activeTab === 'dashboard'
-                  ? 'bg-[#0B6B46] text-white shadow-xs'
-                  : 'text-[#A3C7B5] hover:text-white hover:bg-white/5'
-              }`}
-            >
-              <LayoutDashboard className="w-4 h-4 shrink-0" />
-              <span>Dashboard</span>
-            </button>
-
-            {/* Sidebar Item 2: Browse Products */}
-            <button
-              onClick={() => setActiveTab('products')}
-              className={`w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-xs font-semibold transition-all cursor-pointer ${
-                activeTab === 'products'
-                  ? 'bg-[#0B6B46] text-white shadow-xs'
-                  : 'text-[#A3C7B5] hover:text-white hover:bg-white/5'
-              }`}
-            >
-              <Search className="w-4 h-4 shrink-0" />
-              <span>Browse Products</span>
-            </button>
-
-            {/* Sidebar Item 3: My Orders */}
-            <button
-              onClick={() => setActiveTab('orders')}
-              className={`w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-xs font-semibold transition-all cursor-pointer ${
-                activeTab === 'orders'
-                  ? 'bg-[#0B6B46] text-white shadow-xs'
-                  : 'text-[#A3C7B5] hover:text-white hover:bg-white/5'
-              }`}
-            >
-              <Package className="w-4 h-4 shrink-0" />
-              <span>My Orders</span>
-            </button>
-
-            {/* Sidebar Item 4: Saved Farmers */}
-            <button
-              onClick={() => setActiveTab('farmers')}
-              className={`w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-xs font-semibold transition-all cursor-pointer ${
-                activeTab === 'farmers'
-                  ? 'bg-[#0B6B46] text-white shadow-xs'
-                  : 'text-[#A3C7B5] hover:text-white hover:bg-white/5'
-              }`}
-            >
-              <Store className="w-4 h-4 shrink-0" />
-              <span>Saved Farmers</span>
-            </button>
-
-            {/* Sidebar Item 5: Favorites */}
-            <button
-              onClick={() => setActiveTab('favorites')}
-              className={`w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-xs font-semibold transition-all cursor-pointer ${
-                activeTab === 'favorites'
-                  ? 'bg-[#0B6B46] text-white shadow-xs'
-                  : 'text-[#A3C7B5] hover:text-white hover:bg-white/5'
-              }`}
-            >
-              <Heart className="w-4 h-4 shrink-0" />
-              <span>Favorites</span>
-            </button>
-
-            {/* Sidebar Item 6: Delivery Addresses */}
-            <button
-              onClick={() => setActiveTab('addresses')}
-              className={`w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-xs font-semibold transition-all cursor-pointer ${
-                activeTab === 'addresses'
-                  ? 'bg-[#0B6B46] text-white shadow-xs'
-                  : 'text-[#A3C7B5] hover:text-white hover:bg-white/5'
-              }`}
-            >
-              <MapPin className="w-4 h-4 shrink-0" />
-              <span>Delivery Addresses</span>
-            </button>
-
-            {/* Sidebar Item 7: Messages */}
-            <button
-              onClick={() => setActiveTab('messages')}
-              className={`w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-xs font-semibold transition-all cursor-pointer ${
-                activeTab === 'messages'
-                  ? 'bg-[#0B6B46] text-white shadow-xs'
-                  : 'text-[#A3C7B5] hover:text-white hover:bg-white/5'
-              }`}
-            >
-              <MessageSquare className="w-4 h-4 shrink-0" />
-              <span>Messages</span>
-            </button>
-
-            {/* Sidebar Item 8: Profile */}
-            <button
-              onClick={() => setActiveTab('profile')}
-              className={`w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-xs font-semibold transition-all cursor-pointer ${
-                activeTab === 'profile'
-                  ? 'bg-[#0B6B46] text-white shadow-xs'
-                  : 'text-[#A3C7B5] hover:text-white hover:bg-white/5'
-              }`}
-            >
-              <User className="w-4 h-4 shrink-0" />
-              <span>Profile</span>
-            </button>
-
-            {/* Sidebar Item 9: Settings */}
-            <button
-              onClick={() => setActiveTab('settings')}
-              className={`w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-xs font-semibold transition-all cursor-pointer ${
-                activeTab === 'settings'
-                  ? 'bg-[#0B6B46] text-white shadow-xs'
-                  : 'text-[#A3C7B5] hover:text-white hover:bg-white/5'
-              }`}
-            >
-              <Settings className="w-4 h-4 shrink-0" />
-              <span>Settings</span>
-            </button>
           </div>
 
-          {/* Bottom Card: Need Help? Contact Support */}
-          <div className="pt-4 border-t border-white/10">
-            <div className="bg-[#084532] dark:bg-[#062A1F] p-3.5 rounded-2xl border border-white/10 space-y-2">
-              <div className="text-xs font-bold text-white">Need Help?</div>
-              <button
-                onClick={() => setIsSupportOpen(true)}
-                className="w-full flex items-center gap-2 text-[11px] font-semibold text-[#8FD5B2] hover:text-white transition-colors cursor-pointer"
-              >
-                <HelpCircle className="w-4 h-4 shrink-0" />
-                <span>Contact Support</span>
-              </button>
+          {/* Right: Actions & User Badge */}
+          <div className="flex items-center gap-3">
+            <ThemeToggle />
+
+            {/* Cart Trigger */}
+            <button
+              onClick={() => {
+                setCheckoutStep('cart');
+                setIsCartOpen(true);
+              }}
+              className="relative p-2 rounded-xl text-[#517663] dark:text-[#88B8A0] hover:bg-[#EBF2EE] dark:hover:bg-[#11241B] transition-colors cursor-pointer"
+              title="Shopping Cart"
+            >
+              <ShoppingBag className="w-5 h-5" />
+              {totalCartCount > 0 && (
+                <span className="absolute -top-1 -right-1 w-4 h-4 rounded-full bg-[#075C3B] dark:bg-[#10B981] text-white text-[10px] font-bold flex items-center justify-center">
+                  {totalCartCount}
+                </span>
+              )}
+            </button>
+
+            {/* Notification Bell */}
+            <button
+              onClick={() => setIsNotificationsOpen(true)}
+              className="relative p-2 rounded-xl text-[#517663] dark:text-[#88B8A0] hover:bg-[#EBF2EE] dark:hover:bg-[#11241B] transition-colors cursor-pointer"
+              title="Notifications"
+            >
+              <Bell className="w-5 h-5" />
+              {dashboardData?.unreadNotificationsCount > 0 && (
+                <span className="absolute top-1.5 right-1.5 w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+              )}
+            </button>
+
+            {/* User Profile Pill */}
+            <div className="flex items-center gap-2.5 pl-2 border-l border-[#E5EDE7] dark:border-[#132A20]">
+              <div className="w-8 h-8 rounded-full overflow-hidden border border-[#075C3B]/20 relative shrink-0">
+                <Image
+                  src="/images/avatar_selamawit_hd.jpg"
+                  alt="Selamawit Kebede"
+                  width={32}
+                  height={32}
+                  className="w-full h-full object-cover"
+                />
+              </div>
+              <div className="hidden md:block text-left">
+                <div className="text-xs font-bold text-[#1E2923] dark:text-[#EDF7F1] leading-tight">
+                  {userProfile.fullName}
+                </div>
+                <div className="text-[10px] text-[#517663] dark:text-[#88B8A0] font-medium leading-tight">
+                  Buyer
+                </div>
+              </div>
+              <ChevronDown className="w-3.5 h-3.5 text-[#7A9988] hidden md:block" />
             </div>
           </div>
-        </aside>
+        </header>
 
-        {/* ─── Main Dynamic View Content Area ────────────────────────── */}
-        <main className="flex-1 p-5 sm:p-6 lg:p-8 overflow-y-auto max-w-7xl mx-auto space-y-6">
+        {/* Main Dynamic View Content Area */}
+        <main className="flex-1 p-5 sm:p-6 lg:p-8 overflow-y-auto max-w-7xl mx-auto space-y-6 w-full">
           
           {/* TAB 1: OVERVIEW DASHBOARD (Exact Match to Screenshot) */}
           {activeTab === 'dashboard' && (
@@ -785,7 +798,7 @@ export default function BuyerDashboardPage() {
                       Nearby Farmers
                     </h2>
                     <button
-                      onClick={() => setActiveTab('farmers')}
+                      onClick={() => navigateToTab('farmers')}
                       className="text-xs font-bold text-[#075C3B] dark:text-[#34D399] hover:underline cursor-pointer"
                     >
                       View All
@@ -839,7 +852,7 @@ export default function BuyerDashboardPage() {
                         <button
                           onClick={() => {
                             setSearchQuery(farmer.name);
-                            setActiveTab('products');
+                            navigateToTab('products');
                           }}
                           className="px-4 py-1.5 rounded-xl bg-[#075C3B] hover:bg-[#05482D] dark:bg-[#10B981] dark:hover:bg-[#059669] text-white text-xs font-bold transition-colors cursor-pointer shrink-0"
                         >
@@ -862,7 +875,7 @@ export default function BuyerDashboardPage() {
                       <button
                         onClick={() => {
                           setSelectedCategory('all');
-                          setActiveTab('products');
+                          navigateToTab('products');
                         }}
                         className="text-xs font-bold text-[#075C3B] dark:text-[#34D399] hover:underline cursor-pointer"
                       >
@@ -876,7 +889,7 @@ export default function BuyerDashboardPage() {
                           key={cat.id}
                           onClick={() => {
                             setSelectedCategory(cat.id);
-                            setActiveTab('products');
+                            navigateToTab('products');
                           }}
                           className="group p-2 rounded-xl hover:bg-[#EBF2EE] dark:hover:bg-[#11241B] transition-colors cursor-pointer flex flex-col items-center gap-1.5"
                         >
@@ -934,7 +947,7 @@ export default function BuyerDashboardPage() {
                     Recent Orders
                   </h2>
                   <button
-                    onClick={() => setActiveTab('orders')}
+                    onClick={() => navigateToTab('orders')}
                     className="text-xs font-bold text-[#075C3B] dark:text-[#34D399] hover:underline cursor-pointer"
                   >
                     View All
