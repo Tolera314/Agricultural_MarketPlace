@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
-import { ShoppingBag, ArrowRight, ChevronRight, Menu, X } from 'lucide-react';
+import { ShoppingBag, ArrowRight, ChevronRight, Menu, X, LayoutDashboard } from 'lucide-react';
 import { MarketLocation } from '@/types';
 import { ThemeToggle } from './ThemeToggle';
 

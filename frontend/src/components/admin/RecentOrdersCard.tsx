@@ -102,7 +102,7 @@ export function RecentOrdersCard({ orders = [] }: RecentOrdersCardProps) {
           Recent Orders
         </h3>
         <Link
-          href="/admin/orders"
+          href="/dashboard/admin/orders"
           className="text-xs font-semibold text-[#0B9660] dark:text-[#34D399] hover:underline"
         >
           View All

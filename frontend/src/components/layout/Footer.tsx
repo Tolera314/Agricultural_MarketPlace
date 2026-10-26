@@ -110,27 +110,43 @@ export const Footer: React.FC<FooterProps> = ({
                 </Link>
               </li>
               <li>
+                <Link
+                  href="/dashboard/farmer"
+                  className="hover:text-[#2E7D32] dark:hover:text-[#34D399] transition-colors"
+                >
+                  Farmer Portal
+                </Link>
+              </li>
+              <li>
+                <Link
+                  href="/dashboard/worker"
+                  className="hover:text-[#2E7D32] dark:hover:text-[#34D399] transition-colors"
+                >
+                  Delivery Worker
+                </Link>
+              </li>
+              <li>
+                <Link
+                  href="/dashboard/buyer"
+                  className="hover:text-[#2E7D32] dark:hover:text-[#34D399] transition-colors"
+                >
+                  Buyer Dashboard
+                </Link>
+              </li>
+              <li>
+                <Link
+                  href="/dashboard/admin"
+                  className="hover:text-[#2E7D32] dark:hover:text-[#34D399] transition-colors"
+                >
+                  Admin Portal
+                </Link>
+              </li>
+              <li>
                 <button
                   onClick={() => onScrollTo('how-it-works')}
                   className="hover:text-[#2E7D32] dark:hover:text-[#34D399] transition-colors cursor-pointer"
                 >
-                  Buyer Guide
-                </button>
-              </li>
-              <li>
-                <button
-                  onClick={() => onScrollTo('cta')}
-                  className="hover:text-[#2E7D32] dark:hover:text-[#34D399] transition-colors cursor-pointer"
-                >
-                  Farmer Guide
-                </button>
-              </li>
-              <li>
-                <button
-                  onClick={() => onScrollTo('intercity-trade')}
-                  className="hover:text-[#2E7D32] dark:hover:text-[#34D399] transition-colors cursor-pointer"
-                >
-                  Delivery Guide
+                  How It Works
                 </button>
               </li>
               <li>

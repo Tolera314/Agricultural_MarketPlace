@@ -97,8 +97,6 @@ export declare class AdminService {
         updatedAt: Date;
         name: string;
         status: import("@prisma/client").$Enums.ListingStatus;
-        pickupLatitude: number;
-        pickupLongitude: number;
         farmerId: string;
         farmerProfileId: string;
         categoryId: string;
@@ -112,6 +110,8 @@ export declare class AdminService {
         harvestDate: Date | null;
         productionDate: Date | null;
         expiryDate: Date | null;
+        pickupLatitude: number;
+        pickupLongitude: number;
         intercityEligible: boolean;
     }>;
     /**
@@ -224,8 +224,8 @@ export declare class AdminService {
         lastLocationAt: Date | null;
         locationConsentGranted: boolean;
         locationConsentAt: Date | null;
-        deliveryZoneId: string | null;
         activeJobCount: number;
+        deliveryZoneId: string | null;
     }>;
     /**
      * Orders Management
@@ -258,10 +258,10 @@ export declare class AdminService {
             id: string;
             createdAt: Date;
             updatedAt: Date;
-            status: import("@prisma/client").$Enums.PaymentStatus;
-            orderId: string;
             idempotencyKey: string | null;
+            status: import("@prisma/client").$Enums.PaymentStatus;
             paymentMethod: import("@prisma/client").$Enums.PaymentMethod;
+            orderId: string;
             amount: import("@prisma/client-runtime-utils").Decimal;
             gatewayReference: string | null;
             gatewayResponse: import("@prisma/client/runtime/client").JsonValue | null;
@@ -279,12 +279,12 @@ export declare class AdminService {
             events: {
                 id: string;
                 status: import("@prisma/client").$Enums.DeliveryStatus;
-                jobId: string;
                 notes: string | null;
+                jobId: string;
+                occurredAt: Date;
                 imageUrl: string | null;
                 latitude: number | null;
                 longitude: number | null;
-                occurredAt: Date;
             }[];
         } & {
             id: string;
@@ -292,10 +292,10 @@ export declare class AdminService {
             updatedAt: Date;
             status: import("@prisma/client").$Enums.DeliveryStatus;
             orderId: string;
-            assignedWorker: string | null;
-            pickupAddress: string | null;
             pickupLatitude: number;
             pickupLongitude: number;
+            assignedWorker: string | null;
+            pickupAddress: string | null;
             dropoffAddress: string | null;
             dropoffLatitude: number;
             dropoffLongitude: number;
@@ -343,14 +343,14 @@ export declare class AdminService {
         id: string;
         createdAt: Date;
         updatedAt: Date;
-        status: import("@prisma/client").$Enums.OrderStatus;
+        idempotencyKey: string | null;
         buyerId: string;
         tradeType: import("@prisma/client").$Enums.TradeType;
+        status: import("@prisma/client").$Enums.OrderStatus;
         deliveryAddress: string;
         deliveryLatitude: number;
         deliveryLongitude: number;
         intercityRouteId: string | null;
-        idempotencyKey: string | null;
         productSubtotal: import("@prisma/client-runtime-utils").Decimal;
         deliveryFee: import("@prisma/client-runtime-utils").Decimal;
         platformCommission: import("@prisma/client-runtime-utils").Decimal;
@@ -368,14 +368,14 @@ export declare class AdminService {
         id: string;
         createdAt: Date;
         updatedAt: Date;
-        status: import("@prisma/client").$Enums.OrderStatus;
+        idempotencyKey: string | null;
         buyerId: string;
         tradeType: import("@prisma/client").$Enums.TradeType;
+        status: import("@prisma/client").$Enums.OrderStatus;
         deliveryAddress: string;
         deliveryLatitude: number;
         deliveryLongitude: number;
         intercityRouteId: string | null;
-        idempotencyKey: string | null;
         productSubtotal: import("@prisma/client-runtime-utils").Decimal;
         deliveryFee: import("@prisma/client-runtime-utils").Decimal;
         platformCommission: import("@prisma/client-runtime-utils").Decimal;
@@ -530,8 +530,8 @@ export declare class AdminService {
         intercityRouteId: string | null;
         categoryId: string | null;
         description: string | null;
-        type: import("@prisma/client").$Enums.PricingRuleType;
         marketId: string | null;
+        type: import("@prisma/client").$Enums.PricingRuleType;
         scope: import("@prisma/client").$Enums.PricingRuleScope;
         value: import("@prisma/client-runtime-utils").Decimal;
         effectiveFrom: Date;

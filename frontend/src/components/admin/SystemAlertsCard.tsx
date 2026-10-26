@@ -25,19 +25,19 @@ export function SystemAlertsCard({ alerts = [] }: SystemAlertsCardProps) {
             id: 'alert-1',
             message: 'New farmer registration pending approval',
             time: '2 hours ago',
-            link: '/admin/farmers',
+            link: '/dashboard/admin/farmers',
           },
           {
             id: 'alert-2',
             message: 'Intercity trade requires admin approval',
             time: '4 hours ago',
-            link: '/admin/intercity',
+            link: '/dashboard/admin/intercity',
           },
           {
             id: 'alert-3',
             message: 'Low stock alert: Onions (5 kg remaining)',
             time: '5 hours ago',
-            link: '/admin/products?stock=low',
+            link: '/dashboard/admin/products?stock=low',
           },
         ];
 

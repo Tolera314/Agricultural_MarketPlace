@@ -2,7 +2,7 @@
 
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
+import { useRouter, useParams, usePathname } from 'next/navigation';
 import {
   LayoutDashboard,
   Package,
@@ -1631,9 +1631,40 @@ function IncidentsSection({
 
 // ─── Main Worker Dashboard Page ───────────────────────────────
 
-export default function WorkerDashboardPage() {
+export default function WorkerDashboardPage({
+  initialSection,
+}: {
+  initialSection?: NavKey;
+}) {
   const router = useRouter();
-  const [activeSection, setActiveSection] = useState<NavKey>('dashboard');
+  const params = useParams();
+  const pathname = usePathname();
+
+  // Determine active section from URL param, pathname, or prop
+  const currentNavKey: NavKey = useMemo(() => {
+    if (initialSection) return initialSection;
+    const urlSec = params?.section as string;
+    if (urlSec && NAV_ITEMS.some((i) => i.key === urlSec)) {
+      return urlSec as NavKey;
+    }
+    const match = NAV_ITEMS.find(
+      (i) => i.key !== 'dashboard' && pathname?.includes(`/dashboard/worker/${i.key}`)
+    );
+    if (match) return match.key;
+    return 'dashboard';
+  }, [initialSection, params, pathname]);
+
+  const [activeSection, setActiveSection] = useState<NavKey>(currentNavKey);
+
+  useEffect(() => {
+    setActiveSection(currentNavKey);
+  }, [currentNavKey]);
+
+  const navigateToSection = (key: NavKey) => {
+    setActiveSection(key);
+    router.push(key === 'dashboard' ? '/dashboard/worker' : `/dashboard/worker/${key}`);
+  };
+
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [dashData, setDashData] = useState<DashboardData | null>(null);
   const [loading, setLoading] = useState(true);
@@ -1807,8 +1838,9 @@ export default function WorkerDashboardPage() {
           }
 
           return (
-            <button
+            <Link
               key={item.key}
+              href={item.key === 'dashboard' ? '/dashboard/worker' : `/dashboard/worker/${item.key}`}
               onClick={() => {
                 setActiveSection(item.key as NavKey);
                 setSidebarOpen(false);
@@ -1832,7 +1864,7 @@ export default function WorkerDashboardPage() {
                   {badgeText}
                 </span>
               )}
-            </button>
+            </Link>
           );
         })}
       </nav>
@@ -1906,7 +1938,7 @@ export default function WorkerDashboardPage() {
             <ThemeToggle />
 
             <button
-              onClick={() => setActiveSection('notifications')}
+              onClick={() => navigateToSection('notifications')}
               className="relative p-2 rounded-full text-[#47705B] dark:text-[#88B8A0] hover:text-[#0B3322] dark:hover:text-white hover:bg-[#F0F5F2] dark:hover:bg-[#12281E] transition-colors cursor-pointer"
             >
               <Bell className="w-5 h-5" />
@@ -1938,7 +1970,7 @@ export default function WorkerDashboardPage() {
                 <div className="absolute right-0 mt-2 w-48 bg-white dark:bg-[#0D2118] rounded-2xl border border-[#E3EDE6] dark:border-[#1E4130] shadow-xl p-2 z-30 animate-in fade-in duration-150">
                   <button
                     onClick={() => {
-                      setActiveSection('vehicle');
+                      navigateToSection('vehicle');
                       setProfileDropdownOpen(false);
                     }}
                     className="w-full text-left px-3 py-2 text-xs font-semibold text-[#0B3322] dark:text-[#EEFAF3] hover:bg-[#F0F5F2] dark:hover:bg-[#163828] rounded-xl flex items-center gap-2"
@@ -1987,7 +2019,7 @@ export default function WorkerDashboardPage() {
               data={dashData}
               nearbyRequests={nearbyRequests}
               onAcceptNearbyRequest={handleAcceptNearbyRequest}
-              onNavigateSection={setActiveSection}
+              onNavigateSection={navigateToSection}
               onOpenRouteModal={() => setRouteModalOpen(true)}
               onOpenVehicleModal={() => setVehicleModalOpen(true)}
             />
@@ -1998,7 +2030,7 @@ export default function WorkerDashboardPage() {
               onAcceptSuccess={(jobId) => {
                 showToast('Offer accepted! Starting delivery job.');
                 loadDashboard();
-                setActiveSection('active');
+                navigateToSection('active');
               }}
               onSeedDemoOrder={() => {
                 showToast('Demo order seeded and dispatched! New offer available.');
@@ -2010,12 +2042,12 @@ export default function WorkerDashboardPage() {
           {activeSection === 'active' && (
             <ActiveDeliverySection
               onStatusUpdated={loadDashboard}
-              onNavigateSection={setActiveSection}
+              onNavigateSection={navigateToSection}
             />
           )}
 
           {activeSection === 'deliveries' && (
-            <DeliveriesSection onSelectActive={() => setActiveSection('active')} />
+            <DeliveriesSection onSelectActive={() => navigateToSection('active')} />
           )}
 
           {activeSection === 'earnings' && <EarningsSection />}

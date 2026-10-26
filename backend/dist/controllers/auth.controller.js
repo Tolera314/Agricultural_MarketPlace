@@ -1,5 +1,8 @@
 import { registerUser, loginUser } from "../services/auth.service.js";
+import prisma from "../config/prisma.js";
+import jwt from "jsonwebtoken";
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+const JWT_SECRET = process.env.JWT_SECRET || "changeme_dev_secret";
 export async function handleRegister(req, res, next) {
     try {
         const { fullName, phone, email, password } = req.body;
@@ -105,6 +108,84 @@ export async function handleLogin(req, res, next) {
             });
         }
         return next(error);
+    }
+}
+/** Authenticate or provision the demo delivery worker (Abebe Mekonnen) */
+export async function handleDemoWorkerAuth(req, res, next) {
+    try {
+        const demoPhone = "+251911234567";
+        let worker = await prisma.user.findUnique({
+            where: { phone: demoPhone },
+            include: { deliveryProfile: true },
+        });
+        if (!worker) {
+            worker = await prisma.user.create({
+                data: {
+                    fullName: "Abebe Mekonnen",
+                    phone: demoPhone,
+                    email: "abebe.delivery@agrimarket.et",
+                    passwordHash: "$2a$12$e8YjT3O/tZ8lM5B1T5x8g.8m9PzW6f9g3VqM5v1K.9q",
+                    role: "DELIVERY_WORKER",
+                    isVerified: true,
+                    isActive: true,
+                    deliveryProfile: {
+                        create: {
+                            vehicleType: "MOTORCYCLE",
+                            vehiclePlate: "3-A45129 ET",
+                            vehicleCapacityKg: 50.0,
+                            availability: "ONLINE",
+                            verificationStatus: "VERIFIED",
+                            lastLatitude: 9.012,
+                            lastLongitude: 38.755,
+                            lastAccuracy: 12.0,
+                            lastLocationAt: new Date(),
+                            locationConsentGranted: true,
+                            locationConsentAt: new Date(),
+                        },
+                    },
+                },
+                include: { deliveryProfile: true },
+            });
+        }
+        else if (!worker.deliveryProfile) {
+            const profile = await prisma.deliveryWorkerProfile.create({
+                data: {
+                    userId: worker.id,
+                    vehicleType: "MOTORCYCLE",
+                    vehiclePlate: "3-A45129 ET",
+                    vehicleCapacityKg: 50.0,
+                    availability: "ONLINE",
+                    verificationStatus: "VERIFIED",
+                    lastLatitude: 9.012,
+                    lastLongitude: 38.755,
+                    lastAccuracy: 12.0,
+                    lastLocationAt: new Date(),
+                    locationConsentGranted: true,
+                    locationConsentAt: new Date(),
+                },
+            });
+            worker.deliveryProfile = profile;
+        }
+        const token = jwt.sign({ sub: worker.id, role: worker.role }, JWT_SECRET, { expiresIn: "7d" });
+        return res.json({
+            success: true,
+            message: "Demo delivery worker authenticated successfully.",
+            data: {
+                token,
+                user: {
+                    id: worker.id,
+                    fullName: worker.fullName,
+                    phone: worker.phone,
+                    email: worker.email,
+                    role: worker.role,
+                    isVerified: worker.isVerified,
+                },
+                profile: worker.deliveryProfile,
+            },
+        });
+    }
+    catch (err) {
+        next(err);
     }
 }
 //# sourceMappingURL=auth.controller.js.map

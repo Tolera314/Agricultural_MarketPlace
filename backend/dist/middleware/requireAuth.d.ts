@@ -12,7 +12,7 @@ declare global {
     }
 }
 /** Verifies JWT and attaches auth payload to req.auth */
-export declare function requireAuth(req: Request, res: Response, next: NextFunction): Response<any, Record<string, any>> | undefined;
+export declare function requireAuth(req: Request, res: Response, next: NextFunction): void | Response<any, Record<string, any>>;
 /** Middleware factory: allow only specific roles */
 export declare function requireRole(...roles: string[]): (req: Request, res: Response, next: NextFunction) => Response<any, Record<string, any>> | undefined;
 //# sourceMappingURL=requireAuth.d.ts.map

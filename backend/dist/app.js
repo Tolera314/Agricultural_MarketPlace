@@ -5,6 +5,7 @@ import authRouter from './routes/auth.routes.js';
 import workerRouter from './routes/worker.routes.js';
 import locationRouter from './routes/location.routes.js';
 import adminRouter from './routes/admin.routes.js';
+import buyerRouter from './routes/buyer.routes.js';
 dotenv.config();
 const app = express();
 // Security and CORS middleware
@@ -30,6 +31,7 @@ app.get('/', (req, res) => {
             worker: '/api/worker',
             location: '/api/location',
             admin: '/api/admin',
+            buyer: '/api/buyer',
         },
     });
 });
@@ -47,6 +49,7 @@ app.use('/api/auth', authRouter);
 app.use('/api/worker', workerRouter);
 app.use('/api/location', locationRouter);
 app.use('/api/admin', adminRouter);
+app.use('/api/buyer', buyerRouter);
 // Catch-all 404 JSON handler (prevents default HTML 404 with default-src 'none')
 app.use((req, res) => {
     res.status(404).json({
