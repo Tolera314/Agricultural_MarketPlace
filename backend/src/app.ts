@@ -7,6 +7,7 @@ import workerRouter from './routes/worker.routes.js';
 import locationRouter from './routes/location.routes.js';
 import adminRouter from './routes/admin.routes.js';
 import buyerRouter from './routes/buyer.routes.js';
+import onboardingRouter from './routes/onboarding.routes.js';
 
 dotenv.config();
 
@@ -63,6 +64,7 @@ app.use('/api/worker', workerRouter);
 app.use('/api/location', locationRouter);
 app.use('/api/admin', adminRouter);
 app.use('/api/buyer', buyerRouter);
+app.use('/api/onboarding', onboardingRouter);
 
 // Catch-all 404 JSON handler (prevents default HTML 404 with default-src 'none')
 app.use((req: Request, res: Response) => {

@@ -21,6 +21,7 @@ import {
   ShoppingBag,
 } from 'lucide-react';
 import { ThemeToggle } from '@/components/layout/ThemeToggle';
+import { RoleSelectionModal } from '@/components/onboarding/RoleSelectionModal';
 
 export default function SignupPage() {
   const router = useRouter();
@@ -33,6 +34,8 @@ export default function SignupPage() {
     password: '',
     agreedToTerms: false,
   });
+
+  const [showRoleModal, setShowRoleModal] = useState(false);
 
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
@@ -177,8 +180,8 @@ export default function SignupPage() {
       setIsLoading(false);
 
       setTimeout(() => {
-        router.push('/');
-      }, 2500);
+        setShowRoleModal(true);
+      }, 1200);
     } catch (err: any) {
       setIsLoading(false);
       setErrors({
@@ -802,6 +805,11 @@ export default function SignupPage() {
         </div>
       </main>
 
+      {/* Role Selection Modal displayed post-signup */}
+      <RoleSelectionModal
+        isOpen={showRoleModal}
+        onSuccess={() => setShowRoleModal(false)}
+      />
     </div>
   );
 }

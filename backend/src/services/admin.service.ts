@@ -390,6 +390,7 @@ export class AdminService {
       description: f.farmDescription,
       verificationStatus: f.verificationStatus,
       verificationNote: f.verificationNote,
+      verificationDocuments: (f as any).verificationDocuments,
       isOrganic: f.isOrganic,
       marketName: f.market?.name || 'Local Agro Hub',
       coordinates: { latitude: f.farmLatitude, longitude: f.farmLongitude },
@@ -411,7 +412,10 @@ export class AdminService {
       }),
       prisma.user.update({
         where: { id: prev.userId },
-        data: { isVerified },
+        data: {
+          isVerified,
+          onboardingStatus: isVerified ? 'COMPLETED' : status === VerificationStatus.REJECTED ? 'REJECTED' : 'PENDING_VERIFICATION',
+        },
       }),
     ]);
 
@@ -523,6 +527,8 @@ export class AdminService {
       vehicleCapacityKg: w.vehicleCapacityKg,
       availability: w.availability,
       verificationStatus: w.verificationStatus,
+      verificationNote: (w as any).verificationNote,
+      verificationDocuments: (w as any).verificationDocuments,
       activeJobCount: w.activeJobCount,
       lastLocation: w.lastLatitude && w.lastLongitude ? { latitude: w.lastLatitude, longitude: w.lastLongitude } : null,
       createdAt: w.createdAt,
@@ -533,10 +539,21 @@ export class AdminService {
     const prev = await prisma.deliveryWorkerProfile.findUnique({ where: { id: workerProfileId } });
     if (!prev) throw new Error('Worker profile not found.');
 
-    const updated = await prisma.deliveryWorkerProfile.update({
-      where: { id: workerProfileId },
-      data: { verificationStatus: status },
-    });
+    const isVerified = status === VerificationStatus.VERIFIED;
+
+    const [updated] = await prisma.$transaction([
+      prisma.deliveryWorkerProfile.update({
+        where: { id: workerProfileId },
+        data: { verificationStatus: status, verificationNote: reason },
+      }),
+      prisma.user.update({
+        where: { id: prev.userId },
+        data: {
+          isVerified,
+          onboardingStatus: isVerified ? 'COMPLETED' : status === VerificationStatus.REJECTED ? 'REJECTED' : 'PENDING_VERIFICATION',
+        },
+      }),
+    ]);
 
     await this.logAction({
       actorId: adminId,

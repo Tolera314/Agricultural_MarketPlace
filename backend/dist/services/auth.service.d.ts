@@ -13,6 +13,7 @@ export declare function registerUser(input: RegisterInput): Promise<{
         email: string | null;
         role: import("@prisma/client").$Enums.Role;
         isVerified: boolean;
+        onboardingStatus: any;
     };
 }>;
 export declare function loginUser(phone: string, password: string): Promise<{
@@ -24,6 +25,7 @@ export declare function loginUser(phone: string, password: string): Promise<{
         email: string | null;
         role: import("@prisma/client").$Enums.Role;
         isVerified: boolean;
+        onboardingStatus: any;
     };
 }>;
 //# sourceMappingURL=auth.service.d.ts.map

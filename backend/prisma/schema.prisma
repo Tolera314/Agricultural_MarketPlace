@@ -240,6 +240,8 @@ model User {
   role         Role
   isActive     Boolean            @default(true)
   isVerified   Boolean            @default(false)
+  onboardingStatus String         @default("COMPLETED")
+  onboardingDraft  Json?
   createdAt    DateTime           @default(now())
   updatedAt    DateTime           @updatedAt
 
@@ -300,6 +302,7 @@ model FarmerProfile {
   certifications     String[]
   verificationStatus VerificationStatus @default(PENDING)
   verificationNote   String?
+  verificationDocuments Json?
   farmLatitude       Float
   farmLongitude      Float
   marketId           String?
@@ -339,6 +342,8 @@ model DeliveryWorkerProfile {
   vehicleCapacityKg  Float?
   availability       WorkerAvailability @default(OFFLINE)
   verificationStatus     VerificationStatus @default(PENDING)
+  verificationNote       String?
+  verificationDocuments  Json?
   lastLatitude           Float?
   lastLongitude          Float?
   lastAccuracy           Float?

@@ -130,6 +130,7 @@ export declare class AdminService {
         description: string | null;
         verificationStatus: import("@prisma/client").$Enums.VerificationStatus;
         verificationNote: string | null;
+        verificationDocuments: any;
         isOrganic: boolean;
         marketName: string;
         coordinates: {
@@ -143,14 +144,15 @@ export declare class AdminService {
         id: string;
         createdAt: Date;
         updatedAt: Date;
-        userId: string;
         verificationStatus: import("@prisma/client").$Enums.VerificationStatus;
+        verificationNote: string | null;
+        verificationDocuments: import("@prisma/client/runtime/client").JsonValue | null;
+        userId: string;
         farmName: string;
         farmDescription: string | null;
         farmSizeHectares: number | null;
         isOrganic: boolean;
         certifications: string[];
-        verificationNote: string | null;
         farmLatitude: number;
         farmLongitude: number;
         marketId: string | null;
@@ -180,6 +182,8 @@ export declare class AdminService {
         role: import("@prisma/client").$Enums.Role;
         isActive: boolean;
         isVerified: boolean;
+        onboardingStatus: string;
+        onboardingDraft: import("@prisma/client/runtime/client").JsonValue | null;
         createdAt: Date;
         updatedAt: Date;
     }>;
@@ -201,6 +205,8 @@ export declare class AdminService {
         vehicleCapacityKg: number | null;
         availability: import("@prisma/client").$Enums.WorkerAvailability;
         verificationStatus: import("@prisma/client").$Enums.VerificationStatus;
+        verificationNote: any;
+        verificationDocuments: any;
         activeJobCount: number;
         lastLocation: {
             latitude: number;
@@ -212,12 +218,13 @@ export declare class AdminService {
         id: string;
         createdAt: Date;
         updatedAt: Date;
-        userId: string;
         vehicleType: import("@prisma/client").$Enums.VehicleType;
         vehiclePlate: string | null;
         vehicleCapacityKg: number | null;
         availability: import("@prisma/client").$Enums.WorkerAvailability;
         verificationStatus: import("@prisma/client").$Enums.VerificationStatus;
+        verificationNote: string | null;
+        verificationDocuments: import("@prisma/client/runtime/client").JsonValue | null;
         lastLatitude: number | null;
         lastLongitude: number | null;
         lastAccuracy: number | null;
@@ -226,6 +233,7 @@ export declare class AdminService {
         locationConsentAt: Date | null;
         activeJobCount: number;
         deliveryZoneId: string | null;
+        userId: string;
     }>;
     /**
      * Orders Management

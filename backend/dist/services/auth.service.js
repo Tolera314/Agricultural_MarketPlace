@@ -43,7 +43,7 @@ export async function registerUser(input) {
     }
     // Hash password
     const passwordHash = await bcrypt.hash(password, SALT_ROUNDS);
-    // Create user + buyer profile in a transaction
+    // Create user in a transaction (buyer profile will be created upon buyer role confirmation)
     const user = await prisma.$transaction(async (tx) => {
         const created = await tx.user.create({
             data: {
@@ -51,13 +51,11 @@ export async function registerUser(input) {
                 phone,
                 email: email && email.trim() !== "" ? email.toLowerCase().trim() : null,
                 passwordHash,
-                role: "BUYER", // default public signup role
+                role: "BUYER", // default public signup role until role selection
+                onboardingStatus: "PENDING_ROLE",
                 isVerified: false,
                 isActive: true,
             },
-        });
-        await tx.buyerProfile.create({
-            data: { userId: created.id },
         });
         return created;
     });
@@ -71,6 +69,7 @@ export async function registerUser(input) {
             email: user.email,
             role: user.role,
             isVerified: user.isVerified,
+            onboardingStatus: user.onboardingStatus || "PENDING_ROLE",
         },
     };
 }
@@ -98,6 +97,7 @@ export async function loginUser(phone, password) {
             email: user.email,
             role: user.role,
             isVerified: user.isVerified,
+            onboardingStatus: user.onboardingStatus || "COMPLETED",
         },
     };
 }
