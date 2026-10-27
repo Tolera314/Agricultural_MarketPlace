@@ -1,5 +1,6 @@
 import prisma from '../config/prisma.js';
 import { AuditAction, VerificationStatus, ListingStatus, OrderStatus, ApprovalStatus, ReconciliationStatus } from '@prisma/client';
+import { NotificationService } from './notification.service.js';
 
 export interface DateFilterOptions {
   period?: 'today' | '7d' | '30d' | 'month' | 'all' | undefined;
@@ -429,6 +430,19 @@ export class AdminService {
       reason: note,
     });
 
+    // Real-Time Admin Verification Notification (SMS & Email)
+    const farmerUser = await prisma.user.findUnique({ where: { id: prev.userId } });
+    if (farmerUser && (status === VerificationStatus.VERIFIED || status === VerificationStatus.REJECTED)) {
+      NotificationService.sendVerificationStatusNotification({
+        phone: farmerUser.phone,
+        email: farmerUser.email,
+        fullName: farmerUser.fullName,
+        role: 'FARMER',
+        status: status === VerificationStatus.VERIFIED ? 'VERIFIED' : 'REJECTED',
+        reason: note,
+      }).catch((err) => console.warn('[Farmer Verification Notification Failed]', err));
+    }
+
     return updated;
   }
 
@@ -564,6 +578,19 @@ export class AdminService {
       newValue: { verificationStatus: status },
       reason,
     });
+
+    // Real-Time Admin Verification Notification (SMS & Email)
+    const workerUser = await prisma.user.findUnique({ where: { id: prev.userId } });
+    if (workerUser && (status === VerificationStatus.VERIFIED || status === VerificationStatus.REJECTED)) {
+      NotificationService.sendVerificationStatusNotification({
+        phone: workerUser.phone,
+        email: workerUser.email,
+        fullName: workerUser.fullName,
+        role: 'DELIVERY_WORKER',
+        status: status === VerificationStatus.VERIFIED ? 'VERIFIED' : 'REJECTED',
+        reason,
+      }).catch((err) => console.warn('[Worker Verification Notification Failed]', err));
+    }
 
     return updated;
   }

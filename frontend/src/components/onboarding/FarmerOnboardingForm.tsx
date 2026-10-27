@@ -22,6 +22,7 @@ import {
   HelpCircle,
 } from 'lucide-react';
 import { onboardingApi } from '@/lib/onboardingApi';
+import { compressDocumentImage } from '@/lib/imageCompressor';
 
 export function FarmerOnboardingForm() {
   const router = useRouter();
@@ -127,16 +128,23 @@ export function FarmerOnboardingForm() {
     const file = e.target.files?.[0];
     if (!file) return;
 
-    if (file.size > 5 * 1024 * 1024) {
-      setErrors((prev) => ({ ...prev, [fieldName]: 'File size must not exceed 5MB.' }));
-      return;
-    }
-
     setUploadingField(fieldName);
     setErrors((prev) => ({ ...prev, [fieldName]: '' }));
 
     try {
-      const uploadRes = await onboardingApi.uploadDocument(file);
+      // Compress document images client-side before network upload (handles 8-15 MB camera photos)
+      const { file: processedFile, savingsPercentage, isCompressed } = await compressDocumentImage(file);
+      if (isCompressed) {
+        console.info(`[Image Compressor] Reduced ${file.name} by ${savingsPercentage}% for fast rural upload.`);
+      }
+
+      if (processedFile.size > 5 * 1024 * 1024) {
+        setErrors((prev) => ({ ...prev, [fieldName]: 'Document exceeds 5MB after compression. Please select a smaller file.' }));
+        setUploadingField(null);
+        return;
+      }
+
+      const uploadRes = await onboardingApi.uploadDocument(processedFile);
       setFormData((prev) => ({
         ...prev,
         [fieldName]: uploadRes.documentUrl,

@@ -1,5 +1,5 @@
 import type { Request, Response, NextFunction } from "express";
-import { registerUser, loginUser } from "../services/auth.service.js";
+import { registerUser, loginUser, verifyOTPUser, resendOTPUser } from "../services/auth.service.js";
 import type { RegisterInput } from "../services/auth.service.js";
 import prisma from "../config/prisma.js";
 import jwt from "jsonwebtoken";
@@ -210,3 +210,80 @@ export async function handleDemoWorkerAuth(req: Request, res: Response, next: Ne
     next(err);
   }
 }
+
+/** Verify submitted 6-digit OTP code */
+export async function handleVerifyOTP(req: Request, res: Response, next: NextFunction) {
+  try {
+    const { identifier, otpCode } = req.body;
+
+    if (!identifier || typeof identifier !== "string" || !identifier.trim()) {
+      return res.status(400).json({
+        success: false,
+        error: { field: "identifier", message: "Account phone, email, or user identifier is required." },
+      });
+    }
+
+    if (!otpCode || typeof otpCode !== "string" || !otpCode.trim()) {
+      return res.status(400).json({
+        success: false,
+        error: { field: "otpCode", message: "6-digit verification code is required." },
+      });
+    }
+
+    const result = await verifyOTPUser(identifier.trim(), otpCode.trim());
+
+    return res.status(200).json({
+      success: true,
+      message: result.message,
+      data: {
+        token: result.token,
+        user: result.user,
+      },
+    });
+  } catch (error: any) {
+    if (error.status) {
+      return res.status(error.status).json({
+        success: false,
+        error: {
+          field: error.field,
+          message: error.message,
+        },
+      });
+    }
+    return next(error);
+  }
+}
+
+/** Resend OTP verification code */
+export async function handleResendOTP(req: Request, res: Response, next: NextFunction) {
+  try {
+    const { identifier } = req.body;
+
+    if (!identifier || typeof identifier !== "string" || !identifier.trim()) {
+      return res.status(400).json({
+        success: false,
+        error: { field: "identifier", message: "Account phone or email is required." },
+      });
+    }
+
+    const result = await resendOTPUser(identifier.trim());
+
+    return res.status(200).json({
+      success: true,
+      message: result.message,
+      data: result,
+    });
+  } catch (error: any) {
+    if (error.status) {
+      return res.status(error.status).json({
+        success: false,
+        error: {
+          field: error.field,
+          message: error.message,
+        },
+      });
+    }
+    return next(error);
+  }
+}
+

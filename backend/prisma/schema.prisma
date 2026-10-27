@@ -242,6 +242,8 @@ model User {
   isVerified   Boolean            @default(false)
   onboardingStatus String         @default("COMPLETED")
   onboardingDraft  Json?
+  otpCode          String?
+  otpExpiresAt     DateTime?
   createdAt    DateTime           @default(now())
   updatedAt    DateTime           @updatedAt
 

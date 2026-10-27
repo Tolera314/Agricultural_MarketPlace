@@ -1,6 +1,11 @@
 import express, { type Request, type Response, type NextFunction } from 'express';
 import cors from 'cors';
+import path from 'path';
 import dotenv from 'dotenv';
+
+// Load root .env first, fallback to local
+dotenv.config({ path: path.resolve(process.cwd(), '../.env') });
+dotenv.config({ path: path.resolve(process.cwd(), '.env') });
 
 import authRouter from './routes/auth.routes.js';
 import workerRouter from './routes/worker.routes.js';
@@ -8,8 +13,6 @@ import locationRouter from './routes/location.routes.js';
 import adminRouter from './routes/admin.routes.js';
 import buyerRouter from './routes/buyer.routes.js';
 import onboardingRouter from './routes/onboarding.routes.js';
-
-dotenv.config();
 
 const app = express();
 

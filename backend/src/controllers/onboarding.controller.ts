@@ -4,6 +4,7 @@ import fs from 'fs';
 import jwt from 'jsonwebtoken';
 import prisma from '../config/prisma.js';
 import { VerificationStatus, AuditAction, VehicleType, Prisma } from '@prisma/client';
+import { NotificationService } from '../services/notification.service.js';
 
 const JWT_SECRET = process.env.JWT_SECRET || 'changeme_dev_secret';
 const JWT_EXPIRES_IN = process.env.JWT_EXPIRES_IN || '7d';
@@ -206,14 +207,23 @@ export async function saveDraft(req: Request, res: Response, next: NextFunction)
       return res.status(400).json({ success: false, error: { message: 'Draft data is required.' } });
     }
 
-    await prisma.user.update({
+    const updatedUser = await prisma.user.update({
       where: { id: userId },
       data: { onboardingDraft: draft },
     });
 
+    // Send SMS for Draft Resumption (Ethio Telecom / Geez SMS)
+    if (updatedUser.phone) {
+      NotificationService.sendDraftResumptionSMS({
+        phone: updatedUser.phone,
+        fullName: updatedUser.fullName,
+        role: updatedUser.role,
+      }).catch((e) => console.warn('[Draft Resumption SMS Failed]', e));
+    }
+
     return res.json({
       success: true,
-      message: 'Draft saved successfully.',
+      message: 'Draft saved successfully. A resumption link has been sent to your phone via SMS.',
       data: { savedAt: new Date().toISOString() },
     });
   } catch (err) {
