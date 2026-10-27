@@ -126,8 +126,21 @@ export default function LoginPage() {
       setIsLoading(false);
 
       setTimeout(() => {
-        const userRole = data.data?.user?.role;
-        if (userRole === 'DELIVERY_WORKER') {
+        const user = data.data?.user;
+        const userRole = user?.role;
+        const onboardingStatus = user?.onboardingStatus;
+
+        if (onboardingStatus === 'PENDING_ROLE') {
+          router.push('/dashboard');
+        } else if (onboardingStatus === 'IN_PROGRESS') {
+          if (userRole === 'FARMER') router.push('/onboarding/farmer');
+          else if (userRole === 'DELIVERY_WORKER') router.push('/onboarding/worker');
+          else router.push('/onboarding/select-role');
+        } else if (onboardingStatus === 'PENDING_VERIFICATION') {
+          if (userRole === 'FARMER') router.push('/dashboard/farmer/verification-status');
+          else if (userRole === 'DELIVERY_WORKER') router.push('/dashboard/worker/verification-status');
+          else router.push('/dashboard/buyer');
+        } else if (userRole === 'DELIVERY_WORKER') {
           router.push('/dashboard/worker');
         } else if (userRole === 'ADMIN' || userRole === 'SUPERADMIN') {
           router.push('/dashboard/admin');

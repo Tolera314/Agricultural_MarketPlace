@@ -1,0 +1,52 @@
+# ==============================================================================
+# AgriMarket — Unified Root .gitignore
+# ==============================================================================
+
+# Dependencies
+node_modules/
+*/node_modules/
+.pnp
+.pnp.js
+.yarn/
+
+# Environment Configuration (keep secrets out of VCS)
+.env
+.env.*
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+!.env.example
+
+# Next.js Build Outputs & Caches
+frontend/.next/
+frontend/out/
+frontend/build/
+
+# Backend Build & Output
+backend/dist/
+backend/build/
+*.tsbuildinfo
+next-env.d.ts
+
+# Prisma Generated Clients & Migrations Temp
+backend/generated/
+*/generated/prisma/
+
+# Uploaded Files & User Content
+backend/uploads/
+uploads/
+
+# Logs & Diagnostic Files
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.pnpm-debug.log*
+
+# Operating System & IDE Files
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+*.pem

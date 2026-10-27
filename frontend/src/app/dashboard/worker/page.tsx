@@ -794,6 +794,54 @@ function DashboardSection({
         </div>
       </div>
 
+      {/* Verification Status Alert Banner */}
+      {data?.profile?.verificationStatus && data.profile.verificationStatus !== 'VERIFIED' && (
+        <div
+          className={`p-4 sm:p-5 rounded-2xl border shadow-xs flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 ${
+            data.profile.verificationStatus === 'PENDING'
+              ? 'bg-amber-50/90 dark:bg-amber-950/30 border-amber-200 dark:border-amber-800 text-amber-900 dark:text-amber-200'
+              : data.profile.verificationStatus === 'REJECTED'
+              ? 'bg-rose-50/90 dark:bg-rose-950/30 border-rose-200 dark:border-rose-800 text-rose-900 dark:text-rose-200'
+              : 'bg-gray-100 dark:bg-gray-800 border-gray-200 text-gray-800'
+          }`}
+        >
+          <div className="flex items-start sm:items-center gap-3">
+            <div className="w-10 h-10 rounded-xl bg-white/80 dark:bg-black/20 flex items-center justify-center shrink-0">
+              {data.profile.verificationStatus === 'PENDING' ? (
+                <Clock className="w-5 h-5 text-amber-600 animate-pulse" />
+              ) : (
+                <ShieldAlert className="w-5 h-5 text-rose-600" />
+              )}
+            </div>
+            <div>
+              <div className="flex items-center gap-2">
+                <span className="font-bold text-xs sm:text-sm">
+                  {data.profile.verificationStatus === 'PENDING'
+                    ? 'Commercial Fleet Verification Pending Administrator Review'
+                    : 'Action Required: Fleet Compliance Corrections Needed'}
+                </span>
+                <span className="px-2 py-0.5 rounded-full text-[10px] font-extrabold uppercase bg-amber-200/60 dark:bg-amber-900/60 text-amber-900 dark:text-amber-300">
+                  {data.profile.verificationStatus}
+                </span>
+              </div>
+              <p className="text-xs text-amber-800/90 dark:text-amber-300/80 mt-0.5">
+                {data.profile.verificationStatus === 'PENDING'
+                  ? 'Your courier application is awaiting administrator approval. Order offers, broadcast requests, and dispatch eligibility will activate once verified.'
+                  : (data.profile as any).verificationNote ||
+                    'Your application requires additional vehicle or driver information. Review administrator remarks and resubmit.'}
+              </p>
+            </div>
+          </div>
+
+          <Link
+            href="/dashboard/worker/verification-status"
+            className="px-4 py-2 rounded-xl text-xs font-bold bg-amber-600 hover:bg-amber-700 text-white transition-colors shrink-0 shadow-xs"
+          >
+            View Verification Status
+          </Link>
+        </div>
+      )}
+
       {/* ─── 4 Metric Cards (Row of 4) ─── */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
         <DashboardMetricCard

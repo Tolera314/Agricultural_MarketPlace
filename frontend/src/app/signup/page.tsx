@@ -19,8 +19,11 @@ import {
   Store,
   Truck,
   ShoppingBag,
+  ShieldCheck,
+  RefreshCw,
 } from 'lucide-react';
 import { ThemeToggle } from '@/components/layout/ThemeToggle';
+import { RoleSelectionModal } from '@/components/onboarding/RoleSelectionModal';
 
 export default function SignupPage() {
   const router = useRouter();
@@ -34,12 +37,46 @@ export default function SignupPage() {
     agreedToTerms: false,
   });
 
+  const [showRoleModal, setShowRoleModal] = useState(false);
+
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [successData, setSuccessData] = useState<{
     token: string;
     user: { fullName: string; phone: string; role: string };
   } | null>(null);
+
+  // OTP Verification state
+  const [verificationState, setVerificationState] = useState<{
+    required: boolean;
+    channel: 'email' | 'sms';
+    recipient: string;
+    identifier: string;
+  } | null>(null);
+  const [otpDigits, setOtpDigits] = useState<string[]>(['', '', '', '', '', '']);
+  const [isVerifying, setIsVerifying] = useState(false);
+  const [isResending, setIsResending] = useState(false);
+  const [resendCooldown, setResendCooldown] = useState(0);
+  const [resendNotice, setResendNotice] = useState<string | null>(null);
+  const [otpError, setOtpError] = useState<string | null>(null);
+  const [verifiedSuccess, setVerifiedSuccess] = useState(false);
+  const otpInputRefs = React.useRef<(HTMLInputElement | null)[]>([]);
+
+  // Cooldown countdown timer
+  React.useEffect(() => {
+    if (resendCooldown <= 0) return;
+    const timer = setInterval(() => {
+      setResendCooldown((prev) => (prev > 0 ? prev - 1 : 0));
+    }, 1000);
+    return () => clearInterval(timer);
+  }, [resendCooldown]);
+
+  // Focus first input when entering verification mode
+  React.useEffect(() => {
+    if (verificationState?.required && otpInputRefs.current[0]) {
+      setTimeout(() => otpInputRefs.current[0]?.focus(), 150);
+    }
+  }, [verificationState?.required]);
 
   const [errors, setErrors] = useState<{
     fullName?: string;
@@ -164,6 +201,21 @@ export default function SignupPage() {
         return;
       }
 
+      setIsLoading(false);
+
+      // Handle verification flow
+      if (data.data?.requiresVerification) {
+        setVerificationState({
+          required: true,
+          channel: data.data.verificationChannel || (formData.email.trim() ? 'email' : 'sms'),
+          recipient: data.data.recipient || (formData.email.trim() || formData.phone.trim()),
+          identifier: data.data.user?.phone || formData.phone.trim(),
+        });
+        setResendCooldown(30); // 30s initial resend cooldown
+        return;
+      }
+
+      // If already verified or no verification required
       if (data.data?.token) {
         try {
           localStorage.setItem('agrimarket_token', data.data.token);
@@ -174,16 +226,158 @@ export default function SignupPage() {
       }
 
       setSuccessData(data.data);
-      setIsLoading(false);
-
       setTimeout(() => {
-        router.push('/');
-      }, 2500);
+        router.push('/dashboard');
+      }, 900);
     } catch (err: any) {
       setIsLoading(false);
       setErrors({
         general: 'Could not connect to the server. Please check your internet connection and try again.',
       });
+    }
+  };
+
+  // Handle OTP digit changes
+  const handleDigitChange = (index: number, val: string) => {
+    if (!/^\d*$/.test(val)) return;
+    const newDigits = [...otpDigits];
+    newDigits[index] = val.slice(-1);
+    setOtpDigits(newDigits);
+    setOtpError(null);
+
+    // Auto-advance
+    if (val && index < 5) {
+      otpInputRefs.current[index + 1]?.focus();
+    }
+
+    // Auto-verify if all 6 digits entered
+    if (val && index === 5) {
+      const fullCode = newDigits.join('');
+      if (fullCode.length === 6) {
+        handleVerifyCode(fullCode);
+      }
+    }
+  };
+
+  // Handle Backspace navigation
+  const handleDigitKeyDown = (index: number, e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === 'Backspace' && !otpDigits[index] && index > 0) {
+      otpInputRefs.current[index - 1]?.focus();
+    }
+  };
+
+  // Handle Paste
+  const handleDigitPaste = (e: React.ClipboardEvent) => {
+    e.preventDefault();
+    const pasted = e.clipboardData.getData('text').replace(/\D/g, '').slice(0, 6);
+    if (!pasted) return;
+
+    const newDigits = [...otpDigits];
+    for (let i = 0; i < 6; i++) {
+      newDigits[i] = pasted[i] || '';
+    }
+    setOtpDigits(newDigits);
+    setOtpError(null);
+
+    if (pasted.length === 6) {
+      handleVerifyCode(pasted);
+    } else {
+      otpInputRefs.current[Math.min(pasted.length, 5)]?.focus();
+    }
+  };
+
+  // Execute OTP verification
+  const handleVerifyCode = async (codeToVerify?: string) => {
+    const code = codeToVerify || otpDigits.join('');
+    if (code.length !== 6) {
+      setOtpError('Please enter all 6 digits of the verification code.');
+      return;
+    }
+
+    if (!verificationState?.identifier) return;
+
+    setIsVerifying(true);
+    setOtpError(null);
+
+    try {
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
+      const res = await fetch(`${apiUrl}/api/auth/verify-otp`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          identifier: verificationState.identifier,
+          otpCode: code,
+        }),
+      });
+
+      const data = await res.json();
+
+      if (!res.ok) {
+        setOtpError(data.error?.message || 'Invalid or expired verification code.');
+        setIsVerifying(false);
+        return;
+      }
+
+      // Store tokens
+      if (data.data?.token) {
+        try {
+          localStorage.setItem('agrimarket_token', data.data.token);
+          localStorage.setItem('agrimarket_user', JSON.stringify(data.data.user));
+        } catch (e) {
+          // ignore
+        }
+      }
+
+      setVerifiedSuccess(true);
+      setIsVerifying(false);
+
+      setTimeout(() => {
+        router.push('/dashboard');
+      }, 1100);
+    } catch (err) {
+      setIsVerifying(false);
+      setOtpError('Connection error while verifying code. Please try again.');
+    }
+  };
+
+  // Resend OTP code
+  const handleResend = async () => {
+    if (resendCooldown > 0 || isResending || !verificationState?.identifier) return;
+
+    setIsResending(true);
+    setResendNotice(null);
+    setOtpError(null);
+
+    try {
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
+      const res = await fetch(`${apiUrl}/api/auth/resend-otp`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          identifier: verificationState.identifier,
+        }),
+      });
+
+      const data = await res.json();
+
+      if (!res.ok) {
+        setOtpError(data.error?.message || 'Failed to resend code. Please try again.');
+        setIsResending(false);
+        return;
+      }
+
+      setResendNotice(
+        `A new 6-digit code has been sent via ${
+          verificationState.channel === 'email' ? 'email' : 'SMS'
+        }!`
+      );
+      setResendCooldown(45);
+      setOtpDigits(['', '', '', '', '', '']);
+      otpInputRefs.current[0]?.focus();
+    } catch (err) {
+      setOtpError('Connection error while resending code. Please try again.');
+    } finally {
+      setIsResending(false);
     }
   };
 
@@ -430,36 +624,171 @@ export default function SignupPage() {
               
               <div className="bg-transparent lg:bg-white lg:dark:bg-[#0D2118] rounded-none lg:rounded-[28px] p-1 sm:p-4 lg:p-8 shadow-none lg:shadow-2xl shadow-emerald-950/20 dark:shadow-black/60 border-0 lg:border lg:border-[#DEECE2] lg:dark:border-[#1E4130] transition-all">
                 
-                {/* Success Banner Overlay if registered */}
-                {successData ? (
+                {/* 1. Success Banner Overlay after OTP Verification */}
+                {verifiedSuccess ? (
                   <div className="py-8 text-center space-y-5">
                     <div className="w-16 h-16 mx-auto rounded-full bg-[#E8F5E9] dark:bg-[#153B2A] flex items-center justify-center text-[#075C3B] dark:text-[#34D399] animate-bounce">
                       <CheckCircle2 className="w-10 h-10" />
                     </div>
                     <div className="space-y-2">
+                      <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-[#EAF5EE] dark:bg-[#143224] text-[#075C3B] dark:text-[#34D399] text-xs font-bold">
+                        <ShieldCheck className="w-4 h-4" />
+                        <span>Account Verified</span>
+                      </div>
                       <h2 className="text-2xl font-extrabold text-[#093522] dark:text-[#EEFAF3]">
                         Welcome to AgriMarket!
                       </h2>
                       <p className="text-sm text-[#466957] dark:text-[#A7CEBC]">
-                        Your account has been created successfully.
+                        Your identity has been verified. Welcome to our agricultural marketplace!
                       </p>
                     </div>
-                    <div className="p-4 rounded-xl bg-[#F0F7F2] dark:bg-[#122A1E] text-xs text-[#315643] dark:text-[#88B8A0] space-y-1">
-                      <p className="font-semibold text-sm text-[#093522] dark:text-[#EEFAF3]">
-                        {successData.user.fullName}
-                      </p>
-                      <p>{successData.user.phone}</p>
-                    </div>
-                    <p className="text-xs text-gray-500 animate-pulse">
-                      Redirecting to marketplace in a moment...
+                    <p className="text-xs text-[#075C3B] dark:text-[#34D399] font-medium flex items-center justify-center gap-2">
+                      <span className="w-2 h-2 rounded-full bg-[#075C3B] animate-ping" />
+                      Redirecting to your dashboard...
                     </p>
                     <Link
-                      href="/"
-                      className="inline-flex items-center justify-center gap-2 w-full py-3 px-6 rounded-xl bg-[#075C3B] text-white font-bold hover:bg-[#05462D] transition-colors"
+                      href="/dashboard"
+                      className="inline-flex items-center justify-center gap-2 w-full py-3.5 px-6 rounded-xl bg-[#075C3B] hover:bg-[#05462D] text-white font-bold transition-colors shadow-md"
                     >
-                      Go to Marketplace Now
+                      Continue to Dashboard Now
                       <ArrowRight className="w-4 h-4" />
                     </Link>
+                  </div>
+                ) : verificationState?.required ? (
+                  /* 2. Professional 6-Digit OTP Verification View */
+                  <div className="py-2 space-y-4">
+                    {/* Header */}
+                    <div className="space-y-2">
+                      <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-[#EAF5EE] dark:bg-[#143224] border border-[#B8D8C5] dark:border-[#204735] text-[#075C3B] dark:text-[#34D399] text-xs font-bold shadow-2xs">
+                        <ShieldCheck className="w-3.5 h-3.5" />
+                        <span>Step 2 of 2: Identity Verification</span>
+                      </div>
+
+                      <h2 className="text-2xl sm:text-[26px] font-extrabold text-[#0D3823] dark:text-[#EEFAF3] tracking-tight leading-snug">
+                        Enter Verification Code
+                      </h2>
+
+                      <p className="text-xs sm:text-sm text-[#527563] dark:text-[#90B8A3] font-medium leading-relaxed">
+                        {verificationState.channel === 'email' ? (
+                          <>We sent a 6-digit security code via transactional email to:</>
+                        ) : (
+                          <>We sent an automated 6-digit code via Ethio Telecom SMS to:</>
+                        )}
+                      </p>
+
+                      <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg bg-[#EAF5EE] dark:bg-[#122A1E] border border-[#C6DFD0] dark:border-[#1E4331] text-xs font-mono font-bold text-[#075C3B] dark:text-[#34D399]">
+                        {verificationState.channel === 'email' ? (
+                          <Mail className="w-3.5 h-3.5 shrink-0" />
+                        ) : (
+                          <Phone className="w-3.5 h-3.5 shrink-0" />
+                        )}
+                        <span>{verificationState.recipient}</span>
+                      </div>
+                    </div>
+
+                    {/* Error Notice */}
+                    {otpError && (
+                      <div className="p-3 rounded-xl bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-900/50 flex items-start gap-2 text-xs text-rose-700 dark:text-rose-300">
+                        <AlertCircle className="w-4 h-4 shrink-0 mt-0.5" />
+                        <span>{otpError}</span>
+                      </div>
+                    )}
+
+                    {/* Resend Notice */}
+                    {resendNotice && (
+                      <div className="p-3 rounded-xl bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-900/50 flex items-start gap-2 text-xs text-emerald-800 dark:text-emerald-300">
+                        <CheckCircle2 className="w-4 h-4 shrink-0 mt-0.5" />
+                        <span>{resendNotice}</span>
+                      </div>
+                    )}
+
+                    {/* 6 Digit Input Group */}
+                    <div className="py-2">
+                      <label className="block text-xs font-bold text-[#143E2C] dark:text-[#D5EADF] mb-2 text-center">
+                        6-Digit Security Code
+                      </label>
+                      <div
+                        className="grid grid-cols-6 gap-2 sm:gap-2.5 max-w-sm mx-auto"
+                        onPaste={handleDigitPaste}
+                      >
+                        {otpDigits.map((digit, index) => (
+                          <input
+                            key={index}
+                            ref={(el) => {
+                              otpInputRefs.current[index] = el;
+                            }}
+                            type="text"
+                            inputMode="numeric"
+                            pattern="[0-9]*"
+                            maxLength={1}
+                            value={digit}
+                            onChange={(e) => handleDigitChange(index, e.target.value)}
+                            onKeyDown={(e) => handleDigitKeyDown(index, e)}
+                            className="w-full h-12 sm:h-14 text-center text-xl sm:text-2xl font-black rounded-xl bg-white dark:bg-[#12281E] border border-[#CBDCD1] dark:border-[#224A37] focus:border-[#075C3B] dark:focus:border-[#34D399] focus:ring-3 focus:ring-[#075C3B]/20 text-[#093522] dark:text-white outline-none transition-all"
+                            autoComplete={index === 0 ? 'one-time-code' : 'off'}
+                          />
+                        ))}
+                      </div>
+                    </div>
+
+                    {/* Submit Verification Button */}
+                    <button
+                      type="button"
+                      onClick={() => handleVerifyCode()}
+                      disabled={isVerifying || otpDigits.join('').length !== 6}
+                      className="w-full py-3.5 px-6 rounded-xl bg-[#075C3B] hover:bg-[#05462D] text-white font-bold text-sm flex items-center justify-center gap-2 shadow-md disabled:opacity-50 disabled:cursor-not-allowed transition-all cursor-pointer"
+                    >
+                      {isVerifying ? (
+                        <>
+                          <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                          <span>Verifying Code...</span>
+                        </>
+                      ) : (
+                        <>
+                          <span>Verify & Proceed</span>
+                          <ArrowRight className="w-4 h-4" />
+                        </>
+                      )}
+                    </button>
+
+                    {/* Resend & Back Actions */}
+                    <div className="pt-2 space-y-3 text-center">
+                      <div className="text-xs text-[#527563] dark:text-[#8BB39D]">
+                        {resendCooldown > 0 ? (
+                          <span>
+                            Resend code in{' '}
+                            <strong className="text-[#075C3B] dark:text-[#34D399]">
+                              {resendCooldown}s
+                            </strong>
+                          </span>
+                        ) : (
+                          <button
+                            type="button"
+                            onClick={handleResend}
+                            disabled={isResending}
+                            className="font-bold text-[#075C3B] dark:text-[#34D399] hover:underline inline-flex items-center gap-1.5 cursor-pointer"
+                          >
+                            <RefreshCw
+                              className={`w-3.5 h-3.5 ${isResending ? 'animate-spin' : ''}`}
+                            />
+                            <span>Didn't receive code? Resend Code</span>
+                          </button>
+                        )}
+                      </div>
+
+                      <div>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setVerificationState(null);
+                            setOtpError(null);
+                          }}
+                          className="text-xs text-[#527563] dark:text-[#8BB39D] hover:text-[#075C3B] dark:hover:text-[#34D399] hover:underline transition-colors cursor-pointer"
+                        >
+                          ← Change phone number or email
+                        </button>
+                      </div>
+                    </div>
                   </div>
                 ) : (
                   <>
@@ -802,6 +1131,11 @@ export default function SignupPage() {
         </div>
       </main>
 
+      {/* Role Selection Modal displayed post-signup */}
+      <RoleSelectionModal
+        isOpen={showRoleModal}
+        onSuccess={() => setShowRoleModal(false)}
+      />
     </div>
   );
 }

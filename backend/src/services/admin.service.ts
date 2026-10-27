@@ -1,5 +1,6 @@
 import prisma from '../config/prisma.js';
 import { AuditAction, VerificationStatus, ListingStatus, OrderStatus, ApprovalStatus, ReconciliationStatus } from '@prisma/client';
+import { NotificationService } from './notification.service.js';
 
 export interface DateFilterOptions {
   period?: 'today' | '7d' | '30d' | 'month' | 'all' | undefined;
@@ -390,6 +391,7 @@ export class AdminService {
       description: f.farmDescription,
       verificationStatus: f.verificationStatus,
       verificationNote: f.verificationNote,
+      verificationDocuments: (f as any).verificationDocuments,
       isOrganic: f.isOrganic,
       marketName: f.market?.name || 'Local Agro Hub',
       coordinates: { latitude: f.farmLatitude, longitude: f.farmLongitude },
@@ -411,7 +413,10 @@ export class AdminService {
       }),
       prisma.user.update({
         where: { id: prev.userId },
-        data: { isVerified },
+        data: {
+          isVerified,
+          onboardingStatus: isVerified ? 'COMPLETED' : status === VerificationStatus.REJECTED ? 'REJECTED' : 'PENDING_VERIFICATION',
+        },
       }),
     ]);
 
@@ -424,6 +429,19 @@ export class AdminService {
       newValue: { verificationStatus: status },
       reason: note,
     });
+
+    // Real-Time Admin Verification Notification (SMS & Email)
+    const farmerUser = await prisma.user.findUnique({ where: { id: prev.userId } });
+    if (farmerUser && (status === VerificationStatus.VERIFIED || status === VerificationStatus.REJECTED)) {
+      NotificationService.sendVerificationStatusNotification({
+        phone: farmerUser.phone,
+        email: farmerUser.email,
+        fullName: farmerUser.fullName,
+        role: 'FARMER',
+        status: status === VerificationStatus.VERIFIED ? 'VERIFIED' : 'REJECTED',
+        reason: note,
+      }).catch((err) => console.warn('[Farmer Verification Notification Failed]', err));
+    }
 
     return updated;
   }
@@ -523,6 +541,8 @@ export class AdminService {
       vehicleCapacityKg: w.vehicleCapacityKg,
       availability: w.availability,
       verificationStatus: w.verificationStatus,
+      verificationNote: (w as any).verificationNote,
+      verificationDocuments: (w as any).verificationDocuments,
       activeJobCount: w.activeJobCount,
       lastLocation: w.lastLatitude && w.lastLongitude ? { latitude: w.lastLatitude, longitude: w.lastLongitude } : null,
       createdAt: w.createdAt,
@@ -533,10 +553,21 @@ export class AdminService {
     const prev = await prisma.deliveryWorkerProfile.findUnique({ where: { id: workerProfileId } });
     if (!prev) throw new Error('Worker profile not found.');
 
-    const updated = await prisma.deliveryWorkerProfile.update({
-      where: { id: workerProfileId },
-      data: { verificationStatus: status },
-    });
+    const isVerified = status === VerificationStatus.VERIFIED;
+
+    const [updated] = await prisma.$transaction([
+      prisma.deliveryWorkerProfile.update({
+        where: { id: workerProfileId },
+        data: { verificationStatus: status, verificationNote: reason },
+      }),
+      prisma.user.update({
+        where: { id: prev.userId },
+        data: {
+          isVerified,
+          onboardingStatus: isVerified ? 'COMPLETED' : status === VerificationStatus.REJECTED ? 'REJECTED' : 'PENDING_VERIFICATION',
+        },
+      }),
+    ]);
 
     await this.logAction({
       actorId: adminId,
@@ -547,6 +578,19 @@ export class AdminService {
       newValue: { verificationStatus: status },
       reason,
     });
+
+    // Real-Time Admin Verification Notification (SMS & Email)
+    const workerUser = await prisma.user.findUnique({ where: { id: prev.userId } });
+    if (workerUser && (status === VerificationStatus.VERIFIED || status === VerificationStatus.REJECTED)) {
+      NotificationService.sendVerificationStatusNotification({
+        phone: workerUser.phone,
+        email: workerUser.email,
+        fullName: workerUser.fullName,
+        role: 'DELIVERY_WORKER',
+        status: status === VerificationStatus.VERIFIED ? 'VERIFIED' : 'REJECTED',
+        reason,
+      }).catch((err) => console.warn('[Worker Verification Notification Failed]', err));
+    }
 
     return updated;
   }

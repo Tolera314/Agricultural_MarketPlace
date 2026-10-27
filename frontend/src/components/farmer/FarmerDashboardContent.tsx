@@ -21,7 +21,12 @@ import {
   Tag,
   Wheat,
   User2,
+  Clock,
+  ShieldAlert,
+  CheckCircle2,
 } from 'lucide-react';
+import Link from 'next/link';
+import { onboardingApi } from '@/lib/onboardingApi';
 
 // ────────────────────────────────────────────────────────────
 // Global search data — products, orders, buyers, categories
@@ -584,6 +589,35 @@ export default function FarmerDashboardContent({
   const [searchQuery] = useState('');
   void searchQuery; // reserved for future server-side search
 
+  const [farmerAccount, setFarmerAccount] = useState<{
+    fullName: string;
+    farmName?: string;
+    verificationStatus: 'PENDING' | 'VERIFIED' | 'REJECTED' | 'SUSPENDED';
+    verificationNote?: string;
+  } | null>(null);
+
+  useEffect(() => {
+    async function checkFarmerVerification() {
+      try {
+        const res = await onboardingApi.getStatus();
+        setFarmerAccount({
+          fullName: res.fullName,
+          farmName: res.farmerProfile?.farmName,
+          verificationStatus:
+            res.farmerProfile?.verificationStatus || (res.role === 'FARMER' ? 'PENDING' : 'VERIFIED'),
+          verificationNote: res.farmerProfile?.verificationNote || undefined,
+        });
+      } catch (e) {
+        setFarmerAccount({
+          fullName: 'Tesfaye Abebe',
+          farmName: 'Bishoftu Valley Farm',
+          verificationStatus: 'VERIFIED',
+        });
+      }
+    }
+    checkFarmerVerification();
+  }, []);
+
   if (activePage !== 'dashboard') {
     return (
       <div className="flex-1 flex flex-col overflow-hidden">
@@ -723,6 +757,54 @@ export default function FarmerDashboardContent({
               </p>
             </div>
           </div>
+
+          {/* Verification Status Alert Banner */}
+          {farmerAccount && farmerAccount.verificationStatus !== 'VERIFIED' && (
+            <div
+              className={`p-4 sm:p-5 rounded-2xl border shadow-xs flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 ${
+                farmerAccount.verificationStatus === 'PENDING'
+                  ? 'bg-amber-50/90 dark:bg-amber-950/30 border-amber-200 dark:border-amber-800 text-amber-900 dark:text-amber-200'
+                  : farmerAccount.verificationStatus === 'REJECTED'
+                  ? 'bg-rose-50/90 dark:bg-rose-950/30 border-rose-200 dark:border-rose-800 text-rose-900 dark:text-rose-200'
+                  : 'bg-gray-100 dark:bg-gray-800 border-gray-200 text-gray-800'
+              }`}
+            >
+              <div className="flex items-start sm:items-center gap-3">
+                <div className="w-10 h-10 rounded-xl bg-white/80 dark:bg-black/20 flex items-center justify-center shrink-0">
+                  {farmerAccount.verificationStatus === 'PENDING' ? (
+                    <Clock className="w-5 h-5 text-amber-600 animate-pulse" />
+                  ) : (
+                    <ShieldAlert className="w-5 h-5 text-rose-600" />
+                  )}
+                </div>
+                <div>
+                  <div className="flex items-center gap-2">
+                    <span className="font-bold text-xs sm:text-sm">
+                      {farmerAccount.verificationStatus === 'PENDING'
+                        ? 'Seller Account Pending Administrator Verification'
+                        : 'Action Required: Verification Corrections Needed'}
+                    </span>
+                    <span className="px-2 py-0.5 rounded-full text-[10px] font-extrabold uppercase bg-amber-200/60 dark:bg-amber-900/60 text-amber-900 dark:text-amber-300">
+                      {farmerAccount.verificationStatus}
+                    </span>
+                  </div>
+                  <p className="text-xs text-amber-800/90 dark:text-amber-300/80 mt-0.5">
+                    {farmerAccount.verificationStatus === 'PENDING'
+                      ? 'Your application is awaiting administrator approval. Selling operations, product listing creation, and bulk orders will activate once verified.'
+                      : farmerAccount.verificationNote ||
+                        'Your application requires additional information. Review the administrator remarks and resubmit.'}
+                  </p>
+                </div>
+              </div>
+
+              <Link
+                href="/dashboard/farmer/verification-status"
+                className="px-4 py-2 rounded-xl text-xs font-bold bg-amber-600 hover:bg-amber-700 text-white transition-colors shrink-0 shadow-xs"
+              >
+                View Verification Status
+              </Link>
+            </div>
+          )}
 
           {/* ── Stats Grid ─────────────────────────────────── */}
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
