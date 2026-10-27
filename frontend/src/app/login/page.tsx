@@ -131,7 +131,7 @@ export default function LoginPage() {
         const onboardingStatus = user?.onboardingStatus;
 
         if (onboardingStatus === 'PENDING_ROLE') {
-          router.push('/onboarding/select-role');
+          router.push('/dashboard');
         } else if (onboardingStatus === 'IN_PROGRESS') {
           if (userRole === 'FARMER') router.push('/onboarding/farmer');
           else if (userRole === 'DELIVERY_WORKER') router.push('/onboarding/worker');

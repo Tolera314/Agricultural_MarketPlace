@@ -180,8 +180,8 @@ export default function SignupPage() {
       setIsLoading(false);
 
       setTimeout(() => {
-        setShowRoleModal(true);
-      }, 1200);
+        router.push('/dashboard');
+      }, 900);
     } catch (err: any) {
       setIsLoading(false);
       setErrors({
