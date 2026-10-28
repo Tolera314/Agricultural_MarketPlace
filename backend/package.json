@@ -13,7 +13,8 @@
     "test:google": "node --loader ts-node/esm src/tests/google-auth.test.ts",
     "test:location": "node --loader ts-node/esm src/tests/location.test.ts",
     "test:delivery": "node --loader ts-node/esm src/tests/delivery.test.ts",
-    "test:onboarding": "node --loader ts-node/esm src/tests/onboarding.test.ts"
+    "test:onboarding": "node --loader ts-node/esm src/tests/onboarding.test.ts",
+    "seed": "node --loader ts-node/esm src/scripts/seed.ts"
   },
   "keywords": [],
   "author": "",
@@ -46,5 +47,8 @@
     "ts-node": "^10.9.2",
     "ts-node-dev": "^2.0.0",
     "typescript": "^6.0.3"
+  },
+  "prisma": {
+    "seed": "node --loader ts-node/esm src/scripts/seed.ts"
   }
 }

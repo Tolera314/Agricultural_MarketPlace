@@ -379,3 +379,4 @@ export function GoogleAuthButton({
     </div>
   );
 }
+

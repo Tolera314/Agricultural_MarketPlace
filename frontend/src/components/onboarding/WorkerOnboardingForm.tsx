@@ -226,7 +226,12 @@ export function WorkerOnboardingForm() {
 
       router.push('/dashboard/worker/verification-status');
     } catch (err: any) {
-      setErrors({ submit: err?.message || 'Failed to submit worker application. Please try again.' });
+      const field = err?.field;
+      if (field) {
+        setErrors({ [field]: err.message, submit: err.message });
+      } else {
+        setErrors({ submit: err?.message || 'Failed to submit worker application. Please try again.' });
+      }
       setIsSubmitting(false);
     }
   };

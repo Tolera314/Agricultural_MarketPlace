@@ -271,7 +271,12 @@ export function FarmerOnboardingForm() {
       // Redirect to verification status page
       router.push('/dashboard/farmer/verification-status');
     } catch (err: any) {
-      setErrors({ submit: err?.message || 'Failed to submit application. Please check your connection.' });
+      const field = err?.field;
+      if (field) {
+        setErrors({ [field]: err.message, submit: err.message });
+      } else {
+        setErrors({ submit: err?.message || 'Failed to submit application. Please check your connection.' });
+      }
       setIsSubmitting(false);
     }
   };
