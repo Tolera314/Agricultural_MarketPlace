@@ -253,11 +253,13 @@ export default function BuyerDashboardPage({
         const rawUser = JSON.stringify(getCachedUserProfile());
         if (rawUser) {
           const u = JSON.parse(rawUser);
-          setUserProfile((prev) => ({
-            ...prev,
-            fullName: u.fullName || prev.fullName,
-            phone: u.phone || prev.phone,
-          }));
+          if (u) {
+            setUserProfile((prev) => ({
+              ...prev,
+              fullName: u?.fullName || prev.fullName,
+              phone: u?.phone || prev.phone,
+            }));
+          }
         }
       } catch {
         // ignore
@@ -511,11 +513,10 @@ export default function BuyerDashboardPage({
                 setActiveTab(item.id as BuyerTab);
                 setSidebarOpen(false);
               }}
-              className={`w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
-                isActive
-                  ? 'bg-[#134D37] text-white shadow-sm'
-                  : 'text-[#9BB8AA] hover:bg-[#0E3D2B] hover:text-white'
-              }`}
+              className={`w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${isActive
+                ? 'bg-[#134D37] text-white shadow-sm'
+                : 'text-[#9BB8AA] hover:bg-[#0E3D2B] hover:text-white'
+                }`}
             >
               <div className="flex items-center gap-3">
                 <Icon className={`w-4 h-4 ${isActive ? 'text-emerald-300' : 'text-[#8AA899]'}`} />
@@ -547,11 +548,10 @@ export default function BuyerDashboardPage({
       {/* Toast Feedback */}
       {feedbackMessage && (
         <div
-          className={`fixed top-5 right-5 z-50 flex items-center gap-2.5 px-4 py-3 rounded-xl shadow-lg border text-xs font-semibold animate-in slide-in-from-top-2 duration-200 ${
-            feedbackMessage.type === 'error'
-              ? 'bg-red-50 text-red-800 border-red-200 dark:bg-red-950/80 dark:text-red-300 dark:border-red-900'
-              : 'bg-emerald-50 text-emerald-800 border-emerald-200 dark:bg-emerald-950/80 dark:text-emerald-300 dark:border-emerald-900'
-          }`}
+          className={`fixed top-5 right-5 z-50 flex items-center gap-2.5 px-4 py-3 rounded-xl shadow-lg border text-xs font-semibold animate-in slide-in-from-top-2 duration-200 ${feedbackMessage.type === 'error'
+            ? 'bg-red-50 text-red-800 border-red-200 dark:bg-red-950/80 dark:text-red-300 dark:border-red-900'
+            : 'bg-emerald-50 text-emerald-800 border-emerald-200 dark:bg-emerald-950/80 dark:text-emerald-300 dark:border-emerald-900'
+            }`}
         >
           {feedbackMessage.type === 'error' ? (
             <AlertCircle className="w-4 h-4 text-red-600 dark:text-red-400 shrink-0" />
@@ -678,11 +678,11 @@ export default function BuyerDashboardPage({
 
         {/* Main Dynamic View Content Area */}
         <main className="flex-1 p-5 sm:p-6 lg:p-8 overflow-y-auto max-w-7xl mx-auto space-y-6 w-full">
-          
+
           {/* TAB 1: OVERVIEW DASHBOARD (Exact Match to Screenshot) */}
           {activeTab === 'dashboard' && (
             <div className="space-y-6">
-              
+
               {/* Top Greeting Banner */}
               <div className="relative rounded-3xl bg-white dark:bg-[#0D221A] border border-[#E5EDE7] dark:border-[#132A20] p-6 lg:p-8 flex flex-col md:flex-row items-center justify-between gap-6 shadow-xs overflow-hidden">
                 <div className="space-y-2 z-10">
@@ -706,7 +706,7 @@ export default function BuyerDashboardPage({
 
               {/* 4 Metric Summary Cards */}
               <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-5">
-                
+
                 {/* Metric 1: Total Orders */}
                 <div className="bg-white dark:bg-[#0D221A] p-5 rounded-2xl border border-[#E5EDE7] dark:border-[#132A20] shadow-xs space-y-3">
                   <div className="flex items-center gap-2">
@@ -791,7 +791,7 @@ export default function BuyerDashboardPage({
 
               {/* Middle Section: Two Columns (Nearby Farmers & Popular Categories) */}
               <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-                
+
                 {/* Left Column (7 cols): Nearby Farmers (Nearest-First) */}
                 <div className="lg:col-span-7 space-y-4">
                   <div className="flex items-center justify-between">
@@ -866,7 +866,7 @@ export default function BuyerDashboardPage({
 
                 {/* Right Column (5 cols): Popular Categories + Promo Banner */}
                 <div className="lg:col-span-5 space-y-5">
-                  
+
                   {/* Popular Categories Card */}
                   <div className="bg-white dark:bg-[#0D221A] p-5 rounded-2xl border border-[#E5EDE7] dark:border-[#132A20] shadow-xs space-y-4">
                     <div className="flex items-center justify-between">
@@ -989,19 +989,18 @@ export default function BuyerDashboardPage({
                         {/* Status Badge */}
                         <div className="flex items-center gap-3">
                           <span
-                            className={`px-3 py-1 rounded-full text-[11px] font-bold ${
-                              order.status === 'DELIVERED'
-                                ? 'bg-emerald-50 text-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-400'
-                                : order.status === 'IN_TRANSIT'
+                            className={`px-3 py-1 rounded-full text-[11px] font-bold ${order.status === 'DELIVERED'
+                              ? 'bg-emerald-50 text-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-400'
+                              : order.status === 'IN_TRANSIT'
                                 ? 'bg-blue-50 text-blue-700 dark:bg-blue-950/60 dark:text-blue-400'
                                 : 'bg-amber-50 text-amber-700 dark:bg-amber-950/60 dark:text-amber-400'
-                            }`}
+                              }`}
                           >
                             {order.status === 'DELIVERED'
                               ? 'Delivered'
                               : order.status === 'IN_TRANSIT'
-                              ? 'In Transit'
-                              : 'Preparing'}
+                                ? 'In Transit'
+                                : 'Preparing'}
                           </span>
 
                           <span className="text-xs text-[#7A9988] dark:text-[#64947C] hidden sm:block">
@@ -1061,11 +1060,10 @@ export default function BuyerDashboardPage({
               <div className="flex items-center gap-2 overflow-x-auto pb-2 scrollbar-none">
                 <button
                   onClick={() => setSelectedCategory('all')}
-                  className={`px-3 py-1.5 rounded-full text-xs font-semibold shrink-0 transition-colors cursor-pointer ${
-                    selectedCategory === 'all'
-                      ? 'bg-[#075C3B] text-white'
-                      : 'bg-white dark:bg-[#0D221A] text-[#517663] dark:text-[#88B8A0] border border-[#E5EDE7] dark:border-[#132A20]'
-                  }`}
+                  className={`px-3 py-1.5 rounded-full text-xs font-semibold shrink-0 transition-colors cursor-pointer ${selectedCategory === 'all'
+                    ? 'bg-[#075C3B] text-white'
+                    : 'bg-white dark:bg-[#0D221A] text-[#517663] dark:text-[#88B8A0] border border-[#E5EDE7] dark:border-[#132A20]'
+                    }`}
                 >
                   All Products
                 </button>
@@ -1073,11 +1071,10 @@ export default function BuyerDashboardPage({
                   <button
                     key={cat.id}
                     onClick={() => setSelectedCategory(cat.id)}
-                    className={`px-3 py-1.5 rounded-full text-xs font-semibold shrink-0 transition-colors cursor-pointer ${
-                      selectedCategory === cat.id
-                        ? 'bg-[#075C3B] text-white'
-                        : 'bg-white dark:bg-[#0D221A] text-[#517663] dark:text-[#88B8A0] border border-[#E5EDE7] dark:border-[#132A20]'
-                    }`}
+                    className={`px-3 py-1.5 rounded-full text-xs font-semibold shrink-0 transition-colors cursor-pointer ${selectedCategory === cat.id
+                      ? 'bg-[#075C3B] text-white'
+                      : 'bg-white dark:bg-[#0D221A] text-[#517663] dark:text-[#88B8A0] border border-[#E5EDE7] dark:border-[#132A20]'
+                      }`}
                   >
                     {cat.name}
                   </button>
@@ -1109,9 +1106,8 @@ export default function BuyerDashboardPage({
                           title="Save to Favorites"
                         >
                           <Heart
-                            className={`w-4 h-4 ${
-                              prod.isFavorite ? 'fill-red-500 text-red-500' : ''
-                            }`}
+                            className={`w-4 h-4 ${prod.isFavorite ? 'fill-red-500 text-red-500' : ''
+                              }`}
                           />
                         </button>
                       </div>
@@ -1194,15 +1190,14 @@ export default function BuyerDashboardPage({
                         <div className="font-bold text-sm text-[#1E2923] dark:text-white flex items-center gap-2">
                           <span>Order #{order.orderNumber}</span>
                           <span
-                            className={`px-2.5 py-0.5 rounded-full text-[10px] font-bold ${
-                              order.status === 'DELIVERED'
-                                ? 'bg-emerald-50 text-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-400'
-                                : order.status === 'IN_TRANSIT'
+                            className={`px-2.5 py-0.5 rounded-full text-[10px] font-bold ${order.status === 'DELIVERED'
+                              ? 'bg-emerald-50 text-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-400'
+                              : order.status === 'IN_TRANSIT'
                                 ? 'bg-blue-50 text-blue-700 dark:bg-blue-950/60 dark:text-blue-400'
                                 : order.status === 'CANCELLED'
-                                ? 'bg-red-50 text-red-700 dark:bg-red-950/60 dark:text-red-400'
-                                : 'bg-amber-50 text-amber-700 dark:bg-amber-950/60 dark:text-amber-400'
-                            }`}
+                                  ? 'bg-red-50 text-red-700 dark:bg-red-950/60 dark:text-red-400'
+                                  : 'bg-amber-50 text-amber-700 dark:bg-amber-950/60 dark:text-amber-400'
+                              }`}
                           >
                             {order.status}
                           </span>
@@ -1528,7 +1523,7 @@ export default function BuyerDashboardPage({
           {activeTab === 'settings' && (
             <div className="bg-white dark:bg-[#0D221A] rounded-2xl border border-[#E5EDE7] dark:border-[#132A20] p-6 max-w-xl mx-auto space-y-5">
               <h3 className="font-bold text-base text-[#1E2923] dark:text-white">Account Settings</h3>
-              
+
               <div className="space-y-4 text-xs">
                 <div className="flex items-center justify-between pb-3 border-b border-[#E5EDE7] dark:border-[#132A20]">
                   <div>
@@ -1686,22 +1681,20 @@ export default function BuyerDashboardPage({
                       <button
                         type="button"
                         onClick={() => setPaymentMethod('TELEBIRR')}
-                        className={`p-2.5 rounded-xl border text-center font-bold transition-colors cursor-pointer ${
-                          paymentMethod === 'TELEBIRR'
-                            ? 'border-[#075C3B] bg-emerald-50 text-[#075C3B] dark:bg-emerald-950/60 dark:text-[#34D399]'
-                            : 'border-[#E5EDE7] dark:border-[#132A20]'
-                        }`}
+                        className={`p-2.5 rounded-xl border text-center font-bold transition-colors cursor-pointer ${paymentMethod === 'TELEBIRR'
+                          ? 'border-[#075C3B] bg-emerald-50 text-[#075C3B] dark:bg-emerald-950/60 dark:text-[#34D399]'
+                          : 'border-[#E5EDE7] dark:border-[#132A20]'
+                          }`}
                       >
                         Telebirr
                       </button>
                       <button
                         type="button"
                         onClick={() => setPaymentMethod('CBEBIRR')}
-                        className={`p-2.5 rounded-xl border text-center font-bold transition-colors cursor-pointer ${
-                          paymentMethod === 'CBEBIRR'
-                            ? 'border-[#075C3B] bg-emerald-50 text-[#075C3B] dark:bg-emerald-950/60 dark:text-[#34D399]'
-                            : 'border-[#E5EDE7] dark:border-[#132A20]'
-                        }`}
+                        className={`p-2.5 rounded-xl border text-center font-bold transition-colors cursor-pointer ${paymentMethod === 'CBEBIRR'
+                          ? 'border-[#075C3B] bg-emerald-50 text-[#075C3B] dark:bg-emerald-950/60 dark:text-[#34D399]'
+                          : 'border-[#E5EDE7] dark:border-[#132A20]'
+                          }`}
                       >
                         CBE Birr
                       </button>
@@ -1833,11 +1826,10 @@ export default function BuyerDashboardPage({
               {trackingOrder.timeline?.map((step: any, idx: number) => (
                 <div key={idx} className="flex items-start gap-3 text-xs">
                   <div
-                    className={`w-5 h-5 rounded-full flex items-center justify-center text-[10px] shrink-0 mt-0.5 ${
-                      step.done
-                        ? 'bg-emerald-600 text-white'
-                        : 'bg-gray-200 text-gray-500 dark:bg-gray-800'
-                    }`}
+                    className={`w-5 h-5 rounded-full flex items-center justify-center text-[10px] shrink-0 mt-0.5 ${step.done
+                      ? 'bg-emerald-600 text-white'
+                      : 'bg-gray-200 text-gray-500 dark:bg-gray-800'
+                      }`}
                   >
                     ✓
                   </div>
@@ -2044,11 +2036,10 @@ export default function BuyerDashboardPage({
               {notifications.map((notif) => (
                 <div
                   key={notif.id}
-                  className={`p-3 rounded-xl border text-xs space-y-1 ${
-                    notif.readAt
-                      ? 'bg-gray-50/50 dark:bg-[#0D221A]/50 border-[#E5EDE7] dark:border-[#132A20]'
-                      : 'bg-emerald-50/60 dark:bg-[#112D22] border-emerald-200 dark:border-emerald-800'
-                  }`}
+                  className={`p-3 rounded-xl border text-xs space-y-1 ${notif.readAt
+                    ? 'bg-gray-50/50 dark:bg-[#0D221A]/50 border-[#E5EDE7] dark:border-[#132A20]'
+                    : 'bg-emerald-50/60 dark:bg-[#112D22] border-emerald-200 dark:border-emerald-800'
+                    }`}
                 >
                   <div className="font-bold text-[#1E2923] dark:text-white flex items-center justify-between">
                     <span>{notif.title}</span>
