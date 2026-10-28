@@ -2,6 +2,8 @@ import type { Request, Response, NextFunction } from "express";
 import {
   registerUser,
   loginUser,
+  authenticateWithGoogle,
+  linkGoogleAccount,
   verifyOTPUser,
   resendOTPUser,
   rotateRefreshToken,
@@ -618,5 +620,125 @@ export async function handleDemoWorkerAuth(req: Request, res: Response, next: Ne
     });
   } catch (err) {
     next(err);
+  }
+}
+
+/**
+ * POST /api/auth/google
+ * Handles Google Sign-In and Google Sign-Up using verified ID token or OAuth code.
+ */
+export async function handleGoogleAuth(req: Request, res: Response, next: NextFunction) {
+  try {
+    const credential = req.body.credential || req.body.idToken || req.body.code;
+
+    if (!credential || typeof credential !== "string") {
+      return res.status(400).json({
+        success: false,
+        error: {
+          field: "credential",
+          message: "Google credential token or authorization code is required.",
+        },
+      });
+    }
+
+    const meta = extractRequestMeta(req);
+    const result = await authenticateWithGoogle(credential.trim(), meta);
+
+    // Set secure HttpOnly cookie for refresh token
+    if (result.refreshToken) {
+      res.cookie(REFRESH_COOKIE_NAME, result.refreshToken, getRefreshCookieOptions(result.expiresAt));
+    }
+
+    const redirectUrl = result.isNewUser
+      ? "/onboarding/select-role"
+      : (result.user.onboardingStatus === "COMPLETED" ? "/dashboard" : "/onboarding/select-role");
+
+    return res.status(result.isNewUser ? 201 : 200).json({
+      success: true,
+      message: result.isNewUser ? "Welcome to AgriMarket! Account created with Google." : "Signed in with Google successfully.",
+      isNewUser: result.isNewUser,
+      data: {
+        accessToken: result.accessToken,
+        token: result.accessToken,
+        user: result.user,
+        redirectUrl,
+      },
+    });
+  } catch (error: any) {
+    if (error.status === 409 && error.requiresLinkVerification) {
+      return res.status(409).json({
+        success: false,
+        requiresLinkVerification: true,
+        email: error.email,
+        googleSub: error.googleSub,
+        message: error.message,
+      });
+    }
+
+    if (error.status) {
+      return res.status(error.status).json({
+        success: false,
+        error: {
+          field: error.field,
+          message: error.message,
+        },
+      });
+    }
+
+    return next(error);
+  }
+}
+
+/**
+ * POST /api/auth/google/link
+ * Securely links a Google identity to an existing account after verifying account password.
+ */
+export async function handleGoogleLink(req: Request, res: Response, next: NextFunction) {
+  try {
+    const credential = req.body.credential || req.body.idToken;
+    const password = req.body.password;
+
+    if (!credential) {
+      return res.status(400).json({
+        success: false,
+        error: { field: "credential", message: "Google credential is required." },
+      });
+    }
+
+    if (!password) {
+      return res.status(400).json({
+        success: false,
+        error: { field: "password", message: "Account password is required to link identity." },
+      });
+    }
+
+    const meta = extractRequestMeta(req);
+    const result = await linkGoogleAccount(credential.trim(), password, meta);
+
+    if (result.refreshToken) {
+      res.cookie(REFRESH_COOKIE_NAME, result.refreshToken, getRefreshCookieOptions(result.expiresAt));
+    }
+
+    return res.status(200).json({
+      success: true,
+      message: result.message,
+      data: {
+        accessToken: result.accessToken,
+        token: result.accessToken,
+        user: result.user,
+        redirectUrl: result.user.onboardingStatus === "COMPLETED" ? "/dashboard" : "/onboarding/select-role",
+      },
+    });
+  } catch (error: any) {
+    if (error.status) {
+      return res.status(error.status).json({
+        success: false,
+        error: {
+          field: error.field,
+          message: error.message,
+        },
+      });
+    }
+    return next(error);
   }
 }

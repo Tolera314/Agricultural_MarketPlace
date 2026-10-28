@@ -10,6 +10,7 @@
     "test": "node --loader ts-node/esm src/tests/boundary.test.ts && node --loader ts-node/esm src/tests/auth.test.ts && node --loader ts-node/esm src/tests/location.test.ts && node --loader ts-node/esm src/tests/delivery.test.ts && node --loader ts-node/esm src/tests/onboarding.test.ts && node --loader ts-node/esm src/tests/superadmin.test.ts",
     "test:boundary": "node --loader ts-node/esm src/tests/boundary.test.ts",
     "test:auth": "node --loader ts-node/esm src/tests/auth.test.ts",
+    "test:google": "node --loader ts-node/esm src/tests/google-auth.test.ts",
     "test:location": "node --loader ts-node/esm src/tests/location.test.ts",
     "test:delivery": "node --loader ts-node/esm src/tests/delivery.test.ts",
     "test:onboarding": "node --loader ts-node/esm src/tests/onboarding.test.ts",
@@ -29,6 +30,7 @@
     "cors": "^2.8.6",
     "dotenv": "^17.4.2",
     "express": "^5.2.1",
+    "google-auth-library": "^11.3.1",
     "jsonwebtoken": "^9.0.3",
     "multer": "^2.5.0",
     "pg": "^8.20.0"
@@ -46,5 +48,8 @@
     "ts-node": "^10.9.2",
     "ts-node-dev": "^2.0.0",
     "typescript": "^6.0.3"
+  },
+  "prisma": {
+    "seed": "node --loader ts-node/esm src/scripts/seed.ts"
   }
 }
