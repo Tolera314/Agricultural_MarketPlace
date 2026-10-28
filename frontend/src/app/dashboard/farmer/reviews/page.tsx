@@ -9,11 +9,8 @@ import {
   Menu,
 } from 'lucide-react';
 
-export default function FarmerReviewsPage({
-  onOpenSidebar,
-}: {
-  onOpenSidebar?: () => void;
-}) {
+export default function (props: any) {
+  const onOpenSidebar = props?.onOpenSidebar;
   const [reviews, setReviews] = useState([
     {
       id: 'rev-1',

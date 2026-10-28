@@ -14,11 +14,8 @@ import {
   Smartphone,
 } from 'lucide-react';
 
-export default function FarmerEarningsPage({
-  onOpenSidebar,
-}: {
-  onOpenSidebar?: () => void;
-}) {
+export default function (props: any) {
+  const onOpenSidebar = props?.onOpenSidebar;
   const [withdrawModal, setWithdrawModal] = useState(false);
   const [withdrawSuccess, setWithdrawSuccess] = useState(false);
 

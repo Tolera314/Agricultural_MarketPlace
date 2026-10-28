@@ -102,11 +102,8 @@ export type BuyerTab =
   | 'profile'
   | 'settings';
 
-export default function BuyerDashboardPage({
-  initialTab,
-}: {
-  initialTab?: BuyerTab;
-}) {
+export default function BuyerDashboardPage(props: any) {
+  const initialTab = props?.initialTab as BuyerTab | undefined;
   const router = useRouter();
   const params = useParams();
   const pathname = usePathname();

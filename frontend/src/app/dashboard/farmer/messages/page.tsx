@@ -10,11 +10,8 @@ import {
   Menu,
 } from 'lucide-react';
 
-export default function FarmerMessagesPage({
-  onOpenSidebar,
-}: {
-  onOpenSidebar?: () => void;
-}) {
+export default function (props: any) {
+  const onOpenSidebar = props?.onOpenSidebar;
   const [conversations] = useState([
     {
       id: 'c-1',

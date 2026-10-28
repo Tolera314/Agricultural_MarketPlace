@@ -1680,11 +1680,8 @@ function IncidentsSection({
 
 // ─── Main Worker Dashboard Page ───────────────────────────────
 
-export default function WorkerDashboardPage({
-  initialSection,
-}: {
-  initialSection?: NavKey;
-}) {
+export default function WorkerDashboardPage(props: any) {
+  const initialSection = props?.initialSection as NavKey | undefined;
   const router = useRouter();
   const params = useParams();
   const pathname = usePathname();
