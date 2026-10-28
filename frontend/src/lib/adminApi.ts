@@ -1,3 +1,5 @@
+import { getAccessToken, getCurrentUser } from './auth';
+
 // ─── Dev bypass: admin dashboard works without any login ─────────────────────
 // The backend requireAuth middleware accepts this header and injects SUPERADMIN role.
 const DEV_BYPASS_HEADER = 'x-dev-admin-bypass';
@@ -28,81 +30,73 @@ const FALLBACK_DASHBOARD_DATA: DashboardData = {
     { day: 'Mon', date: '2026-10-20', local: 35000, intercity: 18000 },
     { day: 'Tue', date: '2026-10-21', local: 42000, intercity: 22000 },
     { day: 'Wed', date: '2026-10-22', local: 38000, intercity: 19500 },
-    { day: 'Thu', date: '2026-10-23', local: 49000, intercity: 28000 },
-    { day: 'Fri', date: '2026-10-24', local: 58000, intercity: 34000 },
-    { day: 'Sat', date: '2026-10-25', local: 72000, intercity: 41000 },
-    { day: 'Sun', date: '2026-10-26', local: 65000, intercity: 39000 },
+    { day: 'Thu', date: '2026-10-23', local: 51000, intercity: 26000 },
+    { day: 'Fri', date: '2026-10-24', local: 49000, intercity: 24500 },
+    { day: 'Sat', date: '2026-10-25', local: 62000, intercity: 31000 },
+    { day: 'Sun', date: '2026-10-26', local: 58000, intercity: 29000 },
   ],
   topProducts: [
-    { id: '1', name: 'Fresh Red Onions', soldCount: 420, image: '/images/prod_onions.jpg' },
-    { id: '2', name: 'Organic Teff', soldCount: 380, image: '/images/prod_teff.jpg' },
-    { id: '3', name: 'Fresh Tomatoes', soldCount: 350, image: '/images/prod_tomatoes.jpg' },
-    { id: '4', name: 'Green Peppers', soldCount: 290, image: '/images/prod_peppers.jpg' },
+    { id: '1', name: 'Teff (Magna)', soldCount: 420, image: '/images/products/teff.jpg' },
+    { id: '2', name: 'Fresh Tomatoes', soldCount: 380, image: '/images/products/tomatoes.jpg' },
+    { id: '3', name: 'Red Onions', soldCount: 310, image: '/images/products/onions.jpg' },
+    { id: '4', name: 'Green Pepper (Karia)', soldCount: 290, image: '/images/products/pepper.jpg' },
   ],
   recentOrders: [
     {
-      id: 'ORD-9841',
-      title: '50kg Red Teff Grade A',
-      route: 'Hawassa → Addis Ababa',
-      priceFormatted: 'ETB 4,500',
-      status: 'Delivered',
-      rawStatus: 'DELIVERED',
-      date: 'Today, 10:45 AM',
-      tradeType: 'Intercity',
-      image: '/images/prod_teff.jpg',
+      id: 'ord-101',
+      title: 'Teff (Magna) · 5 Quintals',
+      route: 'Debre Birhan → Addis Ababa',
+      priceFormatted: 'ETB 42,500',
+      status: 'Pending Verification',
+      rawStatus: 'PENDING_APPROVAL',
+      date: '10 mins ago',
+      tradeType: 'Intercity Trade',
+      image: '/images/products/teff.jpg',
     },
     {
-      id: 'ORD-9840',
-      title: '120kg Fresh Tomatoes',
-      route: 'Bishoftu → Bole, Addis',
-      priceFormatted: 'ETB 2,400',
+      id: 'ord-102',
+      title: 'Fresh Tomatoes · 50 kg',
+      route: 'Kality → Bole, Addis Ababa',
+      priceFormatted: 'ETB 3,750',
       status: 'In Transit',
       rawStatus: 'IN_TRANSIT',
-      date: 'Today, 09:15 AM',
-      tradeType: 'Local',
-      image: '/images/prod_tomatoes.jpg',
+      date: '25 mins ago',
+      tradeType: 'Local Delivery',
+      image: '/images/products/tomatoes.jpg',
     },
   ],
   systemAlerts: [
     {
       id: 'alt-1',
       type: 'warning',
-      message: '12 new farmers awaiting KYC verification',
-      time: '15m ago',
-      link: '/dashboard/admin/farmers',
+      message: 'New Intercity Order #ord-101 requires cross-regional logistics approval.',
+      time: '10m ago',
+      link: '/dashboard/admin/intercity',
     },
     {
       id: 'alt-2',
       type: 'info',
-      message: 'Intercity route Hawassa-Addis operating at high volume',
+      message: '3 farmer Kebele verification documents are waiting for review.',
       time: '1h ago',
-      link: '/dashboard/admin/intercity',
+      link: '/dashboard/admin/farmers',
     },
   ],
 };
 
 /**
  * Returns auth headers. Always includes the dev bypass header to ensure dev/demo browsing
- * works without any forced signin. If a valid admin token exists in localStorage, it also attaches it.
+ * works without any forced signin. If a valid admin token exists in memory, it also attaches it.
  */
 function getAuthHeaders(): Record<string, string> {
   const headers: Record<string, string> = {
     [DEV_BYPASS_HEADER]: DEV_BYPASS_SECRET,
   };
 
-  if (typeof window !== 'undefined') {
-    try {
-      const token = localStorage.getItem('agrimarket_token');
-      const userStr = localStorage.getItem('agrimarket_user');
-      if (token && userStr) {
-        const u = JSON.parse(userStr);
-        // Only attach token if the logged in user is actually an admin; otherwise keep bypass header
-        if (u.role === 'ADMIN' || u.role === 'SUPERADMIN') {
-          headers.Authorization = `Bearer ${token}`;
-        }
-      }
-    } catch {
-      // ignore
+  const token = getAccessToken();
+  const user = getCurrentUser();
+  if (token && user) {
+    if (user.role === 'ADMIN' || user.role === 'SUPERADMIN') {
+      headers.Authorization = `Bearer ${token}`;
     }
   }
 
@@ -113,12 +107,13 @@ async function fetchAdmin<T>(path: string, options: RequestInit = {}): Promise<T
   const headers = {
     'Content-Type': 'application/json',
     ...getAuthHeaders(),
-    ...(options.headers || {}),
+    ...(options.headers as Record<string, string> || {}),
   };
 
   try {
     const res = await fetch(`${API_BASE_URL}${path}`, {
       ...options,
+      credentials: 'include',
       headers,
     });
 

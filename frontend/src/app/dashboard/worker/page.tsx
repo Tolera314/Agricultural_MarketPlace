@@ -48,6 +48,7 @@ import { ActiveDeliverySection } from '@/components/worker/ActiveDeliverySection
 import { CodReconciliationModal } from '@/components/worker/CodReconciliationModal';
 import { ReportIncidentModal } from '@/components/worker/ReportIncidentModal';
 import { workerApi } from '@/lib/workerApi';
+import { getAccessToken, logout } from '@/lib/auth';
 import type {
   DashboardData,
   DeliveryOffer,
@@ -1747,7 +1748,7 @@ export default function WorkerDashboardPage({
   useEffect(() => {
     const ensureAuth = async () => {
       try {
-        const token = localStorage.getItem('agrimarket_token');
+        const token = getAccessToken();
         if (!token) {
           await workerApi.demoAuth();
         }
@@ -1835,14 +1836,8 @@ export default function WorkerDashboardPage({
     loadDashboard();
   };
 
-  const handleLogout = () => {
-    try {
-      localStorage.removeItem('agrimarket_token');
-      localStorage.removeItem('agrimarket_user');
-    } catch {
-      // ignore
-    }
-    router.push('/login');
+  const handleLogout = async () => {
+    await logout();
   };
 
   // Active delivery job ID if exists

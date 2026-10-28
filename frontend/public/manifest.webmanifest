@@ -1,0 +1,62 @@
+{
+  "name": "AgriMarket — Ethiopian Agricultural Marketplace",
+  "short_name": "AgriMarket",
+  "description": "Location-based agricultural marketplace connecting Ethiopian farmers, buyers, and delivery workers directly.",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "portrait-primary",
+  "background_color": "#07130D",
+  "theme_color": "#075C3B",
+  "lang": "en-ET",
+  "categories": ["business", "shopping", "food"],
+  "icons": [
+    {
+      "src": "/icons/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/icons/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/icons/icon-maskable-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "maskable"
+    },
+    {
+      "src": "/icons/icon-maskable-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "Browse Fresh Products",
+      "short_name": "Market",
+      "url": "/dashboard/buyer",
+      "description": "Explore fresh farm crops in your local region",
+      "icons": [{ "src": "/icons/icon-192.png", "sizes": "192x192" }]
+    },
+    {
+      "name": "Farmer Dashboard",
+      "short_name": "Farmer",
+      "url": "/dashboard/farmer",
+      "description": "Manage your crops, harvests, and orders",
+      "icons": [{ "src": "/icons/icon-192.png", "sizes": "192x192" }]
+    },
+    {
+      "name": "Delivery Jobs",
+      "short_name": "Delivery",
+      "url": "/dashboard/worker",
+      "description": "View live delivery dispatches and active routes",
+      "icons": [{ "src": "/icons/icon-192.png", "sizes": "192x192" }]
+    }
+  ]
+}

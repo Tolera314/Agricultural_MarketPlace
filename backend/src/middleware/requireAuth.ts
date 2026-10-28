@@ -12,6 +12,7 @@ const DEV_BYPASS_SECRET = 'agrimarket_dev_2026';
 export interface AuthPayload {
   sub: string;   // user ID
   role: string;
+  tokenVersion?: number;
 }
 
 /** Extend Express Request to carry the verified auth payload */

@@ -332,4 +332,94 @@ export class NotificationService {
       }
     }
   }
+
+  /**
+   * Send Password Recovery OTP Code
+   */
+  public static async sendPasswordResetOTP(params: {
+    phone: string;
+    email?: string | null;
+    fullName: string;
+    otpCode: string;
+  }): Promise<{ channel: 'EMAIL' | 'SMS'; recipient: string }> {
+    const { phone, email, fullName, otpCode } = params;
+
+    if (email && email.trim().length > 0) {
+      const htmlContent = `
+        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 24px; border: 1px solid #E5E7EB; border-radius: 16px; background-color: #ffffff;">
+          <div style="text-align: center; margin-bottom: 24px;">
+            <div style="display: inline-block; background-color: #E8F5E9; padding: 12px; border-radius: 50%; margin-bottom: 8px;">
+              <span style="font-size: 28px;">🔐</span>
+            </div>
+            <h1 style="color: #075C3B; margin: 0; font-size: 24px; font-weight: 800;">Password Recovery Request</h1>
+          </div>
+          <p style="color: #374151; font-size: 14px; line-height: 1.6;">
+            Hello <strong>${fullName}</strong>,<br/>
+            We received a request to reset your AgriMarket account password. Use the single-use 6-digit verification code below:
+          </p>
+          <div style="text-align: center; margin: 28px 0;">
+            <div style="display: inline-block; background-color: #F0FDF4; border: 2px dashed #059669; border-radius: 12px; padding: 16px 36px;">
+              <span style="font-size: 32px; font-weight: 900; letter-spacing: 8px; color: #047857; font-family: monospace;">${otpCode}</span>
+            </div>
+          </div>
+          <p style="color: #6B7280; font-size: 13px; line-height: 1.5;">
+            This code expires in <strong>15 minutes</strong> and can only be used once. If you did not request a password reset, please ignore this email or reach out to support.
+          </p>
+        </div>
+      `;
+
+      await this.sendEmail({
+        to: email.trim(),
+        name: fullName,
+        subject: `AgriMarket Password Reset Code: ${otpCode}`,
+        htmlContent,
+      });
+
+      return { channel: 'EMAIL', recipient: email.trim() };
+    }
+
+    // Default to SMS
+    const message = `AgriMarket: Your password reset verification code is ${otpCode}. It expires in 15 minutes. Do not share this code with anyone.`;
+    await this.sendSMS({ phone, message });
+    return { channel: 'SMS', recipient: phone };
+  }
+
+  /**
+   * Send Password Reset Success Confirmation Alert
+   */
+  public static async sendPasswordResetSuccessNotification(params: {
+    phone: string;
+    email?: string | null;
+    fullName: string;
+  }): Promise<void> {
+    const { phone, email, fullName } = params;
+    const timeString = new Date().toUTCString();
+
+    if (email && email.trim().length > 0) {
+      const htmlContent = `
+        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 24px; border: 1px solid #E5E7EB; border-radius: 16px;">
+          <h2 style="color: #075C3B; margin-top: 0;">Password Successfully Reset</h2>
+          <p style="color: #374151; font-size: 14px; line-height: 1.5;">
+            Hello <strong>${fullName}</strong>,<br/>
+            Your AgriMarket account password was successfully updated on <strong>${timeString}</strong>. All previous active sessions have been safely signed out.
+          </p>
+          <p style="color: #DC2626; font-size: 12px; margin-top: 16px;">
+            If you did not make this change, please contact AgriMarket security immediately at support@agrimarket.et.
+          </p>
+        </div>
+      `;
+
+      await this.sendEmail({
+        to: email.trim(),
+        name: fullName,
+        subject: `Your AgriMarket Password Has Been Reset`,
+        htmlContent,
+      });
+      return;
+    }
+
+    // SMS Notice
+    const message = `AgriMarket Security: Your account password was successfully reset. If this was not you, please contact support immediately.`;
+    await this.sendSMS({ phone, message });
+  }
 }

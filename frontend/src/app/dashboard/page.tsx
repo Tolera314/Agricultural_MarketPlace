@@ -6,6 +6,7 @@ import { useRouter } from 'next/navigation';
 import { ArrowRight, Loader2, Sparkles, UserCheck } from 'lucide-react';
 import { ThemeToggle } from '@/components/layout/ThemeToggle';
 import { onboardingApi } from '@/lib/onboardingApi';
+import { getCachedUserProfile } from '@/lib/auth';
 
 export default function PostSignupDashboardPage() {
   const router = useRouter();
@@ -46,15 +47,10 @@ export default function PostSignupDashboardPage() {
         // User is in PENDING_ROLE (just signed up)
         setLoading(false);
       } catch (err) {
-        // Fallback: check localStorage user if network or offline
-        try {
-          const raw = localStorage.getItem('agrimarket_user');
-          if (raw) {
-            const u = JSON.parse(raw);
-            if (u.fullName) setUserName(u.fullName);
-          }
-        } catch {
-          // ignore
+        // Fallback: check cached user profile
+        const cached = getCachedUserProfile();
+        if (cached?.fullName) {
+          setUserName(cached.fullName);
         }
         setLoading(false);
       }
@@ -78,103 +74,97 @@ export default function PostSignupDashboardPage() {
       {/* ============================================================== */}
       {/* 1. TOP HEADER: System Brand only at top left corner            */}
       {/* ============================================================== */}
-      <header className="w-full bg-white/95 dark:bg-[#0A1812]/95 backdrop-blur-md border-b border-[#E8EFEA] dark:border-[#1A3326] px-4 sm:px-6 lg:px-8 py-3.5 sm:py-4 transition-colors">
-        <div className="max-w-7xl mx-auto flex items-center justify-between">
-          
-          {/* System Brand at Top Left Corner */}
-          <Link href="/" className="flex items-center gap-2.5 sm:gap-3 group">
-            <div className="w-9 h-9 sm:w-10 sm:h-10 flex items-center justify-center shrink-0">
-              <svg
-                className="w-8 h-8 sm:w-9 sm:h-9"
-                viewBox="0 0 36 36"
-                fill="none"
-                xmlns="http://www.w3.org/2000/svg"
-                aria-hidden="true"
-              >
-                <path
-                  d="M18 4C18 4 23 11 23 18C23 21 21 24 18 25C15 24 13 21 13 18C13 11 18 4 18 4Z"
-                  fill="#10B981"
-                />
-                <path
-                  d="M16 26C16 26 9 24 7 18C5 12 11 9 11 9C11 9 13 16 17 21C17.5 21.6 18 22.2 18 22.2"
-                  fill="#059669"
-                />
-                <path
-                  d="M20 26C20 26 27 24 29 18C31 12 25 9 25 9C25 9 23 16 19 21C18.5 21.6 18 22.2 18 22.2"
-                  fill="#34D399"
-                />
-                <path
-                  d="M18 25V30"
-                  stroke="#059669"
-                  strokeWidth="2.5"
-                  strokeLinecap="round"
-                />
-              </svg>
-            </div>
-
-            <div className="flex flex-col">
-              <span className="font-extrabold text-xl sm:text-2xl text-[#075C3B] dark:text-[#34D399] tracking-tight group-hover:text-[#05462D] dark:group-hover:text-[#6EE7B7] transition-colors leading-none">
-                AgriMarket
-              </span>
-              <span className="text-[10px] sm:text-[11px] text-[#476C57] dark:text-[#88B8A0] font-semibold tracking-wide uppercase mt-0.5">
-                Farmers · Buyers · Better Tomorrow
-              </span>
-            </div>
-          </Link>
-
-          {/* Right corner subtle theme control */}
-          <div className="flex items-center gap-2">
-            <ThemeToggle />
+      <header className="w-full border-b border-[#DEECE2] dark:border-[#163828] bg-white/80 dark:bg-[#0B1E15]/80 backdrop-blur-md px-6 py-4 flex items-center justify-between sticky top-0 z-30">
+        <div className="flex items-center gap-3">
+          <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-emerald-600 to-teal-800 flex items-center justify-center shadow-md shadow-emerald-900/20">
+            <Sparkles className="w-5 h-5 text-emerald-100" />
           </div>
-
+          <div>
+            <span className="text-lg font-black tracking-tight bg-gradient-to-r from-emerald-700 to-teal-800 dark:from-emerald-400 dark:to-teal-300 bg-clip-text text-transparent">
+              AgriMarket
+            </span>
+            <span className="text-[10px] font-bold text-gray-400 dark:text-gray-500 uppercase tracking-widest block -mt-1">
+              Ethiopia
+            </span>
+          </div>
         </div>
+
+        <ThemeToggle />
       </header>
 
       {/* ============================================================== */}
-      {/* 2. CENTERED DASHBOARD BODY: Fill Your Profile Button           */}
+      {/* 2. MAIN POST-SIGNUP HERO & ONBOARDING PROMPT                  */}
       {/* ============================================================== */}
-      <main className="flex-1 flex items-center justify-center p-4 sm:p-6 lg:p-8">
-        <div className="w-full max-w-lg bg-white dark:bg-[#0A1A12] border border-[#E3EAE5] dark:border-[#163D2F] rounded-3xl p-8 sm:p-12 shadow-xl shadow-emerald-950/5 dark:shadow-black/40 text-center space-y-7 transition-all">
-          
-          {/* Welcome Badge & Icon */}
-          <div className="inline-flex items-center justify-center w-16 h-16 sm:w-20 sm:h-20 rounded-full bg-emerald-50 dark:bg-emerald-950/50 border border-emerald-200 dark:border-emerald-800 text-emerald-600 dark:text-emerald-400 mx-auto shadow-inner">
-            <UserCheck className="w-8 h-8 sm:w-10 sm:h-10" />
+      <main className="flex-1 flex flex-col items-center justify-center px-4 sm:px-6 py-12 max-w-3xl mx-auto w-full text-center space-y-8">
+        
+        {/* Success Icon */}
+        <div className="relative">
+          <div className="w-20 h-20 rounded-3xl bg-emerald-100 dark:bg-emerald-950/60 border-2 border-emerald-300 dark:border-emerald-700/60 flex items-center justify-center shadow-xl shadow-emerald-600/10 dark:shadow-emerald-900/30">
+            <UserCheck className="w-10 h-10 text-emerald-600 dark:text-emerald-400 stroke-[2.2]" />
+          </div>
+          <div className="absolute -bottom-1 -right-1 w-6 h-6 rounded-full bg-emerald-500 border-2 border-white dark:border-[#07130D] flex items-center justify-center">
+            <Sparkles className="w-3.5 h-3.5 text-white" />
+          </div>
+        </div>
+
+        {/* Heading & Subtitle */}
+        <div className="space-y-3">
+          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800/40 text-emerald-800 dark:text-emerald-300 text-xs font-bold tracking-wide">
+            <span>🎉 Welcome to AgriMarket</span>
           </div>
 
-          {/* Text Content */}
-          <div className="space-y-3">
-            <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-50 dark:bg-emerald-950/40 text-emerald-800 dark:text-emerald-300 text-xs font-bold border border-emerald-200 dark:border-emerald-800">
-              <Sparkles className="w-3.5 h-3.5" />
-              <span>Account Created Successfully</span>
-            </div>
+          <h1 className="text-3xl sm:text-4xl font-black text-[#043E27] dark:text-[#EEFAF3] tracking-tight leading-tight">
+            Your account has been created successfully!
+          </h1>
 
-            <h1 className="text-2xl sm:text-3xl font-extrabold text-[#0D3823] dark:text-[#EEFAF3] tracking-tight">
-              {userName ? `Welcome, ${userName}!` : 'Welcome to AgriMarket!'}
-            </h1>
+          <p className="text-base text-[#466957] dark:text-[#90B8A3] max-w-lg mx-auto font-medium leading-relaxed">
+            {userName ? `Greetings, ${userName}! ` : 'Greetings! '}
+            You are one step away from participating in Ethiopia&apos;s leading direct agricultural marketplace.
+          </p>
+        </div>
 
-            <p className="text-sm sm:text-base text-[#527563] dark:text-[#90B8A3] leading-relaxed max-w-md mx-auto font-medium">
-              Your account has been registered. Before getting started, please complete your profile setup to unlock features tailored to your needs.
+        {/* Call-to-action Card */}
+        <div className="w-full bg-white dark:bg-[#0D2118] border border-[#DEECE2] dark:border-[#1E4130] rounded-3xl p-6 sm:p-8 shadow-xl shadow-emerald-950/5 dark:shadow-black/40 space-y-6 text-left">
+          
+          <div className="space-y-1">
+            <h2 className="text-lg font-extrabold text-[#093522] dark:text-[#EEFAF3]">
+              Next Step: Choose Your Platform Role
+            </h2>
+            <p className="text-xs sm:text-sm text-[#466957] dark:text-[#88B8A0] leading-relaxed">
+              Tell us how you plan to use AgriMarket. You can buy fresh farm produce, register as a verified farmer seller, or deliver orders across Ethiopia.
             </p>
           </div>
 
-          {/* Primary Action Button: Fill Your Profile */}
-          <div className="pt-2">
-            <Link
-              href="/onboarding/select-role"
-              className="inline-flex items-center justify-center gap-3 w-full py-4 px-8 rounded-2xl bg-emerald-600 hover:bg-emerald-700 active:bg-emerald-800 text-white font-bold text-base sm:text-lg shadow-lg shadow-emerald-700/25 hover:shadow-emerald-700/35 transition-all transform hover:-translate-y-0.5 active:translate-y-0 cursor-pointer"
-            >
-              <span>Fill Your Profile</span>
-              <ArrowRight className="w-5 h-5" />
-            </Link>
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-1">
+            <div className="p-3.5 rounded-2xl bg-[#F0F7F2] dark:bg-[#122A1E] border border-[#CDE0D4] dark:border-[#1F4532]">
+              <span className="text-xs font-bold text-[#075C3B] dark:text-[#34D399] block mb-1">🛒 Buyer</span>
+              <p className="text-[11px] text-[#3D634E] dark:text-[#88B8A0]">Browse verified local crops & place direct orders.</p>
+            </div>
+            <div className="p-3.5 rounded-2xl bg-[#F0F7F2] dark:bg-[#122A1E] border border-[#CDE0D4] dark:border-[#1F4532]">
+              <span className="text-xs font-bold text-[#075C3B] dark:text-[#34D399] block mb-1">🌾 Farmer</span>
+              <p className="text-[11px] text-[#3D634E] dark:text-[#88B8A0]">List harvests, set prices, and sell directly to consumers.</p>
+            </div>
+            <div className="p-3.5 rounded-2xl bg-[#F0F7F2] dark:bg-[#122A1E] border border-[#CDE0D4] dark:border-[#1F4532]">
+              <span className="text-xs font-bold text-[#075C3B] dark:text-[#34D399] block mb-1">🚚 Delivery Worker</span>
+              <p className="text-[11px] text-[#3D634E] dark:text-[#88B8A0]">Accept farm dispatch jobs and deliver with your vehicle.</p>
+            </div>
           </div>
 
-          {/* Subtext info */}
-          <p className="text-xs text-gray-400 dark:text-gray-500 font-medium">
-            Takes less than 2 minutes · Fast verification · Safe and secure
-          </p>
-
+          <Link
+            href="/onboarding/select-role"
+            className="w-full py-4 px-6 rounded-2xl bg-[#075C3B] hover:bg-[#05462D] text-white font-extrabold text-sm flex items-center justify-center gap-2 shadow-lg shadow-emerald-950/20 active:scale-[0.99] transition-all cursor-pointer group"
+          >
+            <span>Proceed to Role Selection</span>
+            <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
+          </Link>
         </div>
+
       </main>
+
+      {/* Footer */}
+      <footer className="w-full py-4 text-center text-xs text-[#6A8B7B] dark:text-[#6A917F] border-t border-[#DEECE2] dark:border-[#163828]">
+        AgriMarket Ethiopia · Connecting Farmers, Buyers, and Transporters Directly
+      </footer>
 
     </div>
   );

@@ -1,13 +1,11 @@
 'use client';
 
+import { getAccessToken } from './auth';
+
 const API = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
 
 function getToken(): string | null {
-  try {
-    return localStorage.getItem('agrimarket_token');
-  } catch {
-    return null;
-  }
+  return getAccessToken();
 }
 
 async function apiFetch<T>(path: string, options: RequestInit = {}): Promise<T> {
@@ -22,6 +20,7 @@ async function apiFetch<T>(path: string, options: RequestInit = {}): Promise<T> 
   try {
     const res = await fetch(`${API}${path}`, {
       ...options,
+      credentials: 'include',
       headers,
     });
 

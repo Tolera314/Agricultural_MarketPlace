@@ -1,13 +1,11 @@
 'use client';
 
+import { getAccessToken, setAccessToken, setCurrentUser } from './auth';
+
 const API = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
 
 function getToken(): string | null {
-  try {
-    return localStorage.getItem('agrimarket_token');
-  } catch {
-    return null;
-  }
+  return getAccessToken();
 }
 
 async function apiFetch<T>(path: string, options: RequestInit = {}): Promise<T> {
@@ -21,6 +19,7 @@ async function apiFetch<T>(path: string, options: RequestInit = {}): Promise<T> 
   try {
     const res = await fetch(`${API}${path}`, {
       ...options,
+      credentials: 'include',
       headers: {
         'Content-Type': 'application/json',
         Authorization: `Bearer ${token}`,
@@ -46,12 +45,13 @@ export const workerApi = {
     const res = await fetch(`${API}/api/auth/demo-worker`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
     });
     const data = await res.json().catch(() => null);
     if (!res.ok) throw new Error(data?.error?.message || 'Failed to authenticate demo worker');
-    if (data?.data?.token) {
-      localStorage.setItem('agrimarket_token', data.data.token);
-      localStorage.setItem('agrimarket_user', JSON.stringify(data.data.user));
+    if (data?.data?.accessToken || data?.data?.token) {
+      setAccessToken(data.data.accessToken || data.data.token);
+      setCurrentUser(data.data.user);
     }
     return data;
   },
