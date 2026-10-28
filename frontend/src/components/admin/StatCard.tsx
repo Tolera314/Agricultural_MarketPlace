@@ -6,7 +6,7 @@ import { LucideIcon } from 'lucide-react';
 interface StatCardProps {
   label: string;
   value: string | number;
-  trend: string;
+  trend?: string;
   icon: LucideIcon;
 }
 
@@ -27,9 +27,11 @@ export function StatCard({ label, value, trend, icon: Icon }: StatCardProps) {
           <div className="text-2xl font-bold text-[#142E24] dark:text-[#E6F0EB] tracking-tight font-display">
             {value}
           </div>
-          <div className="text-xs font-semibold text-[#0B9660] dark:text-[#34D399] mt-0.5 flex items-center gap-1">
-            <span>{trend}</span>
-          </div>
+          {trend && (
+            <div className="text-xs font-semibold text-[#0B9660] dark:text-[#34D399] mt-0.5 flex items-center gap-1">
+              <span>{trend}</span>
+            </div>
+          )}
         </div>
       </div>
     </div>

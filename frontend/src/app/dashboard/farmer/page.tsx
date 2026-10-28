@@ -4,11 +4,8 @@ import React from 'react';
 import { useRouter } from 'next/navigation';
 import FarmerDashboardContent from '@/components/farmer/FarmerDashboardContent';
 
-export default function FarmerOverviewPage({
-  onOpenSidebar,
-}: {
-  onOpenSidebar?: () => void;
-}) {
+export default function (props: any) {
+  const onOpenSidebar = props?.onOpenSidebar;
   const router = useRouter();
 
   const handleNavigate = (page: string) => {

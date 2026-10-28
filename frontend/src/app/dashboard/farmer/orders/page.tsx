@@ -101,11 +101,8 @@ const INITIAL_ORDERS: FarmerOrder[] = [
   },
 ];
 
-export default function FarmerOrdersPage({
-  onOpenSidebar,
-}: {
-  onOpenSidebar?: () => void;
-}) {
+export default function (props: any) {
+  const onOpenSidebar = props?.onOpenSidebar;
   const [orders, setOrders] = useState<FarmerOrder[]>(INITIAL_ORDERS);
   const [statusFilter, setStatusFilter] = useState<string>('ALL');
   const [search, setSearch] = useState('');

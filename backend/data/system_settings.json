@@ -1,0 +1,33 @@
+{
+  "platform": {
+    "name": "AgriMarket Ethiopia",
+    "tagline": "Farmers · Buyers · Better Tomorrow",
+    "currency": "ETB",
+    "supportedLanguages": [
+      "English",
+      "Amharic",
+      "Oromiffa"
+    ],
+    "supportContact": "+251 911 22 33 44",
+    "supportEmail": "support@agrimarket.et",
+    "maintenanceMode": false
+  },
+  "policies": {
+    "requireFarmerVerification": true,
+    "requireDriverInspection": true,
+    "autoCancelUnpaidOrdersMinutes": 120,
+    "defaultServiceRadiusKm": 35
+  },
+  "notifications": {
+    "smsEnabled": true,
+    "inAppEnabled": true,
+    "emailEnabled": true
+  },
+  "limits": {
+    "localMaxOrderValue": 60000,
+    "intercityMaxOrderValue": 500000,
+    "adminApprovalThreshold": 25000,
+    "dailyCodLimitPerWorker": 15000,
+    "maxListingsPerUnverifiedFarmer": 5
+  }
+}

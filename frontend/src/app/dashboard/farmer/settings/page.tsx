@@ -11,11 +11,8 @@ import {
   Menu,
 } from 'lucide-react';
 
-export default function FarmerSettingsPage({
-  onOpenSidebar,
-}: {
-  onOpenSidebar?: () => void;
-}) {
+export default function (props: any) {
+  const onOpenSidebar = props?.onOpenSidebar;
   const [saved, setSaved] = useState(false);
 
   return (

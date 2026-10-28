@@ -11,6 +11,7 @@ import authRouter from './routes/auth.routes.js';
 import workerRouter from './routes/worker.routes.js';
 import locationRouter from './routes/location.routes.js';
 import adminRouter from './routes/admin.routes.js';
+import superadminRouter from './routes/superadmin.routes.js';
 import buyerRouter from './routes/buyer.routes.js';
 import onboardingRouter from './routes/onboarding.routes.js';
 
@@ -49,6 +50,7 @@ app.get('/', (req: Request, res: Response) => {
       worker: '/api/worker',
       location: '/api/location',
       admin: '/api/admin',
+      superadmin: '/api/superadmin',
       buyer: '/api/buyer',
     },
   });
@@ -70,6 +72,7 @@ app.use('/api/auth', authRouter);
 app.use('/api/worker', workerRouter);
 app.use('/api/location', locationRouter);
 app.use('/api/admin', adminRouter);
+app.use('/api/superadmin', superadminRouter);
 app.use('/api/buyer', buyerRouter);
 app.use('/api/onboarding', onboardingRouter);
 

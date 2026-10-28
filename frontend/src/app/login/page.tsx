@@ -124,7 +124,9 @@ export default function LoginPage() {
         else router.push('/dashboard/buyer');
       } else if (userRole === 'DELIVERY_WORKER') {
         router.push('/dashboard/worker');
-      } else if (userRole === 'ADMIN' || userRole === 'SUPERADMIN') {
+      } else if (userRole === 'SUPERADMIN') {
+        router.push('/dashboard/superadmin');
+      } else if (userRole === 'ADMIN') {
         router.push('/dashboard/admin');
       } else if (userRole === 'FARMER') {
         router.push('/dashboard/farmer');
@@ -508,3 +510,4 @@ export default function LoginPage() {
     </div>
   );
 }
+

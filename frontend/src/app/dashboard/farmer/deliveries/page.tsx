@@ -70,11 +70,8 @@ const SAMPLE_DELIVERIES: DeliveryItem[] = [
   },
 ];
 
-export default function FarmerDeliveriesPage({
-  onOpenSidebar,
-}: {
-  onOpenSidebar?: () => void;
-}) {
+export default function (props: any) {
+  const onOpenSidebar = props?.onOpenSidebar;
   const [deliveries] = useState<DeliveryItem[]>(SAMPLE_DELIVERIES);
 
   return (

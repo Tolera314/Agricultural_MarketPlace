@@ -14,11 +14,8 @@ import {
   Sparkles,
 } from 'lucide-react';
 
-export default function FarmerProfilePage({
-  onOpenSidebar,
-}: {
-  onOpenSidebar?: () => void;
-}) {
+export default function (props: any) {
+  const onOpenSidebar = props?.onOpenSidebar;
   const [saved, setSaved] = useState(false);
 
   return (
