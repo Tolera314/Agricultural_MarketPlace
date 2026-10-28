@@ -192,7 +192,9 @@ export const onboardingApi = {
 
     const json = await res.json();
     if (!res.ok) {
-      throw new Error(json.error?.message || json.message || 'Failed to submit farmer application.');
+      const err: any = new Error(json.error?.message || json.message || 'Failed to submit farmer application.');
+      err.field = json.error?.field;
+      throw err;
     }
 
     return json.data;
@@ -214,7 +216,9 @@ export const onboardingApi = {
 
     const json = await res.json();
     if (!res.ok) {
-      throw new Error(json.error?.message || json.message || 'Failed to submit worker application.');
+      const err: any = new Error(json.error?.message || json.message || 'Failed to submit worker application.');
+      err.field = json.error?.field;
+      throw err;
     }
 
     return json.data;

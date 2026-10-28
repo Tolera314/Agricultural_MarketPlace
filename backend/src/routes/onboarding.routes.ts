@@ -56,7 +56,39 @@ router.get('/draft', getDraft);
 router.post('/draft', saveDraft);
 
 // 4. Document upload & secure retrieval
-router.post('/upload', upload.single('file'), uploadDocument);
+router.post(
+  '/upload',
+  (req, res, next) => {
+    upload.single('file')(req, res, (err: any) => {
+      if (err) {
+        if (err instanceof multer.MulterError) {
+          if (err.code === 'LIMIT_FILE_SIZE') {
+            return res.status(400).json({
+              success: false,
+              error: {
+                field: 'file',
+                message: 'The uploaded file exceeds the 5 MB maximum size limit. Please choose a smaller document or photo.',
+              },
+            });
+          }
+          return res.status(400).json({
+            success: false,
+            error: { field: 'file', message: `File upload error: ${err.message}` },
+          });
+        }
+        return res.status(400).json({
+          success: false,
+          error: {
+            field: 'file',
+            message: err.message || 'Invalid file format. Only JPEG, PNG, WEBP, and PDF documents are supported.',
+          },
+        });
+      }
+      next();
+    });
+  },
+  uploadDocument
+);
 router.get('/documents/:filename', serveDocument);
 
 // 5. Verification Application Submissions

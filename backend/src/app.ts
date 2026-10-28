@@ -83,13 +83,40 @@ app.use((req: Request, res: Response) => {
   });
 });
 
-// Global Error Handler
+// Global Error Handler with User-Friendly Translation
 app.use((err: any, req: Request, res: Response, next: NextFunction) => {
-  console.error('Unhandled Error:', err);
-  res.status(err.status || 500).json({
+  console.error('Unhandled Application Error:', err);
+
+  let status = err.status || 500;
+  let message = err.message || 'An unexpected error occurred. Please try again.';
+
+  if (err.code === 'P2002') {
+    status = 409;
+    const target = Array.isArray(err.meta?.target) ? err.meta.target.join(', ') : err.meta?.target;
+    message = `A record with this ${target || 'information'} already exists. Please check your entries.`;
+  } else if (err.code === 'P2003') {
+    status = 400;
+    message = 'A selected zone, location, or reference record does not exist. Please check your selections.';
+  } else if (err.code === 'P2025') {
+    status = 404;
+    message = 'The requested record could not be found.';
+  } else if (err.name === 'MulterError') {
+    status = 400;
+    if (err.code === 'LIMIT_FILE_SIZE') {
+      message = 'The uploaded file exceeds the 5 MB maximum size limit. Please choose a smaller file.';
+    } else {
+      message = `Document upload error: ${err.message}`;
+    }
+  } else if (status >= 500) {
+    message = 'An unexpected server error occurred while processing your request. Please try again.';
+  }
+
+  res.status(status).json({
+    success: false,
     error: {
-      message: err.message || 'Internal Server Error',
-      status: err.status || 500,
+      message,
+      status,
+      ...(err.field ? { field: err.field } : {}),
     },
   });
 });

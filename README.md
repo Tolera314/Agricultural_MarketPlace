@@ -9,7 +9,7 @@
 [![Prisma](https://img.shields.io/badge/Prisma-7.8-2d3748.svg)](https://www.prisma.io/)
 [![PostgreSQL](https://img.shields.io/badge/PostgreSQL-16-336791.svg)](https://www.postgresql.org/)
 [![PWA Ready](https://img.shields.io/badge/PWA-Ready-emerald.svg)](https://web.dev/progressive-web-apps/)
-[![Tests Passing](https://img.shields.io/badge/Tests-145%2F145%20Passing-brightgreen.svg)]()
+[![Tests Passing](https://img.shields.io/badge/Tests-184%2F184%20Passing-brightgreen.svg)]()
 
 ---
 
@@ -145,6 +145,13 @@ AgriMarket implements defense-in-depth session security:
    - `authRateLimiter`: 20 requests / 15 minutes for registration and login.
    - `passwordRecoveryLimiter`: 5 recovery attempts / 15 minutes.
    - `otpVerificationLimiter`: 6 verification attempts / 15 minutes.
+
+7. **Google OAuth 2.0 & Identity Linking Architecture:**
+   - **Google Identity Verification:** Verified on the trusted server using official `google-auth-library` (`verifyIdToken` with signature, expiration, issuer, and audience validation against `GOOGLE_CLIENT_ID`).
+   - **Stable Identity Identifier:** Accounts link to Google's immutable `sub` claim in the `LinkedIdentity` model (`@@unique([provider, providerSub])`), never relying solely on display names.
+   - **Account Takeover Defense:** When a Google account email matches an existing local account that has not yet been linked, the server **strictly refuses silent merging**. It returns `409 Conflict` with `requiresLinkVerification: true`. The client prompts the user for their existing account password to confirm ownership via `POST /api/auth/google/link`.
+   - **Safe Customer Role Defaults:** All new users registered via Google automatically receive the `BUYER` role and `PENDING_ROLE` onboarding status. Public OAuth can never self-grant elevated permissions (`ADMIN` or `SUPERADMIN`).
+   - **Safe Password-less Handling:** Google-first accounts store `passwordHash: null` rather than dummy strings. Standard password login attempts return an intuitive message instructing the user to sign in with Google or reset their password.
 
 ---
 
@@ -481,10 +488,11 @@ npm test
 | :--- | :--- | :--- | :--- | :--- |
 | **Boundary Suite** | `npm run test:boundary` | `boundary.test.ts` | **79 Passed** | Full name length & Unicode, Ethiopian phone E.164, email syntax, password policy, OTP length, GPS range `[-90, 90]`. |
 | **Auth & Security**| `npm run test:auth` | `auth.test.ts` | **32 Passed** | Dual identifier login, token family rotation, reuse theft detection, anti-enumeration, single-use reset OTP, atomic versioning. |
+| **Google OAuth**   | `npm run test:google` | `google-auth.test.ts` | **39 Passed** | Google credential verification, stable `sub` identity linking, account takeover protection (409 conflict), password verification, safe default customer role (`BUYER`), suspended account rejection. |
 | **Location Suite** | `npm run test:location` | `location.test.ts` | **8 Passed** | Explicit user consent, numeric coordinate verification, accuracy bounds, role-based location access. |
 | **Delivery Suite** | `npm run test:delivery` | `delivery.test.ts` | **18 Passed** | Courier assignment, status transitions, vehicle capacity, live tracking updates. |
 | **Onboarding Suite**| `npm run test:onboarding`| `onboarding.test.ts` | **8 Passed** | Multi-step role transition, draft persistence, document upload validation, admin approval/rejection. |
-| **Total** | — | — | **145 Passed, 0 Failed** | **100% Passing Test Rate** |
+| **Total** | — | — | **184 Passed, 0 Failed** | **100% Passing Test Rate** |
 
 ---
 

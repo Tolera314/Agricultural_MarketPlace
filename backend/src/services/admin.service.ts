@@ -434,7 +434,7 @@ export class AdminService {
     const farmerUser = await prisma.user.findUnique({ where: { id: prev.userId } });
     if (farmerUser && (status === VerificationStatus.VERIFIED || status === VerificationStatus.REJECTED)) {
       NotificationService.sendVerificationStatusNotification({
-        phone: farmerUser.phone,
+        phone: farmerUser.phone || "",
         email: farmerUser.email,
         fullName: farmerUser.fullName,
         role: 'FARMER',
@@ -583,7 +583,7 @@ export class AdminService {
     const workerUser = await prisma.user.findUnique({ where: { id: prev.userId } });
     if (workerUser && (status === VerificationStatus.VERIFIED || status === VerificationStatus.REJECTED)) {
       NotificationService.sendVerificationStatusNotification({
-        phone: workerUser.phone,
+        phone: workerUser.phone || "",
         email: workerUser.email,
         fullName: workerUser.fullName,
         role: 'DELIVERY_WORKER',
