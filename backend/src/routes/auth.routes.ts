@@ -12,6 +12,8 @@ import {
   handleResetPassword,
   handleGetMe,
   handleDemoWorkerAuth,
+  handleGoogleAuth,
+  handleGoogleLink,
 } from "../controllers/auth.controller.js";
 import { requireAuth } from "../middleware/requireAuth.js";
 import {
@@ -41,5 +43,9 @@ router.post("/reset-password", passwordRecoveryLimiter, handleResetPassword);
 
 // Demo worker login (development)
 router.post("/demo-worker", handleDemoWorkerAuth);
+
+// Google OAuth authentication & account linking
+router.post("/google", authRateLimiter, handleGoogleAuth);
+router.post("/google/link", authRateLimiter, handleGoogleLink);
 
 export default router;

@@ -1,6 +1,7 @@
 import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
 import crypto from "crypto";
+import { OAuth2Client } from "google-auth-library";
 import prisma from "../config/prisma.js";
 import { NotificationService } from "./notification.service.js";
 
@@ -310,7 +311,7 @@ export async function registerUser(input: RegisterInput, meta: RequestMetadata =
 
   // Verification delivery (Email if filled, otherwise SMS)
   const delivery = await NotificationService.sendOTPVerification({
-    phone: user.phone,
+    phone: user.phone || "",
     email: user.email,
     fullName: user.fullName,
     otpCode,
@@ -413,7 +414,7 @@ export async function verifyOTPUser(identifier: string, otpCode: string, meta: R
 
   // Send Welcome Notification
   await NotificationService.sendWelcomeNotification({
-    phone: updated.phone,
+    phone: updated.phone || "",
     email: updated.email,
     fullName: updated.fullName,
   });
@@ -478,7 +479,7 @@ export async function resendOTPUser(identifier: string) {
   ]);
 
   const delivery = await NotificationService.sendOTPVerification({
-    phone: user.phone,
+    phone: user.phone || "",
     email: user.email,
     fullName: user.fullName,
     otpCode,
@@ -508,6 +509,12 @@ export async function loginUser(identifier: string, password: string, meta: Requ
   if (!user || !user.isActive) {
     const err = new Error("Invalid phone/email or password.");
     (err as any).status = 401;
+    throw err;
+  }
+
+  if (!user.passwordHash) {
+    const err = new Error("This account was created with Google Sign-In. Please sign in with Google or reset your password.");
+    (err as any).status = 400;
     throw err;
   }
 
@@ -587,7 +594,7 @@ export async function forgotPassword(identifier: string) {
 
   // Dispatch OTP notification
   const delivery = await NotificationService.sendPasswordResetOTP({
-    phone: user.phone,
+    phone: user.phone || "",
     email: user.email,
     fullName: user.fullName,
     otpCode,
@@ -713,7 +720,7 @@ export async function resetPasswordWithCode(identifier: string, code: string, ne
 
   // Dispatch confirmation alert
   await NotificationService.sendPasswordResetSuccessNotification({
-    phone: user.phone,
+    phone: user.phone || "",
     email: user.email,
     fullName: user.fullName,
   });
@@ -750,4 +757,356 @@ export async function getUserById(userId: string) {
   }
 
   return user;
+}
+
+let googleOAuthClient: OAuth2Client | null = null;
+
+function getGoogleClient(): OAuth2Client {
+  const clientId = process.env.GOOGLE_CLIENT_ID;
+  if (!clientId) {
+    const err = new Error("Google authentication is not configured on the server. Missing GOOGLE_CLIENT_ID.");
+    (err as any).status = 500;
+    throw err;
+  }
+  if (!googleOAuthClient) {
+    googleOAuthClient = new OAuth2Client(
+      clientId,
+      process.env.GOOGLE_CLIENT_SECRET || ""
+    );
+  }
+  return googleOAuthClient;
+}
+
+let googleCredentialVerifierOverride: ((token: string) => Promise<any>) | null = null;
+
+export function __setGoogleVerifierForTesting(verifier: ((token: string) => Promise<any>) | null) {
+  googleCredentialVerifierOverride = verifier;
+}
+
+/**
+ * Verify a Google ID token or exchange an OAuth authorization code.
+ * Validates issuer, audience, signature, expiration, and extracts verified sub and email.
+ */
+export async function verifyGoogleCredential(credentialOrCode: string) {
+  if (googleCredentialVerifierOverride) {
+    return await googleCredentialVerifierOverride(credentialOrCode);
+  }
+
+  if (!credentialOrCode || typeof credentialOrCode !== "string") {
+    const err = new Error("Google credential or authorization code is required.");
+    (err as any).status = 400;
+    throw err;
+  }
+
+  const clientId = process.env.GOOGLE_CLIENT_ID;
+  const client = getGoogleClient();
+
+  let idToken = credentialOrCode;
+
+  // Check if credentialOrCode is an authorization code (OAuth 2.0 redirect flow)
+  // Google ID tokens are JWTs with 3 period-separated parts (header.payload.signature)
+  const isJwt = credentialOrCode.split(".").length === 3;
+  if (!isJwt) {
+    try {
+      const redirectUri =
+        process.env.GOOGLE_REDIRECT_URI ||
+        `${process.env.FRONTEND_URL || "http://localhost:3000"}/auth/google/callback`;
+      const { tokens } = await client.getToken({
+        code: credentialOrCode,
+        redirect_uri: redirectUri,
+      });
+      if (!tokens.id_token) {
+        const err = new Error("Failed to obtain ID token from Google authorization code.");
+        (err as any).status = 401;
+        throw err;
+      }
+      idToken = tokens.id_token;
+    } catch (err: any) {
+      const error = new Error(`Google authorization code exchange failed: ${err.message || "Invalid code"}`);
+      (error as any).status = 401;
+      throw error;
+    }
+  }
+
+  try {
+    const ticket: any = await client.verifyIdToken({
+      idToken,
+      audience: clientId,
+    } as any);
+
+    const payload = typeof ticket.getPayload === "function" ? ticket.getPayload() : ticket?.payload;
+    if (!payload || !payload.sub) {
+      const err = new Error("Invalid Google identity token payload.");
+      (err as any).status = 401;
+      throw err;
+    }
+
+    const validIssuers = ["accounts.google.com", "https://accounts.google.com"];
+    if (!payload.iss || !validIssuers.includes(payload.iss)) {
+      const err = new Error("Invalid Google token issuer.");
+      (err as any).status = 401;
+      throw err;
+    }
+
+    if (!payload.email) {
+      const err = new Error("Google account does not provide an email address.");
+      (err as any).status = 400;
+      throw err;
+    }
+
+    return {
+      sub: payload.sub,
+      email: payload.email.toLowerCase().trim(),
+      emailVerified: Boolean(payload.email_verified),
+      name: payload.name ? payload.name.trim() : payload.email.split("@")[0],
+      picture: payload.picture || null,
+      idToken,
+    };
+  } catch (error: any) {
+    if (error.status) throw error;
+    const err = new Error(`Google token verification failed: ${error.message || "Invalid credential"}`);
+    (err as any).status = 401;
+    throw err;
+  }
+}
+
+/**
+ * Main Google Authentication Service
+ * Supports:
+ * - Returning linked Google accounts
+ * - Registration of new accounts with Google
+ * - Detection of unlinked accounts with identical email (requires password to prevent takeover)
+ */
+export async function authenticateWithGoogle(credential: string, meta: RequestMetadata = {}) {
+  const profile = await verifyGoogleCredential(credential);
+  const { sub, email, emailVerified, name, picture } = profile;
+
+  // 1. Check if this Google identity is already linked
+  const existingIdentity = await prisma.linkedIdentity.findUnique({
+    where: {
+      provider_providerSub: {
+        provider: "google",
+        providerSub: sub,
+      },
+    },
+    include: {
+      user: true,
+    },
+  });
+
+  if (existingIdentity) {
+    const user = existingIdentity.user;
+
+    // Check account status
+    if (!user.isActive) {
+      const err = new Error("Your account has been deactivated or suspended. Please contact support.");
+      (err as any).status = 403;
+      throw err;
+    }
+
+    // Update avatar if provided
+    if (picture) {
+      await prisma.userProfile.upsert({
+        where: { userId: user.id },
+        create: { userId: user.id, avatarUrl: picture },
+        update: { avatarUrl: picture },
+      }).catch(() => {});
+    }
+
+    const session = await createSession(user, meta);
+    return {
+      success: true,
+      isNewUser: false,
+      user: {
+        id: user.id,
+        fullName: user.fullName,
+        phone: user.phone,
+        email: user.email,
+        role: user.role,
+        isVerified: user.isVerified,
+        onboardingStatus: user.onboardingStatus,
+      },
+      accessToken: session.accessToken,
+      refreshToken: session.refreshToken,
+      expiresAt: session.expiresAt,
+    };
+  }
+
+  // 2. Check if an account with this email already exists
+  const existingUser = await prisma.user.findUnique({
+    where: { email },
+  });
+
+  if (existingUser) {
+    // SECURITY POLICY: Do not silently link the Google identity without verification!
+    // The user must prove control of the existing account by providing their password.
+    const err = new Error(
+      "An account with this email address already exists. To securely link your Google account and prevent unauthorized access, please enter your existing account password."
+    );
+    (err as any).status = 409;
+    (err as any).requiresLinkVerification = true;
+    (err as any).email = email;
+    (err as any).googleSub = sub;
+    throw err;
+  }
+
+  // 3. New User Registration with Google
+  const newUser = await prisma.$transaction(async (tx) => {
+    const user = await tx.user.create({
+      data: {
+        fullName: name || email.split("@")[0],
+        email,
+        phone: null,
+        passwordHash: null,
+        role: "BUYER",
+        onboardingStatus: "PENDING_ROLE",
+        isVerified: emailVerified,
+        isActive: true,
+        tokenVersion: 1,
+      },
+    });
+
+    await tx.linkedIdentity.create({
+      data: {
+        userId: user.id,
+        provider: "google",
+        providerSub: sub,
+        email,
+      },
+    });
+
+    if (picture) {
+      await tx.userProfile.create({
+        data: {
+          userId: user.id,
+          avatarUrl: picture,
+        },
+      });
+    }
+
+    return user;
+  });
+
+  // Send Welcome notification asynchronously
+  NotificationService.sendWelcomeNotification({
+    phone: newUser.phone || "",
+    email: newUser.email,
+    fullName: newUser.fullName,
+  }).catch((e) => console.warn("[Welcome Notification Failed]", e));
+
+  const session = await createSession(newUser, meta);
+  return {
+    success: true,
+    isNewUser: true,
+    user: {
+      id: newUser.id,
+      fullName: newUser.fullName,
+      phone: newUser.phone,
+      email: newUser.email,
+      role: newUser.role,
+      isVerified: newUser.isVerified,
+      onboardingStatus: newUser.onboardingStatus,
+    },
+    accessToken: session.accessToken,
+    refreshToken: session.refreshToken,
+    expiresAt: session.expiresAt,
+  };
+}
+
+/**
+ * Secure Account Linking
+ * Requires user to submit their existing account password alongside the Google credential.
+ */
+export async function linkGoogleAccount(credential: string, password: string, meta: RequestMetadata = {}) {
+  const profile = await verifyGoogleCredential(credential);
+  const { sub, email, picture } = profile;
+
+  if (!password || typeof password !== "string") {
+    const err = new Error("Current account password is required to verify account linking.");
+    (err as any).status = 400;
+    (err as any).field = "password";
+    throw err;
+  }
+
+  const user = await prisma.user.findUnique({
+    where: { email },
+  });
+
+  if (!user) {
+    const err = new Error("No account found matching this email address.");
+    (err as any).status = 404;
+    throw err;
+  }
+
+  if (!user.isActive) {
+    const err = new Error("This account is deactivated or suspended.");
+    (err as any).status = 403;
+    throw err;
+  }
+
+  if (user.passwordHash) {
+    const valid = await bcrypt.compare(password, user.passwordHash);
+    if (!valid) {
+      const err = new Error("Incorrect account password. Account linking denied.");
+      (err as any).status = 401;
+      (err as any).field = "password";
+      throw err;
+    }
+  }
+
+  // Atomically create LinkedIdentity
+  await prisma.$transaction(async (tx) => {
+    const existingIdentity = await tx.linkedIdentity.findUnique({
+      where: {
+        provider_providerSub: {
+          provider: "google",
+          providerSub: sub,
+        },
+      },
+    });
+
+    if (existingIdentity) {
+      if (existingIdentity.userId !== user.id) {
+        const err = new Error("This Google identity is already linked to another AgriMarket user.");
+        (err as any).status = 409;
+        throw err;
+      }
+      return;
+    }
+
+    await tx.linkedIdentity.create({
+      data: {
+        userId: user.id,
+        provider: "google",
+        providerSub: sub,
+        email,
+      },
+    });
+
+    if (picture) {
+      await tx.userProfile.upsert({
+        where: { userId: user.id },
+        create: { userId: user.id, avatarUrl: picture },
+        update: { avatarUrl: picture },
+      });
+    }
+  });
+
+  const session = await createSession(user, meta);
+  return {
+    success: true,
+    message: "Google account linked successfully.",
+    user: {
+      id: user.id,
+      fullName: user.fullName,
+      phone: user.phone,
+      email: user.email,
+      role: user.role,
+      isVerified: user.isVerified,
+      onboardingStatus: user.onboardingStatus,
+    },
+    accessToken: session.accessToken,
+    refreshToken: session.refreshToken,
+    expiresAt: session.expiresAt,
+  };
 }

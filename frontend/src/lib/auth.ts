@@ -399,3 +399,105 @@ export function validatePasswordStrength(password: string): {
     requirements,
   };
 }
+
+export interface GoogleAuthResult {
+  success: boolean;
+  user?: AuthUser;
+  redirectUrl?: string;
+  requiresLinkVerification?: boolean;
+  email?: string;
+  error?: string;
+}
+
+/**
+ * Sign In or Sign Up with Google credential (ID token or OAuth authorization code)
+ */
+export async function loginWithGoogle(credential: string): Promise<GoogleAuthResult> {
+  try {
+    const res = await fetch(`${API_URL}/api/auth/google`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
+      body: JSON.stringify({ credential }),
+    });
+
+    const data = await res.json();
+
+    if (!res.ok) {
+      if (res.status === 409 && data.requiresLinkVerification) {
+        return {
+          success: false,
+          requiresLinkVerification: true,
+          email: data.email,
+          error: data.message || 'An existing account with this email was found. Please enter your password to link your Google account.',
+        };
+      }
+
+      return {
+        success: false,
+        error: data.error?.message || 'Google authentication failed.',
+      };
+    }
+
+    const { accessToken, token, user, redirectUrl } = data.data || {};
+    const effectiveToken = accessToken || token;
+
+    if (effectiveToken) {
+      setAccessToken(effectiveToken);
+    }
+    if (user) {
+      setCurrentUser(user);
+    }
+
+    return { success: true, user, redirectUrl };
+  } catch {
+    return {
+      success: false,
+      error: 'Could not connect to the server for Google authentication.',
+    };
+  }
+}
+
+/**
+ * Link Google identity to existing account by verifying existing password
+ */
+export async function linkGoogleAccount(
+  credential: string,
+  password: string
+): Promise<{ success: boolean; user?: AuthUser; redirectUrl?: string; error?: string }> {
+  try {
+    const res = await fetch(`${API_URL}/api/auth/google/link`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
+      body: JSON.stringify({ credential, password }),
+    });
+
+    const data = await res.json();
+
+    if (!res.ok) {
+      return {
+        success: false,
+        error: data.error?.message || 'Failed to link Google account. Please verify your password.',
+      };
+    }
+
+    const { accessToken, token, user, redirectUrl } = data.data || {};
+    const effectiveToken = accessToken || token;
+
+    if (effectiveToken) {
+      setAccessToken(effectiveToken);
+    }
+    if (user) {
+      setCurrentUser(user);
+    }
+
+    return { success: true, user, redirectUrl };
+  } catch {
+    return {
+      success: false,
+      error: 'Could not connect to the server. Please try again.',
+    };
+  }
+}
+

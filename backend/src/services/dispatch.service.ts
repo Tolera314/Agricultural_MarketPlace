@@ -163,7 +163,7 @@ export async function dispatchOrder(orderId: string, options: { broadcastRadiusK
       candidates.push({
         workerId: w.id,
         fullName: w.fullName,
-        phone: w.phone,
+        phone: w.phone || "",
         distanceKm: Number(dist.toFixed(1)),
         vehicleType: prof.vehicleType,
         vehicleCapacityKg: prof.vehicleCapacityKg || 50,
