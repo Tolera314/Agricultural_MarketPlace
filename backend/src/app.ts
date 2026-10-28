@@ -14,6 +14,8 @@ import adminRouter from './routes/admin.routes.js';
 import buyerRouter from './routes/buyer.routes.js';
 import onboardingRouter from './routes/onboarding.routes.js';
 
+import cookieParser from 'cookie-parser';
+
 const app = express();
 
 // Security and CORS middleware
@@ -21,6 +23,8 @@ app.use(cors({
   origin: ['http://localhost:3000', 'http://127.0.0.1:3000'],
   credentials: true,
 }));
+
+app.use(cookieParser());
 
 // Configure permissive CSP headers so browser DevTools and local clients never get blocked
 app.use((req: Request, res: Response, next: NextFunction) => {

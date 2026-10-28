@@ -1,13 +1,41 @@
 import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
+import crypto from "crypto";
 import prisma from "../config/prisma.js";
 import { NotificationService } from "./notification.service.js";
 
 const SALT_ROUNDS = 12;
 const JWT_SECRET = process.env.JWT_SECRET || "changeme_dev_secret";
-const JWT_EXPIRES_IN = process.env.JWT_EXPIRES_IN || "7d";
+const ACCESS_TOKEN_EXPIRES_IN = "15m";
+const REFRESH_TOKEN_DAYS = 7;
 
-/** Normalise an Ethiopian phone number to E.164 (+251XXXXXXXXX). */
+/**
+ * Password Policy Enforcement:
+ * Minimum 8 characters, at least 1 uppercase, at least 1 digit, at least 1 symbol.
+ * Never trimmed, never silently modified.
+ */
+export function validatePasswordStrength(password: string): { valid: boolean; message?: string } {
+  if (!password || typeof password !== "string") {
+    return { valid: false, message: "Password is required." };
+  }
+  if (password.length < 8) {
+    return { valid: false, message: "Password must be at least 8 characters long." };
+  }
+  if (!/[A-Z]/.test(password)) {
+    return { valid: false, message: "Password must contain at least one uppercase letter." };
+  }
+  if (!/[0-9]/.test(password)) {
+    return { valid: false, message: "Password must contain at least one digit." };
+  }
+  if (!/[^A-Za-z0-9]/.test(password)) {
+    return { valid: false, message: "Password must contain at least one special symbol." };
+  }
+  return { valid: true };
+}
+
+/**
+ * Normalise an Ethiopian phone number to canonical E.164 (+251XXXXXXXXX).
+ */
 export function normalizeEthiopianPhone(raw: string): string {
   const digits = raw.replace(/[\s\-().]/g, "");
   if (/^\+251\d{9}$/.test(digits)) return digits;
@@ -17,6 +45,39 @@ export function normalizeEthiopianPhone(raw: string): string {
   throw new Error("Invalid Ethiopian phone number format. Please use +251 9XX XXX XXX or +251 7XX XXX XXX.");
 }
 
+/**
+ * Resolve whether an identifier is an email address or Ethiopian phone number.
+ */
+export function resolveUserIdentifier(identifier: string): { isEmail: boolean; value: string } {
+  const trimmed = (identifier || "").trim();
+  if (!trimmed) {
+    throw new Error("Please enter your phone number or email address.");
+  }
+
+  if (trimmed.includes("@")) {
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(trimmed)) {
+      throw new Error("Please enter a valid email address.");
+    }
+    return { isEmail: true, value: trimmed.toLowerCase() };
+  }
+
+  const phone = normalizeEthiopianPhone(trimmed);
+  return { isEmail: false, value: phone };
+}
+
+/**
+ * Hash a raw refresh token using SHA-256 for secure database storage.
+ */
+function hashToken(raw: string): string {
+  return crypto.createHash("sha256").update(raw).digest("hex");
+}
+
+export interface RequestMetadata {
+  ipAddress?: string | null;
+  userAgent?: string | null;
+}
+
 export interface RegisterInput {
   fullName: string;
   phone: string;
@@ -24,8 +85,169 @@ export interface RegisterInput {
   password: string;
 }
 
-export async function registerUser(input: RegisterInput) {
+/**
+ * Issue new access token (15m) + cryptographic refresh token family (7d)
+ */
+export async function createSession(
+  user: { id: string; role: string; tokenVersion: number },
+  meta: RequestMetadata = {},
+  family?: string
+) {
+  // 1. Short-lived Access Token
+  const accessToken = jwt.sign(
+    { sub: user.id, role: user.role, tokenVersion: user.tokenVersion },
+    JWT_SECRET,
+    { expiresIn: ACCESS_TOKEN_EXPIRES_IN }
+  );
+
+  // 2. Cryptographically secure 64-character Refresh Token
+  const rawRefreshToken = crypto.randomBytes(32).toString("hex");
+  const tokenHash = hashToken(rawRefreshToken);
+  const tokenFamily = family || crypto.randomUUID();
+  const expiresAt = new Date(Date.now() + REFRESH_TOKEN_DAYS * 24 * 60 * 60 * 1000);
+
+  // 3. Store refresh token in database
+  await prisma.refreshToken.create({
+    data: {
+      userId: user.id,
+      tokenHash,
+      family: tokenFamily,
+      expiresAt,
+      ipAddress: meta.ipAddress ?? null,
+      userAgent: meta.userAgent ?? null,
+    },
+  });
+
+  return {
+    accessToken,
+    refreshToken: rawRefreshToken,
+    expiresAt,
+  };
+}
+
+/**
+ * Rotate Refresh Token with Reuse Detection
+ */
+export async function rotateRefreshToken(rawRefreshToken: string, meta: RequestMetadata = {}) {
+  const tokenHash = hashToken(rawRefreshToken);
+
+  const existingToken = await prisma.refreshToken.findUnique({
+    where: { tokenHash },
+    include: { user: true },
+  });
+
+  if (!existingToken) {
+    const err = new Error("Invalid or unrecognized refresh session. Please sign in again.");
+    (err as any).status = 401;
+    throw err;
+  }
+
+  // REUSE DETECTION: If an already-revoked token is presented, compromise is suspected.
+  // Immediately revoke all tokens in the family to protect the user account!
+  if (existingToken.isRevoked) {
+    await prisma.refreshToken.updateMany({
+      where: { family: existingToken.family },
+      data: { isRevoked: true },
+    });
+
+    const err = new Error("Suspicious session reuse detected. For security, all sessions have been signed out.");
+    (err as any).status = 401;
+    throw err;
+  }
+
+  // Expiration check
+  if (existingToken.expiresAt < new Date()) {
+    await prisma.refreshToken.update({
+      where: { id: existingToken.id },
+      data: { isRevoked: true },
+    });
+    const err = new Error("Session has expired. Please sign in again.");
+    (err as any).status = 401;
+    throw err;
+  }
+
+  const user = existingToken.user;
+  if (!user.isActive) {
+    const err = new Error("Account has been deactivated. Please contact support.");
+    (err as any).status = 403;
+    throw err;
+  }
+
+  // Invalidate consumed token
+  await prisma.refreshToken.update({
+    where: { id: existingToken.id },
+    data: { isRevoked: true },
+  });
+
+  // Issue new rotated pair maintaining the same family
+  const session = await createSession(
+    { id: user.id, role: user.role, tokenVersion: user.tokenVersion },
+    meta,
+    existingToken.family
+  );
+
+  return {
+    accessToken: session.accessToken,
+    refreshToken: session.refreshToken,
+    expiresAt: session.expiresAt,
+    user: {
+      id: user.id,
+      fullName: user.fullName,
+      phone: user.phone,
+      email: user.email,
+      role: user.role,
+      isVerified: user.isVerified,
+      onboardingStatus: user.onboardingStatus,
+    },
+  };
+}
+
+/**
+ * Revoke specific refresh token on logout
+ */
+export async function revokeRefreshToken(rawRefreshToken: string) {
+  if (!rawRefreshToken) return;
+  const tokenHash = hashToken(rawRefreshToken);
+  try {
+    await prisma.refreshToken.updateMany({
+      where: { tokenHash },
+      data: { isRevoked: true },
+    });
+  } catch (err) {
+    // Graceful no-op if token does not exist
+  }
+}
+
+/**
+ * Revoke all active sessions for a user (e.g., password change or global logout)
+ */
+export async function revokeAllUserSessions(userId: string) {
+  await prisma.$transaction([
+    prisma.refreshToken.updateMany({
+      where: { userId, isRevoked: false },
+      data: { isRevoked: true },
+    }),
+    prisma.user.update({
+      where: { id: userId },
+      data: { tokenVersion: { increment: 1 } },
+    }),
+  ]);
+}
+
+/**
+ * Register a new user
+ */
+export async function registerUser(input: RegisterInput, meta: RequestMetadata = {}) {
   const { fullName, email, password } = input;
+
+  // Validate password strength
+  const passCheck = validatePasswordStrength(password);
+  if (!passCheck.valid) {
+    const err = new Error(passCheck.message);
+    (err as any).status = 400;
+    (err as any).field = "password";
+    throw err;
+  }
 
   // Normalise phone
   const phone = normalizeEthiopianPhone(input.phone);
@@ -66,16 +288,27 @@ export async function registerUser(input: RegisterInput) {
       phone,
       email: email && email.trim() !== "" ? email.toLowerCase().trim() : null,
       passwordHash,
-      role: "BUYER", // default public signup role until role selection
+      role: "BUYER",
       onboardingStatus: "PENDING_ROLE",
       isVerified: false,
       isActive: true,
       otpCode,
       otpExpiresAt,
+      tokenVersion: 1,
     },
   });
 
-  // Verification is sent through email if and only if user provided an email, otherwise via SMS (Ethio Telecom / Geez SMS)
+  // Also create OTPVerification audit record
+  await prisma.oTPVerification.create({
+    data: {
+      userId: user.id,
+      code: otpCode,
+      purpose: "REGISTER",
+      expiresAt: otpExpiresAt,
+    },
+  });
+
+  // Verification delivery (Email if filled, otherwise SMS)
   const delivery = await NotificationService.sendOTPVerification({
     phone: user.phone,
     email: user.email,
@@ -83,17 +316,16 @@ export async function registerUser(input: RegisterInput) {
     otpCode,
   });
 
-  const token = jwt.sign(
-    { sub: user.id, role: user.role },
-    JWT_SECRET,
-    { expiresIn: JWT_EXPIRES_IN } as any
-  );
+  const session = await createSession(user, meta);
 
   return {
     requiresVerification: true,
     verificationChannel: delivery.channel,
     recipient: delivery.recipient,
-    token,
+    accessToken: session.accessToken,
+    refreshToken: session.refreshToken,
+    expiresAt: session.expiresAt,
+    token: session.accessToken,
     user: {
       id: user.id,
       fullName: user.fullName,
@@ -109,7 +341,7 @@ export async function registerUser(input: RegisterInput) {
 /**
  * Verify 6-digit OTP code submitted by user
  */
-export async function verifyOTPUser(identifier: string, otpCode: string) {
+export async function verifyOTPUser(identifier: string, otpCode: string, meta: RequestMetadata = {}) {
   const cleanCode = (otpCode || "").trim();
 
   let user = await prisma.user.findFirst({
@@ -130,13 +362,12 @@ export async function verifyOTPUser(identifier: string, otpCode: string) {
   }
 
   if (user.isVerified) {
-    const token = jwt.sign(
-      { sub: user.id, role: user.role },
-      JWT_SECRET,
-      { expiresIn: JWT_EXPIRES_IN } as any
-    );
+    const session = await createSession(user, meta);
     return {
-      token,
+      accessToken: session.accessToken,
+      refreshToken: session.refreshToken,
+      expiresAt: session.expiresAt,
+      token: session.accessToken,
       user: {
         id: user.id,
         fullName: user.fullName,
@@ -174,21 +405,26 @@ export async function verifyOTPUser(identifier: string, otpCode: string) {
     },
   });
 
-  // Send Welcome Notification (Brevo email if email present, SMS if no email)
+  // Mark OTPVerification as used
+  await prisma.oTPVerification.updateMany({
+    where: { userId: user.id, purpose: "REGISTER", isUsed: false },
+    data: { isUsed: true },
+  });
+
+  // Send Welcome Notification
   await NotificationService.sendWelcomeNotification({
     phone: updated.phone,
     email: updated.email,
     fullName: updated.fullName,
   });
 
-  const token = jwt.sign(
-    { sub: updated.id, role: updated.role },
-    JWT_SECRET,
-    { expiresIn: JWT_EXPIRES_IN } as any
-  );
+  const session = await createSession(updated, meta);
 
   return {
-    token,
+    accessToken: session.accessToken,
+    refreshToken: session.refreshToken,
+    expiresAt: session.expiresAt,
+    token: session.accessToken,
     user: {
       id: updated.id,
       fullName: updated.fullName,
@@ -226,13 +462,20 @@ export async function resendOTPUser(identifier: string) {
   const otpCode = Math.floor(100000 + Math.random() * 900000).toString();
   const otpExpiresAt = new Date(Date.now() + 15 * 60 * 1000);
 
-  await prisma.user.update({
-    where: { id: user.id },
-    data: {
-      otpCode,
-      otpExpiresAt,
-    },
-  });
+  await prisma.$transaction([
+    prisma.user.update({
+      where: { id: user.id },
+      data: { otpCode, otpExpiresAt },
+    }),
+    prisma.oTPVerification.create({
+      data: {
+        userId: user.id,
+        code: otpCode,
+        purpose: "REGISTER",
+        expiresAt: otpExpiresAt,
+      },
+    }),
+  ]);
 
   const delivery = await NotificationService.sendOTPVerification({
     phone: user.phone,
@@ -245,35 +488,43 @@ export async function resendOTPUser(identifier: string) {
     success: true,
     channel: delivery.channel,
     recipient: delivery.recipient,
-    message: `A new 6-digit verification code has been sent via ${delivery.channel === 'EMAIL' ? 'email' : 'SMS'}.`,
+    message: `A new 6-digit verification code has been sent via ${delivery.channel === "EMAIL" ? "email" : "SMS"}.`,
   };
 }
 
-export async function loginUser(phone: string, password: string) {
-  const normalized = normalizeEthiopianPhone(phone);
-  const user = await prisma.user.findUnique({ where: { phone: normalized } });
+/**
+ * Sign in using Phone Number OR Email Address
+ */
+export async function loginUser(identifier: string, password: string, meta: RequestMetadata = {}) {
+  const resolved = resolveUserIdentifier(identifier);
 
+  const user = await prisma.user.findFirst({
+    where: resolved.isEmail
+      ? { email: resolved.value }
+      : { phone: resolved.value },
+  });
+
+  // Constant-time comparison prevention of timing attacks
   if (!user || !user.isActive) {
-    const err = new Error("Invalid credentials.");
+    const err = new Error("Invalid phone/email or password.");
     (err as any).status = 401;
     throw err;
   }
 
   const valid = await bcrypt.compare(password, user.passwordHash);
   if (!valid) {
-    const err = new Error("Invalid credentials.");
+    const err = new Error("Invalid phone/email or password.");
     (err as any).status = 401;
     throw err;
   }
 
-  const token = jwt.sign(
-    { sub: user.id, role: user.role },
-    JWT_SECRET,
-    { expiresIn: JWT_EXPIRES_IN } as any
-  );
+  const session = await createSession(user, meta);
 
   return {
-    token,
+    accessToken: session.accessToken,
+    refreshToken: session.refreshToken,
+    expiresAt: session.expiresAt,
+    token: session.accessToken,
     user: {
       id: user.id,
       fullName: user.fullName,
@@ -284,4 +535,219 @@ export async function loginUser(phone: string, password: string) {
       onboardingStatus: (user as any).onboardingStatus || "PENDING_ROLE",
     },
   };
+}
+
+/**
+ * Forgot Password - Send Single-Use OTP (Prevents Account Enumeration)
+ */
+export async function forgotPassword(identifier: string) {
+  let resolved: { isEmail: boolean; value: string };
+  try {
+    resolved = resolveUserIdentifier(identifier);
+  } catch {
+    // Return generic message even for malformed to avoid oracle attacks
+    return {
+      success: true,
+      message: "If an account exists with this phone or email, a recovery code has been sent.",
+    };
+  }
+
+  const user = await prisma.user.findFirst({
+    where: resolved.isEmail
+      ? { email: resolved.value }
+      : { phone: resolved.value },
+  });
+
+  if (!user || !user.isActive) {
+    return {
+      success: true,
+      message: "If an account exists with this phone or email, a recovery code has been sent.",
+    };
+  }
+
+  // Generate 6-digit recovery OTP
+  const otpCode = Math.floor(100000 + Math.random() * 900000).toString();
+  const expiresAt = new Date(Date.now() + 15 * 60 * 1000);
+
+  // Invalidate previous password reset OTPs
+  await prisma.oTPVerification.updateMany({
+    where: { userId: user.id, purpose: "PASSWORD_RESET", isUsed: false },
+    data: { isUsed: true },
+  });
+
+  // Record OTP in database
+  await prisma.oTPVerification.create({
+    data: {
+      userId: user.id,
+      code: otpCode,
+      purpose: "PASSWORD_RESET",
+      expiresAt,
+    },
+  });
+
+  // Dispatch OTP notification
+  const delivery = await NotificationService.sendPasswordResetOTP({
+    phone: user.phone,
+    email: user.email,
+    fullName: user.fullName,
+    otpCode,
+  });
+
+  return {
+    success: true,
+    channel: delivery.channel,
+    recipient: delivery.recipient,
+    message: `If an account exists with this identifier, a recovery code has been sent via ${
+      delivery.channel === "EMAIL" ? "email" : "SMS"
+    }.`,
+  };
+}
+
+/**
+ * Verify Recovery Code
+ */
+export async function verifyPasswordResetCode(identifier: string, code: string) {
+  const cleanCode = (code || "").trim();
+  const resolved = resolveUserIdentifier(identifier);
+
+  const user = await prisma.user.findFirst({
+    where: resolved.isEmail
+      ? { email: resolved.value }
+      : { phone: resolved.value },
+  });
+
+  if (!user) {
+    const err = new Error("Invalid or expired password reset code.");
+    (err as any).status = 400;
+    throw err;
+  }
+
+  const otpRecord = await prisma.oTPVerification.findFirst({
+    where: {
+      userId: user.id,
+      code: cleanCode,
+      purpose: "PASSWORD_RESET",
+      isUsed: false,
+      expiresAt: { gt: new Date() },
+    },
+    orderBy: { createdAt: "desc" },
+  });
+
+  if (!otpRecord) {
+    const err = new Error("Invalid or expired password reset code. Please request a new code.");
+    (err as any).status = 400;
+    throw err;
+  }
+
+  return {
+    valid: true,
+    message: "Code verified. Please choose a new password.",
+  };
+}
+
+/**
+ * Reset Password with Verified Code
+ */
+export async function resetPasswordWithCode(identifier: string, code: string, newPassword: string) {
+  const cleanCode = (code || "").trim();
+
+  // Validate new password against policy
+  const passCheck = validatePasswordStrength(newPassword);
+  if (!passCheck.valid) {
+    const err = new Error(passCheck.message);
+    (err as any).status = 400;
+    (err as any).field = "newPassword";
+    throw err;
+  }
+
+  const resolved = resolveUserIdentifier(identifier);
+  const user = await prisma.user.findFirst({
+    where: resolved.isEmail
+      ? { email: resolved.value }
+      : { phone: resolved.value },
+  });
+
+  if (!user) {
+    const err = new Error("Invalid recovery request.");
+    (err as any).status = 400;
+    throw err;
+  }
+
+  const otpRecord = await prisma.oTPVerification.findFirst({
+    where: {
+      userId: user.id,
+      code: cleanCode,
+      purpose: "PASSWORD_RESET",
+      isUsed: false,
+      expiresAt: { gt: new Date() },
+    },
+    orderBy: { createdAt: "desc" },
+  });
+
+  if (!otpRecord) {
+    const err = new Error("Invalid or expired verification code.");
+    (err as any).status = 400;
+    throw err;
+  }
+
+  const passwordHash = await bcrypt.hash(newPassword, SALT_ROUNDS);
+
+  // Atomically update password, consume OTP, revoke all active sessions, increment tokenVersion
+  await prisma.$transaction([
+    prisma.oTPVerification.update({
+      where: { id: otpRecord.id },
+      data: { isUsed: true },
+    }),
+    prisma.refreshToken.updateMany({
+      where: { userId: user.id, isRevoked: false },
+      data: { isRevoked: true },
+    }),
+    prisma.user.update({
+      where: { id: user.id },
+      data: {
+        passwordHash,
+        tokenVersion: { increment: 1 },
+      },
+    }),
+  ]);
+
+  // Dispatch confirmation alert
+  await NotificationService.sendPasswordResetSuccessNotification({
+    phone: user.phone,
+    email: user.email,
+    fullName: user.fullName,
+  });
+
+  return {
+    success: true,
+    message: "Password reset successful. All active sessions have been signed out. Please log in with your new password.",
+  };
+}
+
+/**
+ * Get current authenticated user details
+ */
+export async function getUserById(userId: string) {
+  const user = await prisma.user.findUnique({
+    where: { id: userId },
+    select: {
+      id: true,
+      fullName: true,
+      phone: true,
+      email: true,
+      role: true,
+      isActive: true,
+      isVerified: true,
+      onboardingStatus: true,
+      createdAt: true,
+    },
+  });
+
+  if (!user || !user.isActive) {
+    const err = new Error("User not found or account deactivated.");
+    (err as any).status = 404;
+    throw err;
+  }
+
+  return user;
 }

@@ -43,6 +43,7 @@ import {
 } from 'lucide-react';
 import { ThemeToggle } from '@/components/layout/ThemeToggle';
 import { buyerApi } from '@/lib/buyerApi';
+import { getCachedUserProfile, logout } from '@/lib/auth';
 
 const BUYER_NAV_ITEMS = [
   { id: 'dashboard', label: 'Overview', href: '/dashboard/buyer', icon: LayoutDashboard },
@@ -249,7 +250,7 @@ export default function BuyerDashboardPage({
 
       // 6. Check Local Storage User
       try {
-        const rawUser = localStorage.getItem('agrimarket_user');
+        const rawUser = JSON.stringify(getCachedUserProfile());
         if (rawUser) {
           const u = JSON.parse(rawUser);
           setUserProfile((prev) => ({
@@ -1556,8 +1557,8 @@ export default function BuyerDashboardPage({
                   </div>
                   <button
                     onClick={() => {
-                      localStorage.removeItem('agrimarket_token');
-                      localStorage.removeItem('agrimarket_user');
+                      logout();
+
                       router.push('/login');
                     }}
                     className="px-3.5 py-1.5 rounded-lg bg-red-50 text-red-700 hover:bg-red-100 dark:bg-red-950 dark:text-red-300 text-xs font-bold cursor-pointer"

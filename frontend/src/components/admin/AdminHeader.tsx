@@ -5,6 +5,7 @@ import Image from 'next/image';
 import { useRouter } from 'next/navigation';
 import { Search, Bell, LogOut, Shield } from 'lucide-react';
 import { ThemeToggle } from '@/components/layout/ThemeToggle';
+import { getCachedUserProfile, logout } from '@/lib/auth';
 
 interface AdminHeaderProps {
   onSearch?: (query: string) => void;
@@ -19,16 +20,11 @@ export function AdminHeader({ onSearch }: AdminHeaderProps) {
   const [showDropdown, setShowDropdown] = useState(false);
 
   useEffect(() => {
-    try {
-      const rawUser = localStorage.getItem('agrimarket_user');
-      if (rawUser) {
-        const u = JSON.parse(rawUser);
-        if (u.fullName) setAdminName(u.fullName);
-        if (u.role === 'SUPERADMIN') setAdminRole('Super Administrator');
-        else if (u.role === 'ADMIN') setAdminRole('Administrator');
-      }
-    } catch {
-      // fallback to default
+    const cached = getCachedUserProfile();
+    if (cached) {
+      if (cached.fullName) setAdminName(cached.fullName);
+      if (cached.role === 'SUPERADMIN') setAdminRole('Super Administrator');
+      else if (cached.role === 'ADMIN') setAdminRole('Administrator');
     }
   }, []);
 
@@ -37,14 +33,8 @@ export function AdminHeader({ onSearch }: AdminHeaderProps) {
     if (onSearch) onSearch(e.target.value);
   };
 
-  const handleLogout = () => {
-    try {
-      localStorage.removeItem('agrimarket_token');
-      localStorage.removeItem('agrimarket_user');
-    } catch {
-      // ignore
-    }
-    router.replace('/login');
+  const handleLogout = async () => {
+    await logout();
   };
 
   return (

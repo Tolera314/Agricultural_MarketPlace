@@ -1,12 +1,54 @@
 import type { Request, Response, NextFunction } from "express";
-import { registerUser, loginUser, verifyOTPUser, resendOTPUser } from "../services/auth.service.js";
-import type { RegisterInput } from "../services/auth.service.js";
+import {
+  registerUser,
+  loginUser,
+  verifyOTPUser,
+  resendOTPUser,
+  rotateRefreshToken,
+  revokeRefreshToken,
+  revokeAllUserSessions,
+  forgotPassword,
+  verifyPasswordResetCode,
+  resetPasswordWithCode,
+  getUserById,
+  type RegisterInput,
+} from "../services/auth.service.js";
 import prisma from "../config/prisma.js";
 import jwt from "jsonwebtoken";
 
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const JWT_SECRET = process.env.JWT_SECRET || "changeme_dev_secret";
+export const REFRESH_COOKIE_NAME = "agrimarket_refresh";
 
+/**
+ * Production-ready secure cookie options for rotating refresh token
+ */
+export function getRefreshCookieOptions(expires?: Date) {
+  const isProduction = process.env.NODE_ENV === "production";
+  return {
+    httpOnly: true,
+    secure: isProduction,
+    sameSite: "lax" as const,
+    path: "/",
+    ...(expires ? { expires } : { maxAge: 7 * 24 * 60 * 60 * 1000 }),
+  };
+}
+
+/**
+ * Extract client IP and User-Agent for audit and session tracking
+ */
+function extractRequestMeta(req: Request) {
+  const forwarded = req.headers["x-forwarded-for"];
+  const ipAddress = (
+    typeof forwarded === "string" ? forwarded.split(",")[0] : req.socket.remoteAddress
+  ) || null;
+  const userAgent = req.headers["user-agent"] || null;
+  return { ipAddress, userAgent };
+}
+
+/**
+ * POST /api/auth/register
+ */
 export async function handleRegister(req: Request, res: Response, next: NextFunction) {
   try {
     const { fullName, phone, email, password } = req.body;
@@ -60,12 +102,25 @@ export async function handleRegister(req: Request, res: Response, next: NextFunc
       password,
     };
 
-    const result = await registerUser(payload);
+    const meta = extractRequestMeta(req);
+    const result = await registerUser(payload, meta);
+
+    // Set secure HttpOnly refresh token cookie
+    if (result.refreshToken) {
+      res.cookie(REFRESH_COOKIE_NAME, result.refreshToken, getRefreshCookieOptions(result.expiresAt));
+    }
 
     return res.status(201).json({
       success: true,
       message: "Registration successful.",
-      data: result,
+      data: {
+        requiresVerification: result.requiresVerification,
+        verificationChannel: result.verificationChannel,
+        recipient: result.recipient,
+        accessToken: result.accessToken,
+        token: result.accessToken,
+        user: result.user,
+      },
     });
   } catch (error: any) {
     if (error.status) {
@@ -78,7 +133,6 @@ export async function handleRegister(req: Request, res: Response, next: NextFunc
       });
     }
 
-    // Validation or formatting error
     if (error.message && error.message.includes("Ethiopian phone")) {
       return res.status(400).json({
         success: false,
@@ -93,25 +147,50 @@ export async function handleRegister(req: Request, res: Response, next: NextFunc
   }
 }
 
+/**
+ * POST /api/auth/login
+ * Accepts: identifier (email or phone) OR phone OR email, along with password
+ */
 export async function handleLogin(req: Request, res: Response, next: NextFunction) {
   try {
-    const { phone, password } = req.body;
+    const { identifier, phone, email, password, rememberMe } = req.body;
+    const loginIdentifier = (identifier || phone || email || "").toString().trim();
 
-    if (!phone || !password) {
+    if (!loginIdentifier) {
       return res.status(400).json({
         success: false,
         error: {
-          message: "Phone number and password are required.",
+          field: "identifier",
+          message: "Please enter your phone number or email address.",
         },
       });
     }
 
-    const result = await loginUser(phone, password);
+    if (!password || typeof password !== "string") {
+      return res.status(400).json({
+        success: false,
+        error: {
+          field: "password",
+          message: "Password is required.",
+        },
+      });
+    }
+
+    const meta = extractRequestMeta(req);
+    const result = await loginUser(loginIdentifier, password, meta);
+
+    // Set secure HttpOnly cookie for refresh token
+    const cookieOptions = getRefreshCookieOptions(rememberMe ? result.expiresAt : undefined);
+    res.cookie(REFRESH_COOKIE_NAME, result.refreshToken, cookieOptions);
 
     return res.status(200).json({
       success: true,
       message: "Login successful.",
-      data: result,
+      data: {
+        accessToken: result.accessToken,
+        token: result.accessToken,
+        user: result.user,
+      },
     });
   } catch (error: any) {
     if (error.status) {
@@ -123,11 +202,340 @@ export async function handleLogin(req: Request, res: Response, next: NextFunctio
       });
     }
 
+    if (error.message && error.message.includes("Ethiopian phone")) {
+      return res.status(400).json({
+        success: false,
+        error: {
+          field: "identifier",
+          message: error.message,
+        },
+      });
+    }
+
     return next(error);
   }
 }
 
-/** Authenticate or provision the demo delivery worker (Abebe Mekonnen) */
+/**
+ * POST /api/auth/refresh
+ * Silent session rotation using HttpOnly refresh cookie
+ */
+export async function handleRefreshToken(req: Request, res: Response, next: NextFunction) {
+  try {
+    const rawRefreshToken = req.cookies?.[REFRESH_COOKIE_NAME] || req.body?.refreshToken;
+
+    if (!rawRefreshToken || typeof rawRefreshToken !== "string") {
+      return res.status(401).json({
+        success: false,
+        error: {
+          message: "No active session found. Please sign in.",
+        },
+      });
+    }
+
+    const meta = extractRequestMeta(req);
+    const result = await rotateRefreshToken(rawRefreshToken, meta);
+
+    // Update HttpOnly cookie with new rotated refresh token
+    res.cookie(REFRESH_COOKIE_NAME, result.refreshToken, getRefreshCookieOptions(result.expiresAt));
+
+    return res.status(200).json({
+      success: true,
+      data: {
+        accessToken: result.accessToken,
+        token: result.accessToken,
+        user: result.user,
+      },
+    });
+  } catch (error: any) {
+    // If refresh fails, clear the invalid cookie
+    res.clearCookie(REFRESH_COOKIE_NAME, { path: "/" });
+
+    if (error.status) {
+      return res.status(error.status).json({
+        success: false,
+        error: { message: error.message },
+      });
+    }
+    return next(error);
+  }
+}
+
+/**
+ * POST /api/auth/logout
+ * Revokes current refresh token and clears cookie
+ */
+export async function handleLogout(req: Request, res: Response, next: NextFunction) {
+  try {
+    const rawRefreshToken = req.cookies?.[REFRESH_COOKIE_NAME] || req.body?.refreshToken;
+
+    if (rawRefreshToken) {
+      await revokeRefreshToken(rawRefreshToken);
+    }
+
+    res.clearCookie(REFRESH_COOKIE_NAME, { path: "/" });
+
+    return res.status(200).json({
+      success: true,
+      message: "Logged out successfully.",
+    });
+  } catch (error: any) {
+    res.clearCookie(REFRESH_COOKIE_NAME, { path: "/" });
+    return next(error);
+  }
+}
+
+/**
+ * POST /api/auth/logout-all
+ * Revokes all sessions for user and increments tokenVersion
+ */
+export async function handleLogoutAll(req: Request, res: Response, next: NextFunction) {
+  try {
+    const userId = req.auth?.sub;
+    if (!userId) {
+      return res.status(401).json({
+        success: false,
+        error: { message: "Authentication required." },
+      });
+    }
+
+    await revokeAllUserSessions(userId);
+    res.clearCookie(REFRESH_COOKIE_NAME, { path: "/" });
+
+    return res.status(200).json({
+      success: true,
+      message: "All sessions have been signed out.",
+    });
+  } catch (error: any) {
+    return next(error);
+  }
+}
+
+/**
+ * POST /api/auth/verify-otp
+ */
+export async function handleVerifyOTP(req: Request, res: Response, next: NextFunction) {
+  try {
+    const { identifier, otpCode } = req.body;
+
+    if (!identifier || typeof identifier !== "string" || !identifier.trim()) {
+      return res.status(400).json({
+        success: false,
+        error: { field: "identifier", message: "Account phone, email, or user identifier is required." },
+      });
+    }
+
+    if (!otpCode || typeof otpCode !== "string" || !otpCode.trim()) {
+      return res.status(400).json({
+        success: false,
+        error: { field: "otpCode", message: "6-digit verification code is required." },
+      });
+    }
+
+    const meta = extractRequestMeta(req);
+    const result = await verifyOTPUser(identifier.trim(), otpCode.trim(), meta);
+
+    if (result.refreshToken) {
+      res.cookie(REFRESH_COOKIE_NAME, result.refreshToken, getRefreshCookieOptions());
+    }
+
+    return res.status(200).json({
+      success: true,
+      message: result.message,
+      data: {
+        accessToken: result.accessToken,
+        token: result.accessToken,
+        user: result.user,
+      },
+    });
+  } catch (error: any) {
+    if (error.status) {
+      return res.status(error.status).json({
+        success: false,
+        error: {
+          field: error.field,
+          message: error.message,
+        },
+      });
+    }
+    return next(error);
+  }
+}
+
+/**
+ * POST /api/auth/resend-otp
+ */
+export async function handleResendOTP(req: Request, res: Response, next: NextFunction) {
+  try {
+    const { identifier } = req.body;
+
+    if (!identifier || typeof identifier !== "string" || !identifier.trim()) {
+      return res.status(400).json({
+        success: false,
+        error: { field: "identifier", message: "Account phone or email is required." },
+      });
+    }
+
+    const result = await resendOTPUser(identifier.trim());
+
+    return res.status(200).json({
+      success: true,
+      message: result.message,
+      data: result,
+    });
+  } catch (error: any) {
+    if (error.status) {
+      return res.status(error.status).json({
+        success: false,
+        error: {
+          field: error.field,
+          message: error.message,
+        },
+      });
+    }
+    return next(error);
+  }
+}
+
+/**
+ * POST /api/auth/forgot-password
+ */
+export async function handleForgotPassword(req: Request, res: Response, next: NextFunction) {
+  try {
+    const { identifier } = req.body;
+
+    if (!identifier || typeof identifier !== "string" || !identifier.trim()) {
+      return res.status(400).json({
+        success: false,
+        error: {
+          field: "identifier",
+          message: "Please enter your registered phone number or email address.",
+        },
+      });
+    }
+
+    const result = await forgotPassword(identifier.trim());
+
+    return res.status(200).json({
+      success: true,
+      message: result.message,
+      data: result,
+    });
+  } catch (error: any) {
+    if (error.status) {
+      return res.status(error.status).json({
+        success: false,
+        error: { message: error.message },
+      });
+    }
+    return next(error);
+  }
+}
+
+/**
+ * POST /api/auth/verify-reset-code
+ */
+export async function handleVerifyResetCode(req: Request, res: Response, next: NextFunction) {
+  try {
+    const { identifier, code } = req.body;
+
+    if (!identifier || !code) {
+      return res.status(400).json({
+        success: false,
+        error: { message: "Identifier and recovery code are required." },
+      });
+    }
+
+    const result = await verifyPasswordResetCode(identifier.trim(), code.trim());
+
+    return res.status(200).json({
+      success: true,
+      message: result.message,
+      data: result,
+    });
+  } catch (error: any) {
+    if (error.status) {
+      return res.status(error.status).json({
+        success: false,
+        error: { message: error.message },
+      });
+    }
+    return next(error);
+  }
+}
+
+/**
+ * POST /api/auth/reset-password
+ */
+export async function handleResetPassword(req: Request, res: Response, next: NextFunction) {
+  try {
+    const { identifier, code, newPassword } = req.body;
+
+    if (!identifier || !code || !newPassword) {
+      return res.status(400).json({
+        success: false,
+        error: { message: "Identifier, verification code, and new password are required." },
+      });
+    }
+
+    const result = await resetPasswordWithCode(identifier.trim(), code.trim(), newPassword);
+
+    // Clear refresh cookie since all sessions are revoked on password change
+    res.clearCookie(REFRESH_COOKIE_NAME, { path: "/" });
+
+    return res.status(200).json({
+      success: true,
+      message: result.message,
+      data: result,
+    });
+  } catch (error: any) {
+    if (error.status) {
+      return res.status(error.status).json({
+        success: false,
+        error: {
+          field: error.field,
+          message: error.message,
+        },
+      });
+    }
+    return next(error);
+  }
+}
+
+/**
+ * GET /api/auth/me
+ * Returns current authenticated user profile
+ */
+export async function handleGetMe(req: Request, res: Response, next: NextFunction) {
+  try {
+    const userId = req.auth?.sub;
+    if (!userId) {
+      return res.status(401).json({
+        success: false,
+        error: { message: "Authentication required." },
+      });
+    }
+
+    const user = await getUserById(userId);
+
+    return res.status(200).json({
+      success: true,
+      data: { user },
+    });
+  } catch (error: any) {
+    if (error.status) {
+      return res.status(error.status).json({
+        success: false,
+        error: { message: error.message },
+      });
+    }
+    return next(error);
+  }
+}
+
+/**
+ * Demo worker login (development)
+ */
 export async function handleDemoWorkerAuth(req: Request, res: Response, next: NextFunction) {
   try {
     const demoPhone = "+251911234567";
@@ -146,6 +554,7 @@ export async function handleDemoWorkerAuth(req: Request, res: Response, next: Ne
           role: "DELIVERY_WORKER",
           isVerified: true,
           isActive: true,
+          tokenVersion: 1,
           deliveryProfile: {
             create: {
               vehicleType: "MOTORCYCLE",
@@ -185,7 +594,7 @@ export async function handleDemoWorkerAuth(req: Request, res: Response, next: Ne
     }
 
     const token = jwt.sign(
-      { sub: worker.id, role: worker.role },
+      { sub: worker.id, role: worker.role, tokenVersion: worker.tokenVersion },
       JWT_SECRET,
       { expiresIn: "7d" }
     );
@@ -195,6 +604,7 @@ export async function handleDemoWorkerAuth(req: Request, res: Response, next: Ne
       message: "Demo delivery worker authenticated successfully.",
       data: {
         token,
+        accessToken: token,
         user: {
           id: worker.id,
           fullName: worker.fullName,
@@ -210,80 +620,3 @@ export async function handleDemoWorkerAuth(req: Request, res: Response, next: Ne
     next(err);
   }
 }
-
-/** Verify submitted 6-digit OTP code */
-export async function handleVerifyOTP(req: Request, res: Response, next: NextFunction) {
-  try {
-    const { identifier, otpCode } = req.body;
-
-    if (!identifier || typeof identifier !== "string" || !identifier.trim()) {
-      return res.status(400).json({
-        success: false,
-        error: { field: "identifier", message: "Account phone, email, or user identifier is required." },
-      });
-    }
-
-    if (!otpCode || typeof otpCode !== "string" || !otpCode.trim()) {
-      return res.status(400).json({
-        success: false,
-        error: { field: "otpCode", message: "6-digit verification code is required." },
-      });
-    }
-
-    const result = await verifyOTPUser(identifier.trim(), otpCode.trim());
-
-    return res.status(200).json({
-      success: true,
-      message: result.message,
-      data: {
-        token: result.token,
-        user: result.user,
-      },
-    });
-  } catch (error: any) {
-    if (error.status) {
-      return res.status(error.status).json({
-        success: false,
-        error: {
-          field: error.field,
-          message: error.message,
-        },
-      });
-    }
-    return next(error);
-  }
-}
-
-/** Resend OTP verification code */
-export async function handleResendOTP(req: Request, res: Response, next: NextFunction) {
-  try {
-    const { identifier } = req.body;
-
-    if (!identifier || typeof identifier !== "string" || !identifier.trim()) {
-      return res.status(400).json({
-        success: false,
-        error: { field: "identifier", message: "Account phone or email is required." },
-      });
-    }
-
-    const result = await resendOTPUser(identifier.trim());
-
-    return res.status(200).json({
-      success: true,
-      message: result.message,
-      data: result,
-    });
-  } catch (error: any) {
-    if (error.status) {
-      return res.status(error.status).json({
-        success: false,
-        error: {
-          field: error.field,
-          message: error.message,
-        },
-      });
-    }
-    return next(error);
-  }
-}
-

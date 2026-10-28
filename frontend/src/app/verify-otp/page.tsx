@@ -15,6 +15,7 @@ import {
   Sprout,
 } from 'lucide-react';
 import { ThemeToggle } from '@/components/layout/ThemeToggle';
+import { setAccessToken, setCurrentUser } from '@/lib/auth';
 
 function VerifyOtpContent() {
   const router = useRouter();
@@ -109,6 +110,7 @@ function VerifyOtpContent() {
       const res = await fetch(`${apiUrl}/api/auth/verify-otp`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
         body: JSON.stringify({
           identifier: identifier.trim(),
           otpCode: code,
@@ -123,13 +125,9 @@ function VerifyOtpContent() {
         return;
       }
 
-      if (data.data?.token) {
-        try {
-          localStorage.setItem('agrimarket_token', data.data.token);
-          localStorage.setItem('agrimarket_user', JSON.stringify(data.data.user));
-        } catch (e) {
-          // ignore
-        }
+      if (data.data?.accessToken || data.data?.token) {
+        setAccessToken(data.data.accessToken || data.data.token);
+        setCurrentUser(data.data.user);
       }
 
       setVerifiedSuccess(true);

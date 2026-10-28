@@ -20,6 +20,7 @@ import {
   User,
 } from 'lucide-react';
 import { ThemeToggle } from '@/components/layout/ThemeToggle';
+import { loginWithCredentials } from '@/lib/auth';
 
 export default function LoginPage() {
   const router = useRouter();
@@ -33,7 +34,6 @@ export default function LoginPage() {
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [successData, setSuccessData] = useState<{
-    token: string;
     user: { fullName: string; phone: string; role: string };
   } | null>(null);
 
@@ -88,74 +88,50 @@ export default function LoginPage() {
     setIsLoading(true);
     setErrors({});
 
-    try {
-      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
-      const res = await fetch(`${apiUrl}/api/auth/login`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          identifier: formData.identifier.trim(),
-          password: formData.password,
-        }),
-      });
+    const result = await loginWithCredentials(
+      formData.identifier.trim(),
+      formData.password,
+      formData.rememberMe
+    );
 
-      const data = await res.json();
-
-      if (!res.ok) {
-        if (data.error?.field) {
-          setErrors({ [data.error.field]: data.error.message });
-        } else {
-          setErrors({
-            general: data.error?.message || 'Sign in failed. Please check your credentials.',
-          });
-        }
-        setIsLoading(false);
-        return;
-      }
-
-      if (data.data?.token) {
-        try {
-          localStorage.setItem('agrimarket_token', data.data.token);
-          localStorage.setItem('agrimarket_user', JSON.stringify(data.data.user));
-        } catch {
-          // ignore
-        }
-      }
-
-      setSuccessData(data.data);
+    if (!result.success || !result.user) {
       setIsLoading(false);
-
-      setTimeout(() => {
-        const user = data.data?.user;
-        const userRole = user?.role;
-        const onboardingStatus = user?.onboardingStatus;
-
-        if (onboardingStatus === 'PENDING_ROLE') {
-          router.push('/dashboard');
-        } else if (onboardingStatus === 'IN_PROGRESS') {
-          if (userRole === 'FARMER') router.push('/onboarding/farmer');
-          else if (userRole === 'DELIVERY_WORKER') router.push('/onboarding/worker');
-          else router.push('/onboarding/select-role');
-        } else if (onboardingStatus === 'PENDING_VERIFICATION') {
-          if (userRole === 'FARMER') router.push('/dashboard/farmer/verification-status');
-          else if (userRole === 'DELIVERY_WORKER') router.push('/dashboard/worker/verification-status');
-          else router.push('/dashboard/buyer');
-        } else if (userRole === 'DELIVERY_WORKER') {
-          router.push('/dashboard/worker');
-        } else if (userRole === 'ADMIN' || userRole === 'SUPERADMIN') {
-          router.push('/dashboard/admin');
-        } else if (userRole === 'FARMER') {
-          router.push('/dashboard/farmer');
-        } else {
-          router.push('/dashboard/buyer');
-        }
-      }, 1500);
-    } catch {
-      setIsLoading(false);
-      setErrors({
-        general: 'Could not connect to the server. Please check your internet connection.',
-      });
+      if (result.field) {
+        setErrors({ [result.field]: result.error });
+      } else {
+        setErrors({ general: result.error || 'Sign in failed. Please check your credentials.' });
+      }
+      return;
     }
+
+    setSuccessData({ user: result.user });
+    setIsLoading(false);
+
+    setTimeout(() => {
+      const user = result.user;
+      const userRole = user?.role;
+      const onboardingStatus = user?.onboardingStatus;
+
+      if (onboardingStatus === 'PENDING_ROLE') {
+        router.push('/dashboard');
+      } else if (onboardingStatus === 'IN_PROGRESS') {
+        if (userRole === 'FARMER') router.push('/onboarding/farmer');
+        else if (userRole === 'DELIVERY_WORKER') router.push('/onboarding/worker');
+        else router.push('/onboarding/select-role');
+      } else if (onboardingStatus === 'PENDING_VERIFICATION') {
+        if (userRole === 'FARMER') router.push('/dashboard/farmer/verification-status');
+        else if (userRole === 'DELIVERY_WORKER') router.push('/dashboard/worker/verification-status');
+        else router.push('/dashboard/buyer');
+      } else if (userRole === 'DELIVERY_WORKER') {
+        router.push('/dashboard/worker');
+      } else if (userRole === 'ADMIN' || userRole === 'SUPERADMIN') {
+        router.push('/dashboard/admin');
+      } else if (userRole === 'FARMER') {
+        router.push('/dashboard/farmer');
+      } else {
+        router.push('/dashboard/buyer');
+      }
+    }, 1200);
   };
 
   const handleGoogleAuth = () => {

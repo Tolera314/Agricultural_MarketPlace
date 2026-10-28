@@ -24,6 +24,7 @@ import {
 } from 'lucide-react';
 import { ThemeToggle } from '@/components/layout/ThemeToggle';
 import { RoleSelectionModal } from '@/components/onboarding/RoleSelectionModal';
+import { setAccessToken, setCurrentUser, validatePasswordStrength } from '@/lib/auth';
 
 export default function SignupPage() {
   const router = useRouter();
@@ -152,10 +153,11 @@ export default function SignupPage() {
       }
     }
 
+    const passCheck = validatePasswordStrength(formData.password);
     if (!formData.password) {
       newErrors.password = 'Password is required.';
-    } else if (formData.password.length < 8) {
-      newErrors.password = 'Password must be at least 8 characters long.';
+    } else if (!passCheck.valid) {
+      newErrors.password = 'Password must be at least 8 characters with 1 uppercase, 1 digit, and 1 symbol.';
     }
 
     if (!formData.agreedToTerms) {
@@ -181,6 +183,7 @@ export default function SignupPage() {
         headers: {
           'Content-Type': 'application/json',
         },
+        credentials: 'include',
         body: JSON.stringify({
           fullName: formData.fullName.trim(),
           phone: formData.phone.trim(),
@@ -216,13 +219,9 @@ export default function SignupPage() {
       }
 
       // If already verified or no verification required
-      if (data.data?.token) {
-        try {
-          localStorage.setItem('agrimarket_token', data.data.token);
-          localStorage.setItem('agrimarket_user', JSON.stringify(data.data.user));
-        } catch (e) {
-          // ignore localStorage error
-        }
+      if (data.data?.accessToken || data.data?.token) {
+        setAccessToken(data.data.accessToken || data.data.token);
+        setCurrentUser(data.data.user);
       }
 
       setSuccessData(data.data);
@@ -304,6 +303,7 @@ export default function SignupPage() {
       const res = await fetch(`${apiUrl}/api/auth/verify-otp`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
         body: JSON.stringify({
           identifier: verificationState.identifier,
           otpCode: code,
@@ -318,14 +318,10 @@ export default function SignupPage() {
         return;
       }
 
-      // Store tokens
-      if (data.data?.token) {
-        try {
-          localStorage.setItem('agrimarket_token', data.data.token);
-          localStorage.setItem('agrimarket_user', JSON.stringify(data.data.user));
-        } catch (e) {
-          // ignore
-        }
+      // Store in memory
+      if (data.data?.accessToken || data.data?.token) {
+        setAccessToken(data.data.accessToken || data.data.token);
+        setCurrentUser(data.data.user);
       }
 
       setVerifiedSuccess(true);

@@ -3,6 +3,8 @@
  * Handles role selection, draft persistence, document upload, and farmer/worker verification submissions.
  */
 
+import { getAccessToken, setAccessToken, setCurrentUser } from './auth';
+
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
 
 function getAuthHeaders(isFormData = false): HeadersInit {
@@ -11,11 +13,9 @@ function getAuthHeaders(isFormData = false): HeadersInit {
     headers['Content-Type'] = 'application/json';
   }
 
-  if (typeof window !== 'undefined') {
-    const token = localStorage.getItem('agrimarket_token');
-    if (token) {
-      headers['Authorization'] = `Bearer ${token}`;
-    }
+  const token = getAccessToken();
+  if (token) {
+    headers['Authorization'] = `Bearer ${token}`;
   }
 
   return headers;
@@ -106,9 +106,9 @@ export const onboardingApi = {
       throw new Error(json.error?.message || json.message || 'Failed to select account role.');
     }
 
-    if (json.data?.token && typeof window !== 'undefined') {
-      localStorage.setItem('agrimarket_token', json.data.token);
-      localStorage.setItem('agrimarket_user', JSON.stringify(json.data.user));
+    if (json.data?.token || json.data?.accessToken) {
+      setAccessToken(json.data.accessToken || json.data.token);
+      setCurrentUser(json.data.user);
     }
 
     return json.data;
