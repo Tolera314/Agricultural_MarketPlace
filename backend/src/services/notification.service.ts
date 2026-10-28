@@ -17,13 +17,29 @@ interface SendSMSParams {
 }
 
 export class NotificationService {
-  private static brevoApiKey = process.env.BREVO_API_KEY || '';
-  private static brevoSenderEmail = process.env.BREVO_SENDER_EMAIL || 'notifications@agrimarket.et';
-  private static brevoSenderName = process.env.BREVO_SENDER_NAME || 'AgriMarket Ethiopia';
+  private static get brevoApiKey(): string {
+    return process.env.BREVO_API_KEY || '';
+  }
 
-  private static geezSmsToken = process.env.GEEZ_SMS_TOKEN || '';
-  private static geezSmsSenderId = process.env.GEEZ_SMS_SENDER_ID || 'AgriMarket';
-  private static ethioTelecomKey = process.env.ETHIO_TELECOM_SMS_API_KEY || '';
+  private static get brevoSenderEmail(): string {
+    return process.env.BREVO_SENDER_EMAIL || 'tolefayiss@gmail.com';
+  }
+
+  private static get brevoSenderName(): string {
+    return process.env.BREVO_SENDER_NAME || 'AgriMarket Ethiopia';
+  }
+
+  private static get geezSmsToken(): string {
+    return process.env.GEEZ_SMS_TOKEN || '';
+  }
+
+  private static get geezSmsSenderId(): string {
+    return process.env.GEEZ_SMS_SENDER_ID || 'AgriMarket';
+  }
+
+  private static get ethioTelecomKey(): string {
+    return process.env.ETHIO_TELECOM_SMS_API_KEY || '';
+  }
 
   /**
    * Send Email via Brevo REST API v3
@@ -31,7 +47,11 @@ export class NotificationService {
   public static async sendEmail(params: SendEmailParams): Promise<{ success: boolean; messageId?: string; mocked?: boolean }> {
     const { to, name, subject, htmlContent } = params;
 
-    if (!this.brevoApiKey) {
+    const apiKey = this.brevoApiKey;
+    const senderEmail = this.brevoSenderEmail;
+    const senderName = this.brevoSenderName;
+
+    if (!apiKey) {
       console.log(`\n======================================================`);
       console.log(`[Brevo Email Mock] To: ${name ? `${name} <${to}>` : to}`);
       console.log(`[Brevo Email Mock] Subject: ${subject}`);
@@ -44,14 +64,14 @@ export class NotificationService {
       const response = await fetch('https://api.brevo.com/v3/smtp/email', {
         method: 'POST',
         headers: {
-          'api-key': this.brevoApiKey,
+          'api-key': apiKey,
           'Content-Type': 'application/json',
           Accept: 'application/json',
         },
         body: JSON.stringify({
           sender: {
-            name: this.brevoSenderName,
-            email: this.brevoSenderEmail,
+            name: senderName,
+            email: senderEmail,
           },
           to: [
             {
@@ -66,10 +86,11 @@ export class NotificationService {
 
       const data = await response.json().catch(() => ({}));
       if (!response.ok) {
-        console.error('[Brevo Error]', data);
+        console.error('[Brevo Error]', response.status, data);
         return { success: false, mocked: false };
       }
 
+      console.log(`[Brevo Email Sent] To: ${to}, Sender: ${senderEmail}, MessageId: ${(data as any)?.messageId}`);
       return { success: true, messageId: (data as any)?.messageId, mocked: false };
     } catch (err) {
       console.error('[Brevo Exception]', err);
