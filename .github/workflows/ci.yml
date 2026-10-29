@@ -2,7 +2,7 @@ name: AgriMarket CI/CD Pipeline
 
 on:
   push:
-    branches: [ main, master, seed, fixonboarding ]
+    branches: [ main, master, seed, fixonboarding, ci, security ]
   pull_request:
     branches: [ main, master ]
 
