@@ -65,7 +65,7 @@ AgriMarket follows a decoupled, resilient client-server architecture:
 │  - Sliding Window In-Memory Rate Limiters (Auth, Recovery, OTP)         │
 │  - Input Validation & Canonical E.164 Phone Normalization               │
 │  - Token Family Rotation & Reuse Detection (SHA-256 Hashing)            │
-│  - Role-Based Access Control (RBAC: BUYER, FARMER, WORKER, ADMIN)       │
+│  - Role-Based Access Control (RBAC: BUYER, FARMER, WORKER, ADMIN,SUPER-ADMIN)       │
 └──────────────────┬─────────────────┬─────────────────┬──────────────────┘
                    │                 │                 │
                    ▼                 ▼                 ▼
@@ -253,6 +253,10 @@ AgriMarket implements a 5-tier Role-Based Access Control (RBAC) hierarchy:
 ```text
 BUYER  ──►  FARMER  ──►  DELIVERY_WORKER  ──►  ADMIN  ──►  SUPERADMIN
 ```
+
+## Super Admin Responsibilities
+
+The **Super Admin (SUPERADMIN)** has the highest level of administrative access within AgriMarket. This role provides centralized oversight of the platform, including managing administrator accounts and permissions, monitoring overall marketplace activity, overseeing platform security, and supporting system-wide accountability. Super Admin access is protected through strict role-based access control (RBAC) to ensure that only authorized users can perform privileged administrative operations.
 
 ### Onboarding Lifecycles
 
