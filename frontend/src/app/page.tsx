@@ -17,17 +17,16 @@ import {
 
 import { CartItem, MarketLocation, Product } from '@/types';
 import { SUPPORTED_LOCATIONS } from '@/data/marketplaceData';
+import { useCart } from '@/context/CartContext';
 
 export default function Home() {
   const router = useRouter();
+  const { cart, addToCart, updateQuantity, removeItem, clearCart, isCartDrawerOpen, setIsCartDrawerOpen, totalCartCount } = useCart();
+
   // Active location and filter state
   const [currentLocation] = useState<MarketLocation>(SUPPORTED_LOCATIONS[0]);
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState<string>('vegetables');
-  const [cart, setCart] = useState<CartItem[]>([]);
-
-  // Cart Drawer state
-  const [isCartDrawerOpen, setIsCartDrawerOpen] = useState(false);
 
   // Smooth scroll helper
   const handleScrollTo = (sectionId: string) => {
@@ -37,42 +36,10 @@ export default function Home() {
     }
   };
 
-  // Cart actions
+  // Cart action
   const handleAddToCart = (product: Product, quantity = 1) => {
-    setCart((prev) => {
-      const existing = prev.find((item) => item.product.id === product.id);
-      if (existing) {
-        return prev.map((item) =>
-          item.product.id === product.id
-            ? { ...item, quantity: item.quantity + quantity }
-            : item
-        );
-      }
-      return [...prev, { product, quantity }];
-    });
+    addToCart(product, quantity);
   };
-
-  const handleUpdateCartQuantity = (productId: string, quantity: number) => {
-    if (quantity <= 0) {
-      handleRemoveCartItem(productId);
-      return;
-    }
-    setCart((prev) =>
-      prev.map((item) =>
-        item.product.id === productId ? { ...item, quantity } : item
-      )
-    );
-  };
-
-  const handleRemoveCartItem = (productId: string) => {
-    setCart((prev) => prev.filter((item) => item.product.id !== productId));
-  };
-
-  const handleClearCart = () => {
-    setCart([]);
-  };
-
-  const totalCartCount = cart.reduce((sum, item) => sum + item.quantity, 0);
 
   return (
     <div className="min-h-screen bg-[#FAF8F5] dark:bg-[#0B1512] text-[#252B26] dark:text-[#E8F7EE] flex flex-col font-sans transition-colors duration-200">
@@ -151,9 +118,9 @@ export default function Home() {
         onClose={() => setIsCartDrawerOpen(false)}
         items={cart}
         currentLocation={currentLocation}
-        onUpdateQuantity={handleUpdateCartQuantity}
-        onRemoveItem={handleRemoveCartItem}
-        onClearCart={handleClearCart}
+        onUpdateQuantity={updateQuantity}
+        onRemoveItem={removeItem}
+        onClearCart={clearCart}
       />
     </div>
   );

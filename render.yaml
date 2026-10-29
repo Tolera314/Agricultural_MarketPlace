@@ -1,0 +1,36 @@
+# ==============================================================================
+# AgriMarket - Render Blueprint Configuration
+# Docs: https://render.com/docs/blueprint-spec
+# ==============================================================================
+services:
+  # ----------------------------------------------------------------------------
+  # 1. AgriMarket Backend API Web Service
+  # ----------------------------------------------------------------------------
+  - type: web
+    name: agrimarket-backend
+    runtime: node
+    rootDir: backend
+    plan: free
+    region: frankfurt
+    buildCommand: npm install && npm run build
+    startCommand: npm start
+    healthCheckPath: /api/health
+    envVars:
+      - key: NODE_VERSION
+        value: 20.18.0
+      - key: NODE_ENV
+        value: production
+      - key: DATABASE_URL
+        sync: false
+      - key: JWT_SECRET
+        generateValue: true
+      - key: JWT_EXPIRES_IN
+        value: 7d
+      - key: FRONTEND_URL
+        sync: false
+      - key: BREVO_API_KEY
+        sync: false
+      - key: BREVO_SENDER_EMAIL
+        sync: false
+      - key: BREVO_SENDER_NAME
+        value: "AgriMarket Ethiopia"

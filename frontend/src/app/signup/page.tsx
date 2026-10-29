@@ -1,9 +1,9 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, Suspense } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import {
   User,
   Phone,
@@ -27,8 +27,15 @@ import { RoleSelectionModal } from '@/components/onboarding/RoleSelectionModal';
 import { setAccessToken, setCurrentUser, validatePasswordStrength } from '@/lib/auth';
 import { GoogleAuthButton } from '@/components/auth/GoogleAuthButton';
 
-export default function SignupPage() {
+function SignupFormContent() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const rawRedirect = searchParams.get('redirect');
+
+  // Validate internal destination
+  const safeRedirect = rawRedirect && rawRedirect.startsWith('/') && !rawRedirect.startsWith('//')
+    ? rawRedirect
+    : null;
 
   // Form State
   const [formData, setFormData] = useState({
@@ -226,7 +233,10 @@ export default function SignupPage() {
 
       setSuccessData(data.data);
       setTimeout(() => {
-        router.push('/dashboard');
+        const nextUrl = safeRedirect
+          ? `/onboarding/select-role?redirect=${encodeURIComponent(safeRedirect)}`
+          : '/dashboard';
+        router.push(nextUrl);
       }, 900);
     } catch (err: any) {
       setIsLoading(false);
@@ -328,7 +338,10 @@ export default function SignupPage() {
       setIsVerifying(false);
 
       setTimeout(() => {
-        router.push('/dashboard');
+        const nextUrl = safeRedirect
+          ? `/onboarding/select-role?redirect=${encodeURIComponent(safeRedirect)}`
+          : '/dashboard';
+        router.push(nextUrl);
       }, 1100);
     } catch (err) {
       setIsVerifying(false);
@@ -467,7 +480,7 @@ export default function SignupPage() {
                 Already a member?
               </span>
               <Link
-                href="/login"
+                href={safeRedirect ? `/login?redirect=${encodeURIComponent(safeRedirect)}` : '/login'}
                 className="text-sm font-bold text-[#075C3B] dark:text-[#34D399] hover:underline px-2.5 py-1.5 rounded-lg hover:bg-[#EAF5EE] dark:hover:bg-[#132A20] transition-colors"
               >
                 Log In
@@ -1051,7 +1064,7 @@ export default function SignupPage() {
                       <div className="pt-2 text-center text-xs sm:text-sm text-[#527563] dark:text-[#8BB39D]">
                         Already have an account?{' '}
                         <Link
-                          href="/login"
+                          href={safeRedirect ? `/login?redirect=${encodeURIComponent(safeRedirect)}` : '/login'}
                           className="font-bold text-[#075C3B] dark:text-[#34D399] hover:underline"
                         >
                           Login
@@ -1090,5 +1103,19 @@ export default function SignupPage() {
         onSuccess={() => setShowRoleModal(false)}
       />
     </div>
+  );
+}
+
+export default function SignupPage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="min-h-screen bg-[#FDF8F0] dark:bg-[#111A15] flex items-center justify-center">
+          <div className="w-8 h-8 border-4 border-emerald-600 border-t-transparent rounded-full animate-spin" />
+        </div>
+      }
+    >
+      <SignupFormContent />
+    </Suspense>
   );
 }

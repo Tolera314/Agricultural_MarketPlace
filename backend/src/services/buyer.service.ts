@@ -890,7 +890,18 @@ export function getNearbyFarmers(userLat: number, userLng: number, maxRadiusKm =
   const ranked = Array.from(farmersMap.values()).sort((a, b) => a.distanceKm - b.distanceKm);
 
   return ranked.map((f) => ({
-    ...f,
+    id: f.id,
+    name: f.name,
+    farmName: f.farmName,
+    locationName: f.locationName,
+    distanceKm: f.distanceKm,
+    rating: f.rating,
+    reviewsCount: f.reviewsCount,
+    productsList: f.productsList,
+    minPrice: f.minPrice,
+    maxPrice: f.maxPrice,
+    isSaved: f.isSaved,
+    avatarUrl: f.avatarUrl,
     distanceDisplay: `${f.distanceKm} km`,
     locationSubtitle: `${f.distanceKm} km • ${f.locationName}`,
     productsSummary: f.productsList.join(', '),
@@ -939,11 +950,12 @@ export function searchProducts(options: {
     return true;
   });
 
-  // Calculate distance for all products
+  // Calculate distance for all products and sanitize private contact info
   const withDistance = results.map((l) => {
     const dist = haversineKm(userLat, userLng, l.pickupLatitude, l.pickupLongitude);
+    const { farmerPhone, ...sanitized } = l;
     return {
-      ...l,
+      ...sanitized,
       distanceKm: dist,
       distanceDisplay: `${dist} km`,
       isFavorite: resilientStore.favoriteListingIds.has(l.id),
@@ -964,6 +976,117 @@ export function searchProducts(options: {
   }
 
   return withDistance;
+}
+
+/** 3b. Product Details: Public view with seller profile and related items */
+export function getProductDetails(productId: string, userLat = 9.0125, userLng = 38.7636) {
+  const listing = resilientStore.listings.find((l) => l.id === productId);
+  if (!listing) return null;
+
+  const dist = haversineKm(userLat, userLng, listing.pickupLatitude, listing.pickupLongitude);
+  const otherProducts = resilientStore.listings
+    .filter((l) => l.farmerId === listing.farmerId && l.id !== listing.id && l.status === 'ACTIVE' && l.stockQuantity > 0)
+    .map((l) => {
+      const { farmerPhone, ...sanitized } = l;
+      return {
+        ...sanitized,
+        distanceKm: haversineKm(userLat, userLng, l.pickupLatitude, l.pickupLongitude),
+        isFavorite: resilientStore.favoriteListingIds.has(l.id),
+      };
+    });
+
+  const { farmerPhone, ...sanitizedListing } = listing;
+
+  const avatarByFarmer: Record<string, string> = {
+    'farmer-abebe-uuid': '/images/avatar_abebe_hd.jpg',
+    'farmer-mekannen-uuid': '/images/avatar_mekonnen_hd.jpg',
+    'farmer-heran-uuid': '/images/avatar_selamawit_hd.jpg',
+    'farmer-awash-uuid': '/images/avatar_abebe_hd.jpg',
+  };
+
+  return {
+    ...sanitizedListing,
+    distanceKm: dist,
+    distanceDisplay: `${dist} km`,
+    isFavorite: resilientStore.favoriteListingIds.has(listing.id),
+    isSavedFarmer: resilientStore.savedFarmerIds.has(listing.farmerId),
+    farmer: {
+      id: listing.farmerId,
+      name: listing.farmerName,
+      farmName: listing.farmName,
+      locationName: listing.locationName,
+      avatarUrl: avatarByFarmer[listing.farmerId] || '/images/avatar_abebe_hd.jpg',
+      rating: listing.rating,
+      reviewsCount: listing.reviewsCount,
+      distanceKm: dist,
+    },
+    otherProductsFromFarmer: otherProducts,
+  };
+}
+
+/** 3c. Public Farmer Profile */
+export function getFarmerProfile(farmerId: string, userLat = 9.0125, userLng = 38.7636) {
+  const farmerListings = resilientStore.listings.filter(
+    (l) => l.farmerId === farmerId && l.status === 'ACTIVE' && l.stockQuantity > 0
+  );
+
+  const sampleListing = resilientStore.listings.find((l) => l.farmerId === farmerId);
+  if (!sampleListing) return null;
+
+  const dist = haversineKm(userLat, userLng, sampleListing.pickupLatitude, sampleListing.pickupLongitude);
+
+  const avatarByFarmer: Record<string, string> = {
+    'farmer-abebe-uuid': '/images/avatar_abebe_hd.jpg',
+    'farmer-mekannen-uuid': '/images/avatar_mekonnen_hd.jpg',
+    'farmer-heran-uuid': '/images/avatar_selamawit_hd.jpg',
+    'farmer-awash-uuid': '/images/avatar_abebe_hd.jpg',
+  };
+
+  const bioByFarmer: Record<string, string> = {
+    'farmer-abebe-uuid': 'Third generation family farm dedicated to sustainable highland vegetables, certified organic compost cultivation, and direct farm fresh deliveries.',
+    'farmer-mekannen-uuid': 'Specializing in heirloom yellow-flesh highland potatoes, crisp carrots, and cool-climate root vegetables grown in volcanic soil.',
+    'farmer-heran-uuid': 'Hydroponic and chemical-free greenhouse producer delivering crispy greens, romaine lettuces, and nutrient-dense spinach directly to city consumers.',
+    'farmer-awash-uuid': 'Agricultural cooperative cultivating sun-ripened citrus, seasonal tropical fruits, and premium pulses along the Awash fertile basin.',
+  };
+
+  const products = farmerListings.map((l) => {
+    const { farmerPhone, ...sanitized } = l;
+    return {
+      ...sanitized,
+      distanceKm: dist,
+      distanceDisplay: `${dist} km`,
+      isFavorite: resilientStore.favoriteListingIds.has(l.id),
+    };
+  });
+
+  return {
+    id: sampleListing.farmerId,
+    name: sampleListing.farmerName,
+    farmName: sampleListing.farmName,
+    bio: bioByFarmer[sampleListing.farmerId] || 'Verified local agricultural producer dedicated to high-quality fresh harvests.',
+    locationName: sampleListing.locationName,
+    distanceKm: dist,
+    distanceDisplay: `${dist} km`,
+    rating: sampleListing.rating,
+    reviewsCount: sampleListing.reviewsCount,
+    isSaved: resilientStore.savedFarmerIds.has(sampleListing.farmerId),
+    avatarUrl: avatarByFarmer[sampleListing.farmerId] || '/images/avatar_abebe_hd.jpg',
+    activeProductsCount: products.length,
+    products,
+  };
+}
+
+/** 3d. Public Categories */
+export function getCategories() {
+  return [
+    { id: 'all', name: 'All Products', count: '1000+ Items', image: '/images/cat_vegetables.jpg' },
+    { id: 'vegetables', name: 'Vegetables', count: '240+ Items', image: '/images/cat_vegetables.jpg' },
+    { id: 'fruits', name: 'Fruits', count: '180+ Items', image: '/images/cat_fruits.jpg' },
+    { id: 'grains-cereals', name: 'Grains & Cereals', count: '95+ Items', image: '/images/cat_grains.jpg' },
+    { id: 'coffee-spices', name: 'Coffee & Spices', count: '140+ Items', image: '/images/cat_coffee_spices.jpg' },
+    { id: 'livestock', name: 'Livestock', count: '60+ Listings', image: '/images/cat_livestock.jpg' },
+    { id: 'seeds-inputs', name: 'Seeds & Inputs', count: '85+ Items', image: '/images/cat_seeds.jpg' },
+  ];
 }
 
 /** 4. Checkout Calculation & Verification (Farmer-Controlled Pricing) */

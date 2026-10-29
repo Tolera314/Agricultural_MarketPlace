@@ -1,76 +1,92 @@
 'use client';
 
 import React, { useState } from 'react';
-import { Sparkles, MapPin, Star, Heart, Check, ArrowRight } from 'lucide-react';
+import { useRouter } from 'next/navigation';
+import { Sparkles, MapPin, Star, Heart, Check, ArrowRight, Zap, ShoppingBag } from 'lucide-react';
 import { EXACT_FEATURED_PRODUCTS, FeaturedProductItem } from '@/data/marketplaceData';
 import { Product } from '@/types';
+import { useAuth } from '@/context/AuthContext';
+import { useCart } from '@/context/CartContext';
+import { AuthRequiredModal } from '@/components/auth/AuthRequiredModal';
 
 interface FreshAndSeasonalProductsProps {
-  onAddToCart: (product: Product) => void;
+  onAddToCart?: (product: Product) => void;
 }
 
 export const FreshAndSeasonalProducts: React.FC<FreshAndSeasonalProductsProps> = ({
   onAddToCart,
 }) => {
+  const router = useRouter();
+  const { user, isAuthenticated } = useAuth();
+  const { addToCart, setIsCartDrawerOpen } = useCart();
+
   const [favorites, setFavorites] = useState<Record<string, boolean>>({});
   const [addedNotice, setAddedNotice] = useState<string | null>(null);
+  const [showAuthModal, setShowAuthModal] = useState(false);
+  const [authRedirectUrl, setAuthRedirectUrl] = useState<string>('/products');
 
   const toggleFavorite = (id: string, e: React.MouseEvent) => {
     e.stopPropagation();
     setFavorites((prev) => ({ ...prev, [id]: !prev[id] }));
   };
 
+  const createProduct = (item: FeaturedProductItem): Product => ({
+    id: item.id,
+    name: item.name,
+    category: item.name === 'Orange' ? 'fruits' : item.name === 'Maize' ? 'grains' : item.name === 'Coffee Beans' ? 'specialty' : 'vegetables',
+    farmerId: 'farmer-1',
+    farmerName: item.farmerName,
+    farmName: item.farmerName,
+    farmerLocation: `${item.distanceKm} km away`,
+    price: item.pricePerKg,
+    unit: 'kg',
+    availableQty: 250,
+    minimumOrder: 1,
+    harvestDate: 'Today, 6:00 AM',
+    cultivationMethod: 'Certified Organic',
+    originCity: 'Debre Zeit',
+    isIntercityEligible: true,
+    image: item.image,
+    description: item.description,
+    storageNotes: 'Keep in ventilated produce crate or refrigeration.',
+  });
+
   const handleAdd = (item: FeaturedProductItem, e: React.MouseEvent) => {
     e.stopPropagation();
-    const product: Product = {
-      id: item.id,
-      name: item.name,
-      category: item.name === 'Orange' ? 'fruits' : item.name === 'Maize' ? 'grains' : item.name === 'Coffee Beans' ? 'specialty' : 'vegetables',
-      farmerId: 'farmer-1',
-      farmerName: item.farmerName,
-      farmName: item.farmerName,
-      farmerLocation: `${item.distanceKm} km away`,
-      price: item.pricePerKg,
-      unit: 'kg',
-      availableQty: 250,
-      minimumOrder: 1,
-      harvestDate: 'Today, 6:00 AM',
-      cultivationMethod: 'Certified Organic',
-      originCity: 'Debre Zeit',
-      isIntercityEligible: true,
-      image: item.image,
-      description: item.description,
-      storageNotes: 'Keep in ventilated produce crate or refrigeration.',
-    };
-    onAddToCart(product);
+    const product = createProduct(item);
+    if (onAddToCart) {
+      onAddToCart(product);
+    } else {
+      addToCart(product, 1);
+    }
     setAddedNotice(item.name);
     setTimeout(() => setAddedNotice(null), 2500);
   };
 
+  const handleBuyNow = (item: FeaturedProductItem, e: React.MouseEvent) => {
+    e.stopPropagation();
+    const product = createProduct(item);
+
+    // If guest, show auth prompt
+    if (!isAuthenticated || !user) {
+      setAuthRedirectUrl(`/dashboard/buyer?buyNow=${item.id}`);
+      setShowAuthModal(true);
+      return;
+    }
+
+    // Role check
+    if (user.role !== 'BUYER' && user.role !== 'ADMIN' && user.role !== 'SUPERADMIN') {
+      router.push(`/products/${item.id}`);
+      return;
+    }
+
+    addToCart(product, 1);
+    setIsCartDrawerOpen(true);
+  };
+
   const handleCardClick = (item: FeaturedProductItem) => {
-    const product: Product = {
-      id: item.id,
-      name: item.name,
-      category: item.name === 'Orange' ? 'fruits' : item.name === 'Maize' ? 'grains' : item.name === 'Coffee Beans' ? 'specialty' : 'vegetables',
-      farmerId: 'farmer-1',
-      farmerName: item.farmerName,
-      farmName: item.farmerName,
-      farmerLocation: `${item.distanceKm} km away`,
-      price: item.pricePerKg,
-      unit: 'kg',
-      availableQty: 250,
-      minimumOrder: 1,
-      harvestDate: 'Today, 6:00 AM',
-      cultivationMethod: 'Certified Organic',
-      originCity: 'Debre Zeit',
-      isIntercityEligible: true,
-      image: item.image,
-      description: item.description,
-      storageNotes: 'Keep in ventilated produce crate or refrigeration.',
-    };
-    onAddToCart(product);
-    setAddedNotice(item.name);
-    setTimeout(() => setAddedNotice(null), 2500);
+    // Navigate to product detail page without forcing auth
+    router.push(`/products/${item.id}`);
   };
 
   return (
@@ -104,10 +120,7 @@ export const FreshAndSeasonalProducts: React.FC<FreshAndSeasonalProductsProps> =
         </div>
 
         <button
-          onClick={() => {
-            const el = document.getElementById('products');
-            if (el) el.scrollIntoView({ behavior: 'smooth' });
-          }}
+          onClick={() => router.push('/products')}
           className="inline-flex items-center gap-1 text-xs sm:text-sm font-semibold text-[#2E7D32] dark:text-[#34D399] hover:text-[#1B5E20] dark:hover:text-[#6EE7B7] transition-colors shrink-0 mb-1 cursor-pointer"
         >
           <span className="hidden xs:inline">View All Products</span>
@@ -192,19 +205,37 @@ export const FreshAndSeasonalProducts: React.FC<FreshAndSeasonalProductsProps> =
                   </div>
                 </div>
 
-                {/* Add to Cart Button */}
-                <button
-                  type="button"
-                  onClick={(e) => handleAdd(prod, e)}
-                  className="mt-2.5 sm:mt-4 w-full py-2 sm:py-2.5 px-2.5 rounded-lg sm:rounded-xl bg-[#2E7D32] hover:bg-[#1B5E20] dark:bg-[#10B981] dark:hover:bg-[#059669] text-white text-[11px] sm:text-xs font-semibold tracking-wide transition-all flex items-center justify-center gap-1 shadow-xs hover:shadow cursor-pointer"
-                >
-                  <span>Add to Cart</span>
-                </button>
+                {/* Action Buttons: Add to Cart & Buy Now */}
+                <div className="mt-2.5 sm:mt-4 grid grid-cols-2 gap-1.5">
+                  <button
+                    type="button"
+                    onClick={(e) => handleAdd(prod, e)}
+                    className="py-2 px-1.5 rounded-lg sm:rounded-xl border border-[#2E7D32] dark:border-[#34D399] text-[#2E7D32] dark:text-[#34D399] hover:bg-[#E8F5E9] dark:hover:bg-[#163327] text-[10px] sm:text-xs font-semibold tracking-wide transition-all flex items-center justify-center gap-1 cursor-pointer"
+                  >
+                    <ShoppingBag className="w-3 h-3" />
+                    <span>Cart</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={(e) => handleBuyNow(prod, e)}
+                    className="py-2 px-1.5 rounded-lg sm:rounded-xl bg-[#2E7D32] hover:bg-[#1B5E20] dark:bg-[#10B981] dark:hover:bg-[#059669] text-white text-[10px] sm:text-xs font-semibold tracking-wide transition-all flex items-center justify-center gap-1 shadow-xs hover:shadow cursor-pointer"
+                  >
+                    <Zap className="w-3 h-3 fill-current" />
+                    <span>Buy</span>
+                  </button>
+                </div>
               </div>
             </div>
           );
         })}
       </div>
+
+      <AuthRequiredModal
+        isOpen={showAuthModal}
+        onClose={() => setShowAuthModal(false)}
+        redirectUrl={authRedirectUrl}
+      />
     </section>
   );
 };

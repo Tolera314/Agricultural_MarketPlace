@@ -1,0 +1,110 @@
+name: AgriMarket CI/CD Pipeline
+
+on:
+  push:
+    branches: [ main, master, seed, fixonboarding ]
+  pull_request:
+    branches: [ main, master ]
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  # ==============================================================================
+  # 1. Backend: Typecheck, Lint, Test & Build
+  # ==============================================================================
+  backend-ci:
+    name: Backend CI (Node.js & Prisma)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: backend
+    strategy:
+      matrix:
+        node-version: [20.x]
+
+    steps:
+      - name: Checkout Source Code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js ${{ matrix.node-version }}
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node-version }}
+          cache: 'npm'
+          cache-dependency-path: backend/package.json
+
+      - name: Install Backend Dependencies
+        run: npm ci
+
+      - name: Generate Prisma Client
+        run: npx prisma generate
+
+      - name: Backend Typecheck
+        run: npx tsc --noEmit
+
+      - name: Run Backend Test Suite (Boundary, Auth, Delivery, Location, RBAC)
+        run: npm test
+        env:
+          NODE_ENV: test
+          JWT_SECRET: test-jwt-secret-key-minimum-32-characters-long
+          DATABASE_URL: postgresql://postgres:postgres@localhost:5432/final_project?schema=public
+
+      - name: Build Backend (TypeScript Compiler)
+        run: npm run build
+
+  # ==============================================================================
+  # 2. Frontend: Typecheck & Turbopack Production Build
+  # ==============================================================================
+  frontend-ci:
+    name: Frontend CI (Next.js & React 19)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: frontend
+    strategy:
+      matrix:
+        node-version: [20.x]
+
+    steps:
+      - name: Checkout Source Code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js ${{ matrix.node-version }}
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node-version }}
+          cache: 'npm'
+          cache-dependency-path: frontend/package.json
+
+      - name: Install Frontend Dependencies
+        run: npm ci
+
+      - name: Frontend Typecheck
+        run: npx tsc --noEmit
+
+      - name: Next.js Production Build
+        run: npm run build
+        env:
+          NEXT_PUBLIC_API_URL: http://localhost:5000
+          NEXT_PUBLIC_GOOGLE_CLIENT_ID: ci-placeholder-google-client-id
+
+  # ==============================================================================
+  # 3. Security & Integrity Audit
+  # ==============================================================================
+  security-audit:
+    name: Security & Env Sanity Audit
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Source Code
+        uses: actions/checkout@v4
+
+      - name: Verify No Production Secrets in Env Templates
+        run: |
+          if grep -E "AIza[0-9A-Za-z-_]{35}|ghp_[0-9A-Za-z]{36}|xoxb-[0-9]{11}" .env.example; then
+            echo "::error::Found potential API secret pattern in .env.example!"
+            exit 1
+          fi
+          echo "Environment configuration templates are sanitized."
+

@@ -574,36 +574,74 @@ export async function submitFarmerApplication(req: Request, res: Response, next:
         },
       });
 
-      // 2. Upsert FarmerProfile
-      const profile = await tx.farmerProfile.upsert({
-        where: { userId },
-        create: {
-          userId,
-          farmName: farmName.trim(),
-          farmDescription: farmDescription ? farmDescription.trim() : null,
-          farmSizeHectares: sizeHectares,
-          isOrganic: Boolean(isOrganic),
-          certifications: isOrganic ? ['Organic Certified'] : [],
-          verificationStatus: VerificationStatus.PENDING,
-          verificationNote: 'Pending administrator document verification.',
-          verificationDocuments: verificationDocs as any,
-          farmLatitude: lat,
-          farmLongitude: lon,
-          marketId: validMarketId,
-        },
-        update: {
-          farmName: farmName.trim(),
-          farmDescription: farmDescription ? farmDescription.trim() : null,
-          farmSizeHectares: sizeHectares,
-          isOrganic: Boolean(isOrganic),
-          verificationStatus: VerificationStatus.PENDING,
-          verificationNote: 'Resubmitted — pending administrator review.',
-          verificationDocuments: verificationDocs as any,
-          farmLatitude: lat,
-          farmLongitude: lon,
-          marketId: validMarketId,
-        },
-      });
+      // 2. Upsert FarmerProfile with foreign key resilience
+      let profile;
+      try {
+        profile = await tx.farmerProfile.upsert({
+          where: { userId },
+          create: {
+            userId,
+            farmName: farmName.trim(),
+            farmDescription: farmDescription ? farmDescription.trim() : null,
+            farmSizeHectares: sizeHectares,
+            isOrganic: Boolean(isOrganic),
+            certifications: isOrganic ? ['Organic Certified'] : [],
+            verificationStatus: VerificationStatus.PENDING,
+            verificationNote: 'Pending administrator document verification.',
+            verificationDocuments: verificationDocs as any,
+            farmLatitude: lat,
+            farmLongitude: lon,
+            marketId: validMarketId,
+          },
+          update: {
+            farmName: farmName.trim(),
+            farmDescription: farmDescription ? farmDescription.trim() : null,
+            farmSizeHectares: sizeHectares,
+            isOrganic: Boolean(isOrganic),
+            verificationStatus: VerificationStatus.PENDING,
+            verificationNote: 'Resubmitted — pending administrator review.',
+            verificationDocuments: verificationDocs as any,
+            farmLatitude: lat,
+            farmLongitude: lon,
+            marketId: validMarketId,
+          },
+        });
+      } catch (upsertErr: any) {
+        if (upsertErr?.code === 'P2003') {
+          // Fallback if marketId foreign key violates constraint
+          profile = await tx.farmerProfile.upsert({
+            where: { userId },
+            create: {
+              userId,
+              farmName: farmName.trim(),
+              farmDescription: farmDescription ? farmDescription.trim() : null,
+              farmSizeHectares: sizeHectares,
+              isOrganic: Boolean(isOrganic),
+              certifications: isOrganic ? ['Organic Certified'] : [],
+              verificationStatus: VerificationStatus.PENDING,
+              verificationNote: 'Pending administrator document verification.',
+              verificationDocuments: verificationDocs as any,
+              farmLatitude: lat,
+              farmLongitude: lon,
+              marketId: null,
+            },
+            update: {
+              farmName: farmName.trim(),
+              farmDescription: farmDescription ? farmDescription.trim() : null,
+              farmSizeHectares: sizeHectares,
+              isOrganic: Boolean(isOrganic),
+              verificationStatus: VerificationStatus.PENDING,
+              verificationNote: 'Resubmitted — pending administrator review.',
+              verificationDocuments: verificationDocs as any,
+              farmLatitude: lat,
+              farmLongitude: lon,
+              marketId: null,
+            },
+          });
+        } else {
+          throw upsertErr;
+        }
+      }
 
       // 3. Audit Log
       await tx.auditLog.create({
@@ -798,33 +836,68 @@ export async function submitWorkerApplication(req: Request, res: Response, next:
         },
       });
 
-      // 2. Upsert DeliveryWorkerProfile
-      const profile = await tx.deliveryWorkerProfile.upsert({
-        where: { userId },
-        create: {
-          userId,
-          vehicleType: vehicleType as VehicleType,
-          vehiclePlate: vehiclePlate ? vehiclePlate.trim().toUpperCase() : null,
-          vehicleCapacityKg: capacityKg,
-          verificationStatus: VerificationStatus.PENDING,
-          verificationNote: 'Pending administrator fleet compliance review.',
-          verificationDocuments: verificationDocs as any,
-          deliveryZoneId: validDeliveryZoneId,
-          locationConsentGranted: Boolean(locationConsent),
-          locationConsentAt: locationConsent ? new Date() : null,
-        },
-        update: {
-          vehicleType: vehicleType as VehicleType,
-          vehiclePlate: vehiclePlate ? vehiclePlate.trim().toUpperCase() : null,
-          vehicleCapacityKg: capacityKg,
-          verificationStatus: VerificationStatus.PENDING,
-          verificationNote: 'Resubmitted — pending administrator fleet compliance review.',
-          verificationDocuments: verificationDocs as any,
-          deliveryZoneId: validDeliveryZoneId,
-          locationConsentGranted: Boolean(locationConsent),
-          locationConsentAt: locationConsent ? new Date() : null,
-        },
-      });
+      // 2. Upsert DeliveryWorkerProfile with foreign key resilience
+      let profile;
+      try {
+        profile = await tx.deliveryWorkerProfile.upsert({
+          where: { userId },
+          create: {
+            userId,
+            vehicleType: vehicleType as VehicleType,
+            vehiclePlate: vehiclePlate ? vehiclePlate.trim().toUpperCase() : null,
+            vehicleCapacityKg: capacityKg,
+            verificationStatus: VerificationStatus.PENDING,
+            verificationNote: 'Pending administrator fleet compliance review.',
+            verificationDocuments: verificationDocs as any,
+            deliveryZoneId: validDeliveryZoneId,
+            locationConsentGranted: Boolean(locationConsent),
+            locationConsentAt: locationConsent ? new Date() : null,
+          },
+          update: {
+            vehicleType: vehicleType as VehicleType,
+            vehiclePlate: vehiclePlate ? vehiclePlate.trim().toUpperCase() : null,
+            vehicleCapacityKg: capacityKg,
+            verificationStatus: VerificationStatus.PENDING,
+            verificationNote: 'Resubmitted — pending administrator fleet compliance review.',
+            verificationDocuments: verificationDocs as any,
+            deliveryZoneId: validDeliveryZoneId,
+            locationConsentGranted: Boolean(locationConsent),
+            locationConsentAt: locationConsent ? new Date() : null,
+          },
+        });
+      } catch (upsertErr: any) {
+        if (upsertErr?.code === 'P2003') {
+          // Fallback if deliveryZoneId violates foreign key constraint
+          profile = await tx.deliveryWorkerProfile.upsert({
+            where: { userId },
+            create: {
+              userId,
+              vehicleType: vehicleType as VehicleType,
+              vehiclePlate: vehiclePlate ? vehiclePlate.trim().toUpperCase() : null,
+              vehicleCapacityKg: capacityKg,
+              verificationStatus: VerificationStatus.PENDING,
+              verificationNote: 'Pending administrator fleet compliance review.',
+              verificationDocuments: verificationDocs as any,
+              deliveryZoneId: null,
+              locationConsentGranted: Boolean(locationConsent),
+              locationConsentAt: locationConsent ? new Date() : null,
+            },
+            update: {
+              vehicleType: vehicleType as VehicleType,
+              vehiclePlate: vehiclePlate ? vehiclePlate.trim().toUpperCase() : null,
+              vehicleCapacityKg: capacityKg,
+              verificationStatus: VerificationStatus.PENDING,
+              verificationNote: 'Resubmitted — pending administrator fleet compliance review.',
+              verificationDocuments: verificationDocs as any,
+              deliveryZoneId: null,
+              locationConsentGranted: Boolean(locationConsent),
+              locationConsentAt: locationConsent ? new Date() : null,
+            },
+          });
+        } else {
+          throw upsertErr;
+        }
+      }
 
       // 3. Audit Log
       await tx.auditLog.create({

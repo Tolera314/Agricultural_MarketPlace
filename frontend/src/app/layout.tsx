@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from 'next';
 import './globals.css';
 import { ThemeProvider } from '@/context/ThemeContext';
 import { AuthProvider } from '@/context/AuthContext';
+import { CartProvider } from '@/context/CartContext';
 import { PwaRegistrar } from '@/components/pwa/PwaRegistrar';
 
 export const metadata: Metadata = {
@@ -77,8 +78,10 @@ export default function RootLayout({
       <body className="antialiased selection:bg-emerald-500/20 selection:text-emerald-800 dark:selection:text-emerald-300">
         <ThemeProvider>
           <AuthProvider>
-            <PwaRegistrar />
-            {children}
+            <CartProvider>
+              <PwaRegistrar />
+              {children}
+            </CartProvider>
           </AuthProvider>
         </ThemeProvider>
       </body>

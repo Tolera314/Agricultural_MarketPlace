@@ -5,9 +5,10 @@
   "main": "index.js",
   "scripts": {
     "dev": "node --loader ts-node/esm --watch-path=src src/index.ts",
-    "build": "rimraf dist && tsc",
+    "build": "prisma generate && rimraf dist && tsc",
+    "postinstall": "prisma generate",
     "start": "node dist/index.js",
-    "test": "node --loader ts-node/esm src/tests/boundary.test.ts && node --loader ts-node/esm src/tests/auth.test.ts && node --loader ts-node/esm src/tests/location.test.ts && node --loader ts-node/esm src/tests/delivery.test.ts && node --loader ts-node/esm src/tests/onboarding.test.ts && node --loader ts-node/esm src/tests/superadmin.test.ts",
+    "test": "node --loader ts-node/esm src/tests/boundary.test.ts && node --loader ts-node/esm src/tests/auth.test.ts && node --loader ts-node/esm src/tests/location.test.ts && node --loader ts-node/esm src/tests/delivery.test.ts && node --loader ts-node/esm src/tests/onboarding.test.ts && node --loader ts-node/esm src/tests/superadmin.test.ts && node --loader ts-node/esm src/tests/routes-auth.test.ts",
     "test:boundary": "node --loader ts-node/esm src/tests/boundary.test.ts",
     "test:auth": "node --loader ts-node/esm src/tests/auth.test.ts",
     "test:google": "node --loader ts-node/esm src/tests/google-auth.test.ts",
@@ -15,7 +16,10 @@
     "test:delivery": "node --loader ts-node/esm src/tests/delivery.test.ts",
     "test:onboarding": "node --loader ts-node/esm src/tests/onboarding.test.ts",
     "test:admin": "node --loader ts-node/esm src/tests/admin.test.ts",
-    "test:superadmin": "node --loader ts-node/esm src/tests/superadmin.test.ts"
+    "test:superadmin": "node --loader ts-node/esm src/tests/superadmin.test.ts",
+    "test:routes": "node --loader ts-node/esm src/tests/routes-auth.test.ts",
+    "test:guest": "node --loader ts-node/esm src/tests/guest-browsing.test.ts",
+    "seed": "node --loader ts-node/esm src/scripts/seed.ts"
   },
   "keywords": [],
   "author": "",

@@ -5,12 +5,19 @@ import Link from 'next/link';
 import { Mail, Phone, MapPin, ArrowUpRight } from 'lucide-react';
 
 interface FooterProps {
-  onScrollTo: (sectionId: string) => void;
+  onScrollTo?: (sectionId: string) => void;
 }
 
 export const Footer: React.FC<FooterProps> = ({
   onScrollTo,
 }) => {
+  const handleScroll = (sectionId: string) => {
+    if (onScrollTo) {
+      onScrollTo(sectionId);
+    } else if (typeof window !== 'undefined') {
+      window.location.href = `/#${sectionId}`;
+    }
+  };
   return (
     <footer className="bg-white dark:bg-[#070F0C] border-t border-[#E8EFEA] dark:border-[#1E3A2F] pt-14 pb-10 text-[#4A675B] dark:text-[#8CAFA0] transition-colors">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -45,7 +52,7 @@ export const Footer: React.FC<FooterProps> = ({
             <ul className="space-y-2.5 text-xs">
               <li>
                 <button
-                  onClick={() => onScrollTo('hero')}
+                  onClick={() => handleScroll('hero')}
                   className="hover:text-[#2E7D32] dark:hover:text-[#34D399] transition-colors cursor-pointer"
                 >
                   Home
@@ -53,31 +60,31 @@ export const Footer: React.FC<FooterProps> = ({
               </li>
               <li>
                 <button
-                  onClick={() => onScrollTo('categories')}
+                  onClick={() => handleScroll('categories')}
                   className="hover:text-[#2E7D32] dark:hover:text-[#34D399] transition-colors cursor-pointer"
                 >
                   Categories
                 </button>
               </li>
               <li>
-                <button
-                  onClick={() => onScrollTo('products')}
+                <Link
+                  href="/products"
                   className="hover:text-[#2E7D32] dark:hover:text-[#34D399] transition-colors cursor-pointer"
                 >
                   Products
-                </button>
+                </Link>
               </li>
               <li>
-                <button
-                  onClick={() => onScrollTo('cta')}
+                <Link
+                  href="/farmers"
                   className="hover:text-[#2E7D32] dark:hover:text-[#34D399] transition-colors cursor-pointer"
                 >
                   Farmers
-                </button>
+                </Link>
               </li>
               <li>
                 <button
-                  onClick={() => onScrollTo('intercity-trade')}
+                  onClick={() => handleScroll('intercity-trade')}
                   className="hover:text-[#2E7D32] dark:hover:text-[#34D399] transition-colors cursor-pointer"
                 >
                   Intercity Trade
@@ -85,7 +92,7 @@ export const Footer: React.FC<FooterProps> = ({
               </li>
               <li>
                 <button
-                  onClick={() => onScrollTo('how-it-works')}
+                  onClick={() => handleScroll('how-it-works')}
                   className="hover:text-[#2E7D32] dark:hover:text-[#34D399] transition-colors cursor-pointer"
                 >
                   How It Works
@@ -143,7 +150,7 @@ export const Footer: React.FC<FooterProps> = ({
               </li>
               <li>
                 <button
-                  onClick={() => onScrollTo('how-it-works')}
+                  onClick={() => handleScroll('how-it-works')}
                   className="hover:text-[#2E7D32] dark:hover:text-[#34D399] transition-colors cursor-pointer"
                 >
                   How It Works
@@ -151,7 +158,7 @@ export const Footer: React.FC<FooterProps> = ({
               </li>
               <li>
                 <button
-                  onClick={() => onScrollTo('testimonials')}
+                  onClick={() => handleScroll('testimonials')}
                   className="hover:text-[#2E7D32] dark:hover:text-[#34D399] transition-colors cursor-pointer"
                 >
                   Community Stories
@@ -159,7 +166,7 @@ export const Footer: React.FC<FooterProps> = ({
               </li>
               <li>
                 <button
-                  onClick={() => onScrollTo('about')}
+                  onClick={() => handleScroll('about')}
                   className="hover:text-[#2E7D32] dark:hover:text-[#34D399] transition-colors cursor-pointer"
                 >
                   Impact Metrics
@@ -242,19 +249,19 @@ export const Footer: React.FC<FooterProps> = ({
           <p>© 2026 AgriMarket. All rights reserved.</p>
           <div className="flex items-center gap-5">
             <button
-              onClick={() => onScrollTo('hero')}
+              onClick={() => handleScroll('hero')}
               className="hover:text-[#2E7D32] dark:hover:text-[#34D399] transition-colors cursor-pointer"
             >
               Privacy Policy
             </button>
             <button
-              onClick={() => onScrollTo('hero')}
+              onClick={() => handleScroll('hero')}
               className="hover:text-[#2E7D32] dark:hover:text-[#34D399] transition-colors cursor-pointer"
             >
               Terms of Service
             </button>
             <button
-              onClick={() => onScrollTo('hero')}
+              onClick={() => handleScroll('hero')}
               className="hover:text-[#2E7D32] dark:hover:text-[#34D399] transition-colors cursor-pointer"
             >
               Support Center

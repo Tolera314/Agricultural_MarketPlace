@@ -4,7 +4,10 @@ import { requireAuth, requireRole } from '../middleware/requireAuth.js';
 import {
   handleGetDashboard,
   handleGetNearbyFarmers,
+  handleGetFarmerProfile,
   handleSearchProducts,
+  handleGetProductDetails,
+  handleGetCategories,
   handleCalculateCheckout,
   handleCreateOrder,
   handleGetOrders,
@@ -43,13 +46,24 @@ function optionalAuth(req: Request, res: Response, next: NextFunction) {
 
 const router = Router();
 
-// Public / Semi-Public Browsing (supports guest previews and authenticated buyers)
-router.get('/dashboard', optionalAuth, handleGetDashboard);
-router.get('/farmers/nearby', optionalAuth, handleGetNearbyFarmers);
+// ============================================================
+// 1. Public Guest Browsing Endpoints (No forced login or wall)
+// ============================================================
 router.get('/products', optionalAuth, handleSearchProducts);
+router.get('/products/:productId', optionalAuth, handleGetProductDetails);
+router.get('/farmers', optionalAuth, handleGetNearbyFarmers);
+router.get('/farmers/nearby', optionalAuth, handleGetNearbyFarmers);
+router.get('/farmers/:farmerId', optionalAuth, handleGetFarmerProfile);
+router.get('/categories', optionalAuth, handleGetCategories);
 router.post('/checkout/calculate', optionalAuth, handleCalculateCheckout);
 
-// Authenticated Buyer Actions (Strict RBAC: BUYER role required)
+// ============================================================
+// 2. Authenticated Buyer Actions (Strict RBAC: BUYER role required)
+// ============================================================
+// Personal Buyer Dashboard Overview (Protected: No unauthenticated preview)
+router.get('/dashboard', requireAuth, requireRole('BUYER', 'ADMIN', 'SUPERADMIN'), handleGetDashboard);
+
+// Orders & Checkout (Protected)
 router.post('/orders', requireAuth, requireRole('BUYER', 'ADMIN', 'SUPERADMIN'), handleCreateOrder);
 router.get('/orders', requireAuth, requireRole('BUYER', 'ADMIN', 'SUPERADMIN'), handleGetOrders);
 router.get('/orders/:orderId', requireAuth, requireRole('BUYER', 'ADMIN', 'SUPERADMIN'), handleGetOrderDetails);

@@ -1,8 +1,12 @@
 import type { Request, Response, NextFunction } from 'express';
+import type { AuthPayload } from '../middleware/requireAuth.js';
 import {
   getBuyerDashboardOverview,
   getNearbyFarmers,
   searchProducts,
+  getProductDetails,
+  getFarmerProfile,
+  getCategories,
   calculateCheckout,
   createBuyerOrder,
   cancelBuyerOrder,
@@ -27,10 +31,21 @@ function getBuyerContext(req: Request) {
   };
 }
 
-// ─── Dashboard Overview ───────────────────────────────────────
+// ─── Dashboard Overview (Strictly Authenticated) ─────────────
 export async function handleGetDashboard(req: Request, res: Response, next: NextFunction) {
   try {
-    const ctx = getBuyerContext(req);
+    const userId = req.auth?.sub;
+    if (!userId) {
+      return res.status(401).json({
+        success: false,
+        error: { message: 'Authentication required to access personal buyer dashboard.' },
+      });
+    }
+
+    const ctx = {
+      userId,
+      role: req.auth?.role || 'BUYER',
+    };
     const lat = req.query.lat ? parseFloat(req.query.lat as string) : undefined;
     const lng = req.query.lng ? parseFloat(req.query.lng as string) : undefined;
 
@@ -91,6 +106,74 @@ export async function handleSearchProducts(req: Request, res: Response, next: Ne
 
     const data = searchProducts(options);
 
+    return res.json({ success: true, count: data.length, data });
+  } catch (err: any) {
+    return next(err);
+  }
+}
+
+// ─── Single Product Details (Public) ──────────────────────────
+export async function handleGetProductDetails(req: Request, res: Response, next: NextFunction) {
+  try {
+    const rawId = req.params.productId;
+    const productId = Array.isArray(rawId) ? rawId[0] : rawId;
+    if (!productId || typeof productId !== 'string') {
+      return res.status(400).json({
+        success: false,
+        error: { message: 'Product ID is required.' },
+      });
+    }
+
+    const lat = req.query.lat ? parseFloat(req.query.lat as string) : undefined;
+    const lng = req.query.lng ? parseFloat(req.query.lng as string) : undefined;
+
+    const data = getProductDetails(productId, lat, lng);
+    if (!data) {
+      return res.status(404).json({
+        success: false,
+        error: { message: `Product listing could not be found or is no longer active.` },
+      });
+    }
+
+    return res.json({ success: true, data });
+  } catch (err: any) {
+    return next(err);
+  }
+}
+
+// ─── Single Farmer Profile (Public) ───────────────────────────
+export async function handleGetFarmerProfile(req: Request, res: Response, next: NextFunction) {
+  try {
+    const rawId = req.params.farmerId;
+    const farmerId = Array.isArray(rawId) ? rawId[0] : rawId;
+    if (!farmerId || typeof farmerId !== 'string') {
+      return res.status(400).json({
+        success: false,
+        error: { message: 'Farmer ID is required.' },
+      });
+    }
+
+    const lat = req.query.lat ? parseFloat(req.query.lat as string) : undefined;
+    const lng = req.query.lng ? parseFloat(req.query.lng as string) : undefined;
+
+    const data = getFarmerProfile(farmerId, lat, lng);
+    if (!data) {
+      return res.status(404).json({
+        success: false,
+        error: { message: `Farmer profile could not be found.` },
+      });
+    }
+
+    return res.json({ success: true, data });
+  } catch (err: any) {
+    return next(err);
+  }
+}
+
+// ─── Public Categories Taxonomy ───────────────────────────────
+export async function handleGetCategories(req: Request, res: Response, next: NextFunction) {
+  try {
+    const data = getCategories();
     return res.json({ success: true, count: data.length, data });
   } catch (err: any) {
     return next(err);
