@@ -16,6 +16,7 @@ import {
 } from 'lucide-react';
 import { ThemeToggle } from '@/components/layout/ThemeToggle';
 import { setAccessToken, setCurrentUser } from '@/lib/auth';
+import { API_BASE_URL } from '@/lib/apiConfig';
 
 function VerifyOtpContent() {
   const router = useRouter();
@@ -106,7 +107,7 @@ function VerifyOtpContent() {
     setOtpError(null);
 
     try {
-      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
+      const apiUrl = API_BASE_URL;
       const res = await fetch(`${apiUrl}/api/auth/verify-otp`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -150,7 +151,7 @@ function VerifyOtpContent() {
     setOtpError(null);
 
     try {
-      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
+      const apiUrl = API_BASE_URL;
       const res = await fetch(`${apiUrl}/api/auth/resend-otp`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },

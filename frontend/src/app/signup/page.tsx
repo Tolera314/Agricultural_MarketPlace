@@ -26,6 +26,7 @@ import { ThemeToggle } from '@/components/layout/ThemeToggle';
 import { RoleSelectionModal } from '@/components/onboarding/RoleSelectionModal';
 import { setAccessToken, setCurrentUser, validatePasswordStrength } from '@/lib/auth';
 import { GoogleAuthButton } from '@/components/auth/GoogleAuthButton';
+import { API_BASE_URL } from '@/lib/apiConfig';
 
 function SignupFormContent() {
   const router = useRouter();
@@ -184,7 +185,7 @@ function SignupFormContent() {
     setErrors({});
 
     try {
-      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
+      const apiUrl = API_BASE_URL;
       const res = await fetch(`${apiUrl}/api/auth/register`, {
         method: 'POST',
         headers: {
@@ -309,7 +310,7 @@ function SignupFormContent() {
     setOtpError(null);
 
     try {
-      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
+      const apiUrl = API_BASE_URL;
       const res = await fetch(`${apiUrl}/api/auth/verify-otp`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -358,7 +359,7 @@ function SignupFormContent() {
     setOtpError(null);
 
     try {
-      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
+      const apiUrl = API_BASE_URL;
       const res = await fetch(`${apiUrl}/api/auth/resend-otp`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },

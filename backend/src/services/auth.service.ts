@@ -810,7 +810,7 @@ export async function verifyGoogleCredential(credentialOrCode: string) {
     try {
       const redirectUri =
         process.env.GOOGLE_REDIRECT_URI ||
-        `${process.env.FRONTEND_URL || "http://localhost:3000"}/auth/google/callback`;
+        `${(process.env.FRONTEND_URL || "http://localhost:3000").replace(/\/+$/, "")}/auth/google/callback`;
       const { tokens } = await client.getToken({
         code: credentialOrCode,
         redirect_uri: redirectUri,

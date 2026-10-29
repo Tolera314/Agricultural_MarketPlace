@@ -20,7 +20,9 @@ export interface AuthState {
   isAuthenticated: boolean;
 }
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
+import { API_BASE_URL } from './apiConfig';
+
+const API_URL = API_BASE_URL;
 const USER_CACHE_KEY = 'agrimarket_user_profile';
 
 // IN-MEMORY SECURITY: Tokens are NEVER saved in localStorage or sessionStorage

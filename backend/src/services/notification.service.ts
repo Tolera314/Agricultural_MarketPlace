@@ -29,6 +29,10 @@ export class NotificationService {
     return process.env.BREVO_SENDER_NAME || 'AgriMarket Ethiopia';
   }
 
+  private static get frontendUrl(): string {
+    return (process.env.FRONTEND_URL || 'http://localhost:3000').replace(/\/+$/, '');
+  }
+
   private static get geezSmsToken(): string {
     return process.env.GEEZ_SMS_TOKEN || '';
   }
@@ -221,7 +225,7 @@ export class NotificationService {
     fullName: string;
   }): Promise<void> {
     const { phone, email, fullName } = user;
-    const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:3000';
+    const frontendUrl = this.frontendUrl;
 
     if (email && email.trim().length > 0) {
       const htmlContent = `
@@ -275,7 +279,7 @@ export class NotificationService {
     role: string;
   }): Promise<void> {
     const { phone, fullName, role } = params;
-    const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:3000';
+    const frontendUrl = this.frontendUrl;
     const roleSlug = role === 'FARMER' ? 'farmer' : 'worker';
     const resumeUrl = `${frontendUrl}/onboarding/${roleSlug}?resume=true`;
 
@@ -298,7 +302,7 @@ export class NotificationService {
     reason?: string | null;
   }): Promise<void> {
     const { phone, email, fullName, role, status, reason } = params;
-    const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:3000';
+    const frontendUrl = this.frontendUrl;
     const roleTitle = role === 'FARMER' ? 'Farmer' : 'Delivery Courier';
     const roleSlug = role === 'FARMER' ? 'farmer' : 'worker';
 

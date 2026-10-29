@@ -4,8 +4,9 @@
  */
 
 import { getAccessToken, setAccessToken, setCurrentUser } from './auth';
+import { API_BASE_URL } from './apiConfig';
 
-const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
+const API_BASE = API_BASE_URL;
 
 function getAuthHeaders(isFormData = false): HeadersInit {
   const headers: Record<string, string> = {};
