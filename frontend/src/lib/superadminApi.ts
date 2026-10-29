@@ -1,5 +1,6 @@
 import { getAccessToken, getCurrentUser } from './auth';
 import { API_BASE_URL } from './apiConfig';
+import { safeParseApiResponse, ApiClientError, getHumanReadableErrorMessage } from './errorHandler';
 
 const DEV_BYPASS_HEADER = 'x-dev-admin-bypass';
 const DEV_BYPASS_SECRET = 'agrimarket_dev_2026';
@@ -33,12 +34,12 @@ async function fetchSuperadmin<T>(path: string, options: RequestInit = {}): Prom
     headers,
   });
 
-  const json = await res.json().catch(() => null);
-  if (!res.ok) {
-    throw new Error(json?.error?.message || json?.message || `Request failed: ${res.status}`);
+  const parsed = await safeParseApiResponse<T>(res);
+  if (!parsed.ok) {
+    throw new ApiClientError(parsed.error || { message: getHumanReadableErrorMessage(res.status), status: res.status });
   }
 
-  return json.data;
+  return parsed.data as T;
 }
 
 // ─── Interfaces ──────────────────────────────────────────────────────────────

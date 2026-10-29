@@ -27,6 +27,7 @@ import { RoleSelectionModal } from '@/components/onboarding/RoleSelectionModal';
 import { setAccessToken, setCurrentUser, validatePasswordStrength } from '@/lib/auth';
 import { GoogleAuthButton } from '@/components/auth/GoogleAuthButton';
 import { API_BASE_URL } from '@/lib/apiConfig';
+import { safeParseApiResponse, getHumanReadableErrorMessage } from '@/lib/errorHandler';
 
 function SignupFormContent() {
   const router = useRouter();
@@ -141,35 +142,35 @@ function SignupFormContent() {
     const newErrors: typeof errors = {};
 
     if (!formData.fullName.trim()) {
-      newErrors.fullName = 'Full Name is required.';
+      newErrors.fullName = 'Please enter your full legal name.';
     } else if (formData.fullName.trim().length < 2) {
-      newErrors.fullName = 'Please enter at least 2 characters.';
+      newErrors.fullName = 'Full name must contain at least 2 characters.';
     }
 
     const cleanPhone = formData.phone.replace(/[\s\-().]/g, '');
     const ethioPhoneRegex = /^(\+251|251|0)?[97]\d{8}$/;
     if (!cleanPhone) {
-      newErrors.phone = 'Phone number is required.';
+      newErrors.phone = 'Please enter your mobile phone number.';
     } else if (!ethioPhoneRegex.test(cleanPhone)) {
-      newErrors.phone = 'Enter a valid Ethiopian phone (+251 9XX XXX XXX or +251 7XX XXX XXX).';
+      newErrors.phone = 'Please enter a valid Ethiopian phone number (e.g. 0911 234 567).';
     }
 
     if (formData.email.trim()) {
       const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
       if (!emailRegex.test(formData.email.trim())) {
-        newErrors.email = 'Please enter a valid email address.';
+        newErrors.email = 'Enter a valid email address, such as name@example.com.';
       }
     }
 
     const passCheck = validatePasswordStrength(formData.password);
     if (!formData.password) {
-      newErrors.password = 'Password is required.';
+      newErrors.password = 'Please choose a secure account password.';
     } else if (!passCheck.valid) {
-      newErrors.password = 'Password must be at least 8 characters with 1 uppercase, 1 digit, and 1 symbol.';
+      newErrors.password = 'Your password must contain at least 8 characters, including 1 uppercase letter, 1 digit, and 1 symbol.';
     }
 
     if (!formData.agreedToTerms) {
-      newErrors.terms = 'You must agree to the Terms of Service and Privacy Policy.';
+      newErrors.terms = 'Please review and accept the Terms of Service and Privacy Policy before continuing.';
     }
 
     setErrors(newErrors);
@@ -200,17 +201,20 @@ function SignupFormContent() {
         }),
       });
 
-      const data = await res.json();
+      const parsed = await safeParseApiResponse<any>(res);
 
-      if (!res.ok) {
-        if (data.error?.field) {
-          setErrors({ [data.error.field]: data.error.message });
+      if (!parsed.ok) {
+        const errorInfo = parsed.error;
+        if (errorInfo?.field) {
+          setErrors({ [errorInfo.field]: errorInfo.message });
         } else {
-          setErrors({ general: data.error?.message || 'Registration failed. Please try again.' });
+          setErrors({ general: errorInfo?.message || 'Registration could not be completed. Please check your entries and try again.' });
         }
         setIsLoading(false);
         return;
       }
+
+      const data = parsed.data;
 
       setIsLoading(false);
 
@@ -321,16 +325,18 @@ function SignupFormContent() {
         }),
       });
 
-      const data = await res.json();
+      const parsed = await safeParseApiResponse<any>(res);
 
-      if (!res.ok) {
-        setOtpError(data.error?.message || 'Invalid or expired verification code.');
+      if (!parsed.ok) {
+        setOtpError(parsed.error?.message || 'Invalid or expired verification code. Please check your entries.');
         setIsVerifying(false);
         return;
       }
 
+      const data = parsed.data;
+
       // Store in memory
-      if (data.data?.accessToken || data.data?.token) {
+      if (data?.data?.accessToken || data?.data?.token) {
         setAccessToken(data.data.accessToken || data.data.token);
         setCurrentUser(data.data.user);
       }
@@ -368,10 +374,10 @@ function SignupFormContent() {
         }),
       });
 
-      const data = await res.json();
+      const parsed = await safeParseApiResponse<any>(res);
 
-      if (!res.ok) {
-        setOtpError(data.error?.message || 'Failed to resend code. Please try again.');
+      if (!parsed.ok) {
+        setOtpError(parsed.error?.message || 'Unable to resend verification code right now. Please wait a moment.');
         setIsResending(false);
         return;
       }

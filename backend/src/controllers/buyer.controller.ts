@@ -237,10 +237,7 @@ export async function handleCreateOrder(req: Request, res: Response, next: NextF
       data: result.order,
     });
   } catch (err: any) {
-    return res.status(400).json({
-      success: false,
-      error: { message: err.message },
-    });
+    return next(err);
   }
 }
 
@@ -300,10 +297,7 @@ export async function handleCancelOrder(req: Request, res: Response, next: NextF
     const result = cancelBuyerOrder(ctx, orderId, reason);
     return res.json({ success: true, message: 'Order cancelled successfully.', data: result.order });
   } catch (err: any) {
-    return res.status(400).json({
-      success: false,
-      error: { message: err.message },
-    });
+    return next(err);
   }
 }
 
@@ -383,7 +377,7 @@ export async function handleCreateAddress(req: Request, res: Response, next: Nex
 
     return res.status(201).json({ success: true, message: 'Address added successfully.', data: addr });
   } catch (err: any) {
-    return res.status(400).json({ success: false, error: { message: err.message } });
+    return next(err);
   }
 }
 
@@ -394,7 +388,7 @@ export async function handleUpdateAddress(req: Request, res: Response, next: Nex
     const addr = updateBuyerAddress(ctx, addressId, req.body);
     return res.json({ success: true, message: 'Address updated.', data: addr });
   } catch (err: any) {
-    return res.status(400).json({ success: false, error: { message: err.message } });
+    return next(err);
   }
 }
 
@@ -405,7 +399,7 @@ export async function handleDeleteAddress(req: Request, res: Response, next: Nex
     deleteBuyerAddress(ctx, addressId);
     return res.json({ success: true, message: 'Address removed.' });
   } catch (err: any) {
-    return res.status(400).json({ success: false, error: { message: err.message } });
+    return next(err);
   }
 }
 

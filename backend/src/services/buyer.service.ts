@@ -1,4 +1,9 @@
 import prisma from '../config/prisma.js';
+import {
+  ValidationError,
+  NotFoundError,
+  BusinessRuleError,
+} from '../utils/errors.js';
 
 // ─── Mathematical Helpers ─────────────────────────────────────
 
@@ -1097,19 +1102,34 @@ export function calculateCheckout(items: { listingId: string; quantity: number }
   for (const item of items) {
     const listing = resilientStore.listings.find((l) => l.id === item.listingId);
     if (!listing) {
-      throw new Error(`Product not found (ID: ${item.listingId})`);
+      throw new NotFoundError(`product with ID ${item.listingId}`, 'PRODUCT_NOT_FOUND', 'listingId');
     }
 
     if (listing.status !== 'ACTIVE') {
-      throw new Error(`Product "${listing.name}" is currently not active.`);
+      throw new BusinessRuleError(
+        `Product "${listing.name}" is currently not active. Please choose another product.`,
+        'PRODUCT_INACTIVE',
+        'listingId',
+        400
+      );
     }
 
     if (item.quantity > listing.stockQuantity) {
-      throw new Error(`Insufficient stock for "${listing.name}". Available: ${listing.stockQuantity} ${listing.unit}`);
+      throw new BusinessRuleError(
+        `Insufficient stock for "${listing.name}". Available: ${listing.stockQuantity} ${listing.unit}`,
+        'INSUFFICIENT_STOCK',
+        'quantity',
+        400
+      );
     }
 
     if (item.quantity < listing.minOrderQty) {
-      throw new Error(`Minimum order quantity for "${listing.name}" is ${listing.minOrderQty} ${listing.unit}`);
+      throw new BusinessRuleError(
+        `Minimum order quantity for "${listing.name}" is ${listing.minOrderQty} ${listing.unit}. Please increase your order quantity.`,
+        'MIN_ORDER_QTY_NOT_MET',
+        'quantity',
+        400
+      );
     }
 
     // Farmer-controlled price is strictly respected
@@ -1248,14 +1268,17 @@ export function cancelBuyerOrder(ctx: BuyerContext, orderId: string, reason?: st
   );
 
   if (!order) {
-    throw new Error('Order not found or unauthorized.');
+    throw new NotFoundError('order', 'ORDER_NOT_FOUND');
   }
 
   // Business Rule: Cancellation permitted ONLY before transit
   const nonCancellableStates = ['IN_TRANSIT', 'DELIVERED', 'CANCELLED'];
   if (nonCancellableStates.includes(order.status)) {
-    throw new Error(
-      `Cannot cancel order in "${order.status}" status. Once courier pickup or transit has started, please raise a support ticket.`
+    throw new BusinessRuleError(
+      `Cannot cancel order in "${order.status}" status. Once courier pickup or transit has started, please raise a support ticket.`,
+      'ORDER_CANCELLATION_FORBIDDEN',
+      undefined,
+      400
     );
   }
 
@@ -1297,8 +1320,8 @@ export function createBuyerAddress(
     deliveryNotes?: string;
   }
 ) {
-  if (data.latitude < -90 || data.latitude > 90) throw new Error('Latitude must be between -90 and 90');
-  if (data.longitude < -180 || data.longitude > 180) throw new Error('Longitude must be between -180 and 180');
+  if (data.latitude < -90 || data.latitude > 90) throw new ValidationError('Latitude must be between -90 and 90 degrees.', 'latitude');
+  if (data.longitude < -180 || data.longitude > 180) throw new ValidationError('Longitude must be between -180 and 180 degrees.', 'longitude');
 
   if (data.isDefault) {
     // Unset any existing default
@@ -1335,13 +1358,13 @@ export function updateBuyerAddress(
   const addr = resilientStore.addresses.find(
     (a) => a.id === addressId && (a.buyerId === ctx.userId || a.buyerId === 'default-buyer')
   );
-  if (!addr) throw new Error('Address not found.');
+  if (!addr) throw new NotFoundError('address', 'ADDRESS_NOT_FOUND');
 
   if (data.latitude !== undefined && (data.latitude < -90 || data.latitude > 90)) {
-    throw new Error('Latitude must be between -90 and 90');
+    throw new ValidationError('Latitude must be between -90 and 90 degrees.', 'latitude');
   }
   if (data.longitude !== undefined && (data.longitude < -180 || data.longitude > 180)) {
-    throw new Error('Longitude must be between -180 and 180');
+    throw new ValidationError('Longitude must be between -180 and 180 degrees.', 'longitude');
   }
 
   if (data.isDefault) {
@@ -1360,10 +1383,10 @@ export function deleteBuyerAddress(ctx: BuyerContext, addressId: string) {
   const addrIndex = resilientStore.addresses.findIndex(
     (a) => a.id === addressId && (a.buyerId === ctx.userId || a.buyerId === 'default-buyer')
   );
-  if (addrIndex === -1) throw new Error('Address not found.');
+  if (addrIndex === -1) throw new NotFoundError('address', 'ADDRESS_NOT_FOUND');
 
   const targetAddr = resilientStore.addresses[addrIndex];
-  if (!targetAddr) throw new Error('Address not found.');
+  if (!targetAddr) throw new NotFoundError('address', 'ADDRESS_NOT_FOUND');
 
   // Business Rule: Prevent deletion of an address required by an active, unfulfilled order
   const hasActiveOrder = resilientStore.orders.some(
@@ -1374,8 +1397,11 @@ export function deleteBuyerAddress(ctx: BuyerContext, addressId: string) {
   );
 
   if (hasActiveOrder) {
-    throw new Error(
-      'Cannot delete address because it is currently linked to an active in-transit delivery.'
+    throw new BusinessRuleError(
+      'Cannot delete address because it is currently linked to an active in-transit delivery.',
+      'ADDRESS_LINKED_TO_ACTIVE_DELIVERY',
+      undefined,
+      400
     );
   }
 

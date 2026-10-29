@@ -68,21 +68,21 @@ function LoginFormContent() {
     const newErrors: typeof errors = {};
 
     if (!formData.identifier.trim()) {
-      newErrors.identifier = 'Phone number or email is required.';
+      newErrors.identifier = 'Please enter your phone number or email address.';
     } else {
       const trimmed = formData.identifier.trim();
       const isEmail = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(trimmed);
       const cleanPhone = trimmed.replace(/[\s\-().]/g, '');
       const ethioPhoneRegex = /^(\+251|251|0)?[97]\d{8}$/;
       if (!isEmail && !ethioPhoneRegex.test(cleanPhone)) {
-        newErrors.identifier = 'Enter a valid phone (e.g. +251 9XX XXX XXX) or email address.';
+        newErrors.identifier = 'Enter a valid Ethiopian phone number (e.g. 0911 234 567) or email address.';
       }
     }
 
     if (!formData.password) {
-      newErrors.password = 'Password is required.';
-    } else if (formData.password.length < 6) {
-      newErrors.password = 'Password must be at least 6 characters.';
+      newErrors.password = 'Please enter your account password.';
+    } else if (formData.password.length < 8) {
+      newErrors.password = 'Password must be at least 8 characters long.';
     }
 
     setErrors(newErrors);
@@ -107,7 +107,7 @@ function LoginFormContent() {
       if (result.field) {
         setErrors({ [result.field]: result.error });
       } else {
-        setErrors({ general: result.error || 'Sign in failed. Please check your credentials.' });
+        setErrors({ general: result.error || 'The phone number, email, or password you entered is incorrect. Please try again.' });
       }
       return;
     }

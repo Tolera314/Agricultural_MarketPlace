@@ -20,6 +20,7 @@
     "test:superadmin": "node --loader ts-node/esm src/tests/superadmin.test.ts",
     "test:routes": "node --loader ts-node/esm src/tests/routes-auth.test.ts",
     "test:guest": "node --loader ts-node/esm src/tests/guest-browsing.test.ts",
+    "test:error": "node --loader ts-node/esm src/tests/error-handling.test.ts",
     "seed": "node --loader ts-node/esm src/scripts/seed.ts"
   },
   "keywords": [],

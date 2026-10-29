@@ -2,6 +2,7 @@
 
 import { getAccessToken, setAccessToken, setCurrentUser } from './auth';
 import { API_BASE_URL } from './apiConfig';
+import { safeParseApiResponse, ApiClientError, getHumanReadableErrorMessage } from './errorHandler';
 
 const API = API_BASE_URL;
 
@@ -12,13 +13,18 @@ function getToken(): string | null {
 async function apiFetch<T>(path: string, options: RequestInit = {}): Promise<T> {
   const token = getToken();
 
-  // If there's no auth token, avoid a doomed 401/404 fetch and cleanly throw
+  // If there's no auth token, avoid a doomed fetch and cleanly throw a user-friendly error
   if (!token) {
-    throw new Error('AUTH_REQUIRED');
+    throw new ApiClientError({
+      code: 'AUTH_REQUIRED',
+      message: 'Please sign in with a Delivery Courier account to view your deliveries.',
+      status: 401,
+    });
   }
 
+  let res: Response;
   try {
-    const res = await fetch(`${API}${path}`, {
+    res = await fetch(`${API}${path}`, {
       ...options,
       credentials: 'include',
       headers: {
@@ -27,29 +33,53 @@ async function apiFetch<T>(path: string, options: RequestInit = {}): Promise<T> 
         ...(options.headers ?? {}),
       },
     });
-
-    const data = await res.json().catch(() => null);
-
-    if (!res.ok) {
-      throw new Error(data?.error?.message || `Request failed with status ${res.status}`);
-    }
-
-    return data as T;
-  } catch (err: any) {
-    throw err;
+  } catch (netErr: any) {
+    throw new ApiClientError({
+      code: 'NETWORK_ERROR',
+      message: getHumanReadableErrorMessage(netErr),
+      status: 0,
+    });
   }
+
+  const parsed = await safeParseApiResponse<T>(res);
+
+  if (!parsed.ok) {
+    throw new ApiClientError(parsed.error || {
+      message: getHumanReadableErrorMessage(res.status),
+      status: res.status,
+    });
+  }
+
+  return parsed.data as T;
 }
 
 export const workerApi = {
   /** Log in or auto-provision the demo delivery worker (Abebe Mekonnen) and store token */
   demoAuth: async () => {
-    const res = await fetch(`${API}/api/auth/demo-worker`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      credentials: 'include',
-    });
-    const data = await res.json().catch(() => null);
-    if (!res.ok) throw new Error(data?.error?.message || 'Failed to authenticate demo worker');
+    let res: Response;
+    try {
+      res = await fetch(`${API}/api/auth/demo-worker`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+      });
+    } catch (netErr: any) {
+      throw new ApiClientError({
+        code: 'NETWORK_ERROR',
+        message: getHumanReadableErrorMessage(netErr),
+        status: 0,
+      });
+    }
+
+    const parsed = await safeParseApiResponse<any>(res);
+    if (!parsed.ok) {
+      throw new ApiClientError(parsed.error || {
+        message: 'Unable to start demo courier session. Please try again shortly.',
+        status: res.status,
+      });
+    }
+
+    const data = parsed.data;
     if (data?.data?.accessToken || data?.data?.token) {
       setAccessToken(data.data.accessToken || data.data.token);
       setCurrentUser(data.data.user);

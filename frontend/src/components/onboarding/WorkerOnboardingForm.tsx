@@ -18,6 +18,7 @@ import {
 } from 'lucide-react';
 import { onboardingApi } from '@/lib/onboardingApi';
 import { compressDocumentImage } from '@/lib/imageCompressor';
+import { getHumanReadableErrorMessage } from '@/lib/errorHandler';
 
 export function WorkerOnboardingForm() {
   const router = useRouter();
@@ -102,7 +103,7 @@ export function WorkerOnboardingForm() {
       setDraftNotice('Draft saved successfully. You can return and complete this anytime.');
       setTimeout(() => setDraftNotice(null), 3500);
     } catch (err: any) {
-      setDraftNotice(err?.message || 'Failed to save draft.');
+      setDraftNotice(getHumanReadableErrorMessage(err));
     } finally {
       setIsSavingDraft(false);
     }
@@ -134,7 +135,7 @@ export function WorkerOnboardingForm() {
         [fieldName]: uploadRes.documentUrl,
       }));
     } catch (err: any) {
-      setErrors((prev) => ({ ...prev, [fieldName]: err?.message || 'Upload failed.' }));
+      setErrors((prev) => ({ ...prev, [fieldName]: getHumanReadableErrorMessage(err) }));
     } finally {
       setUploadingField(null);
     }
@@ -227,10 +228,11 @@ export function WorkerOnboardingForm() {
       router.push('/dashboard/worker/verification-status');
     } catch (err: any) {
       const field = err?.field;
+      const message = getHumanReadableErrorMessage(err);
       if (field) {
-        setErrors({ [field]: err.message, submit: err.message });
+        setErrors({ [field]: message, submit: message });
       } else {
-        setErrors({ submit: err?.message || 'Failed to submit worker application. Please try again.' });
+        setErrors({ submit: message });
       }
       setIsSubmitting(false);
     }

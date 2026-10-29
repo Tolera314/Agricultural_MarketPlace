@@ -1,5 +1,6 @@
 import { getAccessToken, getCurrentUser } from './auth';
 import { API_BASE_URL } from './apiConfig';
+import { safeParseApiResponse, ApiClientError, getHumanReadableErrorMessage } from './errorHandler';
 
 // ─── Dev bypass: admin dashboard works without any login ─────────────────────
 // The backend requireAuth middleware accepts this header and injects SUPERADMIN role.
@@ -116,20 +117,31 @@ async function fetchAdmin<T>(path: string, options: RequestInit = {}): Promise<T
       headers,
     });
 
-    const json = await res.json().catch(() => null);
-    if (!res.ok) {
+    const parsed = await safeParseApiResponse<T>(res);
+
+    if (!parsed.ok) {
       if (path.startsWith('/api/admin/dashboard')) {
         return FALLBACK_DASHBOARD_DATA as unknown as T;
       }
-      throw new Error(json?.error?.message || json?.message || `Request failed: ${res.status}`);
+      throw new ApiClientError(parsed.error || {
+        message: getHumanReadableErrorMessage(res.status),
+        status: res.status,
+      });
     }
 
-    return json.data;
-  } catch (err) {
+    return parsed.data as T;
+  } catch (err: any) {
     if (path.startsWith('/api/admin/dashboard')) {
       return FALLBACK_DASHBOARD_DATA as unknown as T;
     }
-    throw err;
+    if (err instanceof ApiClientError) {
+      throw err;
+    }
+    throw new ApiClientError({
+      code: 'NETWORK_ERROR',
+      message: getHumanReadableErrorMessage(err),
+      status: 0,
+    });
   }
 }
 

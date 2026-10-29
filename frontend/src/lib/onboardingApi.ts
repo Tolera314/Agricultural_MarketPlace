@@ -5,6 +5,7 @@
 
 import { getAccessToken, setAccessToken, setCurrentUser } from './auth';
 import { API_BASE_URL } from './apiConfig';
+import { safeParseApiResponse, ApiClientError, getHumanReadableErrorMessage } from './errorHandler';
 
 const API_BASE = API_BASE_URL;
 
@@ -68,17 +69,29 @@ export const onboardingApi = {
    * Authoritative check of onboarding status and profiles
    */
   async getStatus(): Promise<OnboardingStatusData> {
-    const res = await fetch(`${API_BASE}/api/onboarding/status`, {
-      method: 'GET',
-      headers: getAuthHeaders(),
-    });
-
-    const json = await res.json();
-    if (!res.ok) {
-      throw new Error(json.error?.message || json.message || 'Failed to fetch onboarding status.');
+    let res: Response;
+    try {
+      res = await fetch(`${API_BASE}/api/onboarding/status`, {
+        method: 'GET',
+        headers: getAuthHeaders(),
+      });
+    } catch (netErr: any) {
+      throw new ApiClientError({
+        code: 'NETWORK_ERROR',
+        message: getHumanReadableErrorMessage(netErr),
+        status: 0,
+      });
     }
 
-    return json.data;
+    const parsed = await safeParseApiResponse<OnboardingStatusData>(res);
+    if (!parsed.ok) {
+      throw new ApiClientError(parsed.error || {
+        message: 'Unable to retrieve your onboarding status. Please refresh the page.',
+        status: res.status,
+      });
+    }
+
+    return parsed.data as OnboardingStatusData;
   },
 
   /**
@@ -96,58 +109,95 @@ export const onboardingApi = {
       onboardingStatus: string;
     };
   }> {
-    const res = await fetch(`${API_BASE}/api/onboarding/select-role`, {
-      method: 'POST',
-      headers: getAuthHeaders(),
-      body: JSON.stringify({ role }),
-    });
-
-    const json = await res.json();
-    if (!res.ok) {
-      throw new Error(json.error?.message || json.message || 'Failed to select account role.');
+    let res: Response;
+    try {
+      res = await fetch(`${API_BASE}/api/onboarding/select-role`, {
+        method: 'POST',
+        headers: getAuthHeaders(),
+        body: JSON.stringify({ role }),
+      });
+    } catch (netErr: any) {
+      throw new ApiClientError({
+        code: 'NETWORK_ERROR',
+        message: getHumanReadableErrorMessage(netErr),
+        status: 0,
+      });
     }
 
-    if (json.data?.token || json.data?.accessToken) {
-      setAccessToken(json.data.accessToken || json.data.token);
-      setCurrentUser(json.data.user);
+    const parsed = await safeParseApiResponse<any>(res);
+    if (!parsed.ok) {
+      throw new ApiClientError(parsed.error || {
+        message: 'Failed to update your account role. Please try again.',
+        status: res.status,
+      });
     }
 
-    return json.data;
+    const data = parsed.data;
+    if (data?.token || data?.accessToken) {
+      setAccessToken(data.accessToken || data.token);
+      setCurrentUser(data.user);
+    }
+
+    return data;
   },
 
   /**
    * Save onboarding form draft
    */
   async saveDraft(draft: any): Promise<{ savedAt: string }> {
-    const res = await fetch(`${API_BASE}/api/onboarding/draft`, {
-      method: 'POST',
-      headers: getAuthHeaders(),
-      body: JSON.stringify({ draft }),
-    });
-
-    const json = await res.json();
-    if (!res.ok) {
-      throw new Error(json.error?.message || json.message || 'Failed to save draft.');
+    let res: Response;
+    try {
+      res = await fetch(`${API_BASE}/api/onboarding/draft`, {
+        method: 'POST',
+        headers: getAuthHeaders(),
+        body: JSON.stringify({ draft }),
+      });
+    } catch (netErr: any) {
+      throw new ApiClientError({
+        code: 'NETWORK_ERROR',
+        message: getHumanReadableErrorMessage(netErr),
+        status: 0,
+      });
     }
 
-    return json.data;
+    const parsed = await safeParseApiResponse<{ savedAt: string }>(res);
+    if (!parsed.ok) {
+      throw new ApiClientError(parsed.error || {
+        message: 'Could not save your draft at this moment. Your entries remain on screen.',
+        status: res.status,
+      });
+    }
+
+    return parsed.data as { savedAt: string };
   },
 
   /**
    * Retrieve saved draft
    */
   async getDraft(): Promise<any> {
-    const res = await fetch(`${API_BASE}/api/onboarding/draft`, {
-      method: 'GET',
-      headers: getAuthHeaders(),
-    });
-
-    const json = await res.json();
-    if (!res.ok) {
-      throw new Error(json.error?.message || json.message || 'Failed to retrieve draft.');
+    let res: Response;
+    try {
+      res = await fetch(`${API_BASE}/api/onboarding/draft`, {
+        method: 'GET',
+        headers: getAuthHeaders(),
+      });
+    } catch (netErr: any) {
+      throw new ApiClientError({
+        code: 'NETWORK_ERROR',
+        message: getHumanReadableErrorMessage(netErr),
+        status: 0,
+      });
     }
 
-    return json.data?.draft;
+    const parsed = await safeParseApiResponse<{ draft: any }>(res);
+    if (!parsed.ok) {
+      throw new ApiClientError(parsed.error || {
+        message: 'Could not retrieve your saved draft. You can continue filling out the form.',
+        status: res.status,
+      });
+    }
+
+    return parsed.data?.draft;
   },
 
   /**
@@ -163,18 +213,30 @@ export const onboardingApi = {
     const formData = new FormData();
     formData.append('file', file);
 
-    const res = await fetch(`${API_BASE}/api/onboarding/upload`, {
-      method: 'POST',
-      headers: getAuthHeaders(true),
-      body: formData,
-    });
-
-    const json = await res.json();
-    if (!res.ok) {
-      throw new Error(json.error?.message || json.message || 'File upload failed.');
+    let res: Response;
+    try {
+      res = await fetch(`${API_BASE}/api/onboarding/upload`, {
+        method: 'POST',
+        headers: getAuthHeaders(true),
+        body: formData,
+      });
+    } catch (netErr: any) {
+      throw new ApiClientError({
+        code: 'NETWORK_ERROR',
+        message: getHumanReadableErrorMessage(netErr),
+        status: 0,
+      });
     }
 
-    return json.data;
+    const parsed = await safeParseApiResponse<any>(res);
+    if (!parsed.ok) {
+      throw new ApiClientError(parsed.error || {
+        message: 'Document upload failed. Please ensure your file is under 5 MB.',
+        status: res.status,
+      });
+    }
+
+    return parsed.data;
   },
 
   /**
@@ -185,20 +247,30 @@ export const onboardingApi = {
     verificationStatus: string;
     submittedAt: string;
   }> {
-    const res = await fetch(`${API_BASE}/api/onboarding/submit-farmer`, {
-      method: 'POST',
-      headers: getAuthHeaders(),
-      body: JSON.stringify(data),
-    });
-
-    const json = await res.json();
-    if (!res.ok) {
-      const err: any = new Error(json.error?.message || json.message || 'Failed to submit farmer application.');
-      err.field = json.error?.field;
-      throw err;
+    let res: Response;
+    try {
+      res = await fetch(`${API_BASE}/api/onboarding/submit-farmer`, {
+        method: 'POST',
+        headers: getAuthHeaders(),
+        body: JSON.stringify(data),
+      });
+    } catch (netErr: any) {
+      throw new ApiClientError({
+        code: 'NETWORK_ERROR',
+        message: getHumanReadableErrorMessage(netErr),
+        status: 0,
+      });
     }
 
-    return json.data;
+    const parsed = await safeParseApiResponse<any>(res);
+    if (!parsed.ok) {
+      throw new ApiClientError(parsed.error || {
+        message: 'Unable to submit your farmer application. Please verify your information and try again.',
+        status: res.status,
+      });
+    }
+
+    return parsed.data;
   },
 
   /**
@@ -209,19 +281,29 @@ export const onboardingApi = {
     verificationStatus: string;
     submittedAt: string;
   }> {
-    const res = await fetch(`${API_BASE}/api/onboarding/submit-worker`, {
-      method: 'POST',
-      headers: getAuthHeaders(),
-      body: JSON.stringify(data),
-    });
-
-    const json = await res.json();
-    if (!res.ok) {
-      const err: any = new Error(json.error?.message || json.message || 'Failed to submit worker application.');
-      err.field = json.error?.field;
-      throw err;
+    let res: Response;
+    try {
+      res = await fetch(`${API_BASE}/api/onboarding/submit-worker`, {
+        method: 'POST',
+        headers: getAuthHeaders(),
+        body: JSON.stringify(data),
+      });
+    } catch (netErr: any) {
+      throw new ApiClientError({
+        code: 'NETWORK_ERROR',
+        message: getHumanReadableErrorMessage(netErr),
+        status: 0,
+      });
     }
 
-    return json.data;
+    const parsed = await safeParseApiResponse<any>(res);
+    if (!parsed.ok) {
+      throw new ApiClientError(parsed.error || {
+        message: 'Unable to submit your delivery courier application. Please verify your information and try again.',
+        status: res.status,
+      });
+    }
+
+    return parsed.data;
   },
 };

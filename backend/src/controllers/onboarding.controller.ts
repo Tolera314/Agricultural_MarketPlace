@@ -96,11 +96,7 @@ export async function getOnboardingStatus(req: Request, res: Response, next: Nex
       },
     });
   } catch (err: any) {
-    console.error('Error in getOnboardingStatus:', err);
-    return res.status(500).json({
-      success: false,
-      error: { message: 'Unable to retrieve your onboarding status at this time. Please refresh the page.' },
-    });
+    return next(err);
   }
 }
 
@@ -209,11 +205,7 @@ export async function selectRole(req: Request, res: Response, next: NextFunction
       },
     });
   } catch (err: any) {
-    console.error('Error in selectRole:', err);
-    return res.status(500).json({
-      success: false,
-      error: { message: 'Unable to update account role at this time. Please try again.' },
-    });
+    return next(err);
   }
 }
 
@@ -259,11 +251,7 @@ export async function saveDraft(req: Request, res: Response, next: NextFunction)
       data: { savedAt: new Date().toISOString() },
     });
   } catch (err: any) {
-    console.error('Error in saveDraft:', err);
-    return res.status(500).json({
-      success: false,
-      error: { message: 'Unable to save draft at this time. Please try again.' },
-    });
+    return next(err);
   }
 }
 
@@ -291,11 +279,7 @@ export async function getDraft(req: Request, res: Response, next: NextFunction) 
       data: { draft: (user as any)?.onboardingDraft || null },
     });
   } catch (err: any) {
-    console.error('Error in getDraft:', err);
-    return res.status(500).json({
-      success: false,
-      error: { message: 'Unable to retrieve your saved application draft. Please try again.' },
-    });
+    return next(err);
   }
 }
 
@@ -335,11 +319,7 @@ export async function uploadDocument(req: Request, res: Response, next: NextFunc
       },
     });
   } catch (err: any) {
-    console.error('Error in uploadDocument:', err);
-    return res.status(500).json({
-      success: false,
-      error: { message: 'Failed to process document upload. Please ensure your file is under 5 MB.' },
-    });
+    return next(err);
   }
 }
 
@@ -449,11 +429,7 @@ export async function serveDocument(req: Request, res: Response, next: NextFunct
 
     return res.sendFile(filePath);
   } catch (err: any) {
-    console.error('Error in serveDocument:', err);
-    return res.status(500).json({
-      success: false,
-      error: { message: 'Unable to retrieve the requested document.' },
-    });
+    return next(err);
   }
 }
 
@@ -671,28 +647,7 @@ export async function submitFarmerApplication(req: Request, res: Response, next:
       },
     });
   } catch (err: any) {
-    console.error('Error in submitFarmerApplication:', err);
-    if (err?.code === 'P2003') {
-      return res.status(400).json({
-        success: false,
-        error: { message: 'A selected market or regional hub could not be verified. Please check your selections.' },
-      });
-    }
-    if (err?.code === 'P2002') {
-      return res.status(409).json({
-        success: false,
-        error: { message: 'A farmer profile with these details already exists on your account.' },
-      });
-    }
-    return res.status(err?.status || 500).json({
-      success: false,
-      error: {
-        message:
-          err?.message && !err.message.includes('invocation')
-            ? err.message
-            : 'Unable to submit your farmer application. Please verify your details and try again.',
-      },
-    });
+    return next(err);
   }
 }
 
@@ -927,27 +882,6 @@ export async function submitWorkerApplication(req: Request, res: Response, next:
       },
     });
   } catch (err: any) {
-    console.error('Error in submitWorkerApplication:', err);
-    if (err?.code === 'P2003') {
-      return res.status(400).json({
-        success: false,
-        error: { message: 'A selected delivery zone or city hub could not be verified. Please check your selections.' },
-      });
-    }
-    if (err?.code === 'P2002') {
-      return res.status(409).json({
-        success: false,
-        error: { message: 'A delivery courier profile with these details already exists on your account.' },
-      });
-    }
-    return res.status(err?.status || 500).json({
-      success: false,
-      error: {
-        message:
-          err?.message && !err.message.includes('invocation')
-            ? err.message
-            : 'Unable to submit your courier application. Please check your details and try again.',
-      },
-    });
+    return next(err);
   }
 }

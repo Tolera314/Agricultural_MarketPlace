@@ -3,6 +3,7 @@ import multer from 'multer';
 import path from 'path';
 import crypto from 'crypto';
 import { requireAuth } from '../middleware/requireAuth.js';
+import { FileUploadError } from '../utils/errors.js';
 import {
   getOnboardingStatus,
   selectRole,
@@ -37,7 +38,7 @@ const upload = multer({
     if (allowedMime.includes(file.mimetype)) {
       cb(null, true);
     } else {
-      cb(new Error('Invalid file type. Only JPEG, PNG, WEBP, and PDF documents are supported.'));
+      cb(new FileUploadError('Invalid file type. Only JPEG, PNG, WEBP, and PDF documents are supported.', 'UNSUPPORTED_FILE_TYPE', 'file'));
     }
   },
 });
@@ -61,28 +62,7 @@ router.post(
   (req, res, next) => {
     upload.single('file')(req, res, (err: any) => {
       if (err) {
-        if (err instanceof multer.MulterError) {
-          if (err.code === 'LIMIT_FILE_SIZE') {
-            return res.status(400).json({
-              success: false,
-              error: {
-                field: 'file',
-                message: 'The uploaded file exceeds the 5 MB maximum size limit. Please choose a smaller document or photo.',
-              },
-            });
-          }
-          return res.status(400).json({
-            success: false,
-            error: { field: 'file', message: `File upload error: ${err.message}` },
-          });
-        }
-        return res.status(400).json({
-          success: false,
-          error: {
-            field: 'file',
-            message: err.message || 'Invalid file format. Only JPEG, PNG, WEBP, and PDF documents are supported.',
-          },
-        });
+        return next(err);
       }
       next();
     });
