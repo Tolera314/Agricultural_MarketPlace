@@ -3,10 +3,11 @@
 import React, { useEffect, useState, Suspense } from 'react';
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { ArrowRight, Loader2, Sparkles, UserCheck } from 'lucide-react';
+import { ArrowRight, Sparkles, UserCheck } from 'lucide-react';
 import { ThemeToggle } from '@/components/layout/ThemeToggle';
 import { onboardingApi } from '@/lib/onboardingApi';
 import { getCachedUserProfile } from '@/lib/auth';
+import { DashboardScreenSkeleton } from '@/components/ui/Skeleton';
 
 function PostSignupDashboardContent() {
   const router = useRouter();
@@ -66,12 +67,7 @@ function PostSignupDashboardContent() {
   }, [router]);
 
   if (loading) {
-    return (
-      <div className="min-h-screen bg-[#FAF8F5] dark:bg-[#07130D] flex flex-col items-center justify-center space-y-3">
-        <Loader2 className="w-8 h-8 animate-spin text-emerald-600 dark:text-emerald-400" />
-        <p className="text-sm font-semibold text-gray-500 dark:text-gray-400">Loading your dashboard...</p>
-      </div>
-    );
+    return <DashboardScreenSkeleton />;
   }
 
   return (
@@ -178,13 +174,7 @@ function PostSignupDashboardContent() {
 
 export default function PostSignupDashboardPage() {
   return (
-    <Suspense
-      fallback={
-        <div className="min-h-screen bg-[#FDF8F0] dark:bg-[#111A15] flex items-center justify-center">
-          <div className="w-8 h-8 border-4 border-emerald-600 border-t-transparent rounded-full animate-spin" />
-        </div>
-      }
-    >
+    <Suspense fallback={<DashboardScreenSkeleton />}>
       <PostSignupDashboardContent />
     </Suspense>
   );

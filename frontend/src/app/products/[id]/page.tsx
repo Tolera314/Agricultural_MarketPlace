@@ -28,6 +28,7 @@ import { useCart } from '@/context/CartContext';
 import { buyerApi } from '@/lib/buyerApi';
 import { SUPPORTED_LOCATIONS } from '@/data/marketplaceData';
 import { Product } from '@/types';
+import { ProductDetailSkeleton } from '@/components/ui/Skeleton';
 
 export default function ProductDetailPage() {
   const params = useParams();
@@ -223,18 +224,7 @@ export default function ProductDetailPage() {
   };
 
   if (isLoading) {
-    return (
-      <div className="min-h-screen bg-[#FAF8F5] dark:bg-[#0B1512] flex flex-col justify-between">
-        <Header currentLocation={currentLocation} />
-        <div className="flex-1 flex items-center justify-center py-24">
-          <div className="text-center space-y-3">
-            <Loader2 className="w-8 h-8 animate-spin text-[#2E7D32] dark:text-[#34D399] mx-auto" />
-            <p className="text-xs text-[#638275] dark:text-[#7A9C8D]">Loading fresh harvest details...</p>
-          </div>
-        </div>
-        <Footer />
-      </div>
-    );
+    return <ProductDetailSkeleton />;
   }
 
   if (!productData) {

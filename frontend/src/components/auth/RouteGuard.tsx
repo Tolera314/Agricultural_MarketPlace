@@ -4,8 +4,9 @@ import React, { useEffect, useState } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
 import { useAuth } from '@/context/AuthContext';
 import { UserRole } from '@/lib/auth';
-import { Loader2, ShieldAlert, ArrowRight } from 'lucide-react';
+import { ShieldAlert, ArrowRight } from 'lucide-react';
 import Link from 'next/link';
+import { DashboardScreenSkeleton } from '@/components/ui/Skeleton';
 
 interface RouteGuardProps {
   children: React.ReactNode;
@@ -78,28 +79,8 @@ export function RouteGuard({
   }, [isLoading, isAuthenticated, user, pathname, allowedRoles, allowPendingVerification, router]);
 
   // Loading Skeleton Screen (Prevents UI Flicker and Content Flashes)
-  if (isLoading) {
-    return (
-      <div className="min-h-screen bg-[#FAF8F5] dark:bg-[#07130D] flex flex-col items-center justify-center p-6 space-y-4">
-        <div className="w-12 h-12 rounded-2xl bg-emerald-50 dark:bg-emerald-950/60 border border-emerald-200 dark:border-emerald-800 flex items-center justify-center shadow-sm">
-          <Loader2 className="w-6 h-6 animate-spin text-emerald-600 dark:text-emerald-400" />
-        </div>
-        <div className="text-center space-y-1">
-          <p className="text-sm font-bold text-gray-800 dark:text-gray-200">Verifying security credentials...</p>
-          <p className="text-xs text-gray-500 dark:text-gray-400">Loading your authenticated dashboard</p>
-        </div>
-      </div>
-    );
-  }
-
-  // Fallback while redirecting unauthenticated users
-  if (!isAuthenticated || !user) {
-    return (
-      <div className="min-h-screen bg-[#FAF8F5] dark:bg-[#07130D] flex flex-col items-center justify-center p-6 space-y-3">
-        <Loader2 className="w-6 h-6 animate-spin text-emerald-600 dark:text-emerald-400" />
-        <p className="text-xs font-semibold text-gray-500 dark:text-gray-400">Redirecting to sign in...</p>
-      </div>
-    );
+  if (isLoading || !isAuthenticated || !user) {
+    return <DashboardScreenSkeleton />;
   }
 
   // Denied Role Banner (if unauthorized role attempts direct URL access)
