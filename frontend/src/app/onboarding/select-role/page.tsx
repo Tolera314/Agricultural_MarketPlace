@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import {
   ArrowRight,
   Shield,
@@ -20,6 +20,13 @@ import { onboardingApi } from '@/lib/onboardingApi';
 
 export default function SelectRolePage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const rawRedirect = searchParams.get('redirect');
+
+  // Validate internal destination
+  const safeRedirect = rawRedirect && rawRedirect.startsWith('/') && !rawRedirect.startsWith('//')
+    ? rawRedirect
+    : null;
 
   const [loading, setLoading] = useState(true);
   const [submittingRole, setSubmittingRole] = useState<'FARMER' | 'DELIVERY_WORKER' | 'BUYER' | null>(null);
@@ -85,7 +92,11 @@ export default function SelectRolePage() {
   };
 
   const handleGoToBuyerDashboard = () => {
-    router.push('/dashboard/buyer');
+    if (safeRedirect) {
+      router.push(safeRedirect);
+    } else {
+      router.push('/dashboard/buyer');
+    }
   };
 
   if (loading) {

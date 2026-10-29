@@ -2,7 +2,7 @@
 
 import React, { useEffect, useState } from 'react';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { ArrowRight, Loader2, Sparkles, UserCheck } from 'lucide-react';
 import { ThemeToggle } from '@/components/layout/ThemeToggle';
 import { onboardingApi } from '@/lib/onboardingApi';
@@ -10,6 +10,12 @@ import { getCachedUserProfile } from '@/lib/auth';
 
 export default function PostSignupDashboardPage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const rawRedirect = searchParams.get('redirect');
+  const safeRedirect = rawRedirect && rawRedirect.startsWith('/') && !rawRedirect.startsWith('//')
+    ? rawRedirect
+    : null;
+
   const [loading, setLoading] = useState(true);
   const [userName, setUserName] = useState<string>('');
 
@@ -26,7 +32,7 @@ export default function PostSignupDashboardPage() {
           if (status.role === 'FARMER') router.replace('/dashboard/farmer');
           else if (status.role === 'DELIVERY_WORKER') router.replace('/dashboard/worker');
           else if (status.role === 'ADMIN' || status.role === 'SUPERADMIN') router.replace('/dashboard/admin');
-          else router.replace('/dashboard/buyer');
+          else router.replace(safeRedirect || '/dashboard/buyer');
           return;
         }
 
@@ -151,7 +157,7 @@ export default function PostSignupDashboardPage() {
           </div>
 
           <Link
-            href="/onboarding/select-role"
+            href={safeRedirect ? `/onboarding/select-role?redirect=${encodeURIComponent(safeRedirect)}` : '/onboarding/select-role'}
             className="w-full py-4 px-6 rounded-2xl bg-[#075C3B] hover:bg-[#05462D] text-white font-extrabold text-sm flex items-center justify-center gap-2 shadow-lg shadow-emerald-950/20 active:scale-[0.99] transition-all cursor-pointer group"
           >
             <span>Proceed to Role Selection</span>

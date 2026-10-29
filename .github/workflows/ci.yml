@@ -107,3 +107,4 @@ jobs:
             exit 1
           fi
           echo "Environment configuration templates are sanitized."
+

@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
+import { useRouter, usePathname } from 'next/navigation';
 import {
   ShoppingBag,
   ArrowRight,
@@ -19,15 +20,16 @@ import {
 import { MarketLocation } from '@/types';
 import { ThemeToggle } from './ThemeToggle';
 import { useAuth } from '@/context/AuthContext';
+import { useCart } from '@/context/CartContext';
 
 interface HeaderProps {
-  currentLocation: MarketLocation;
-  cartCount: number;
-  onOpenCart: () => void;
-  onScrollTo: (sectionId: string) => void;
+  currentLocation?: MarketLocation;
+  cartCount?: number;
+  onOpenCart?: () => void;
+  onScrollTo?: (sectionId: string) => void;
 }
 
-export type NavItemKey = 'home' | 'categories' | 'products' | 'how-it-works' | 'intercity' | 'about';
+export type NavItemKey = 'home' | 'products' | 'farmers' | 'categories' | 'how-it-works' | 'intercity' | 'about';
 
 function getRoleDashboardUrl(role?: string): string {
   if (role === 'FARMER') return '/dashboard/farmer';
@@ -56,11 +58,29 @@ export const Header: React.FC<HeaderProps> = ({
   onOpenCart,
   onScrollTo,
 }) => {
+  const router = useRouter();
+  const pathname = usePathname();
   const { user, isAuthenticated, isLoading, logout } = useAuth();
+  const { totalCartCount, setIsCartDrawerOpen } = useCart();
+
+  const effectiveCartCount = cartCount !== undefined ? cartCount : totalCartCount;
+  const effectiveOpenCart = onOpenCart || (() => setIsCartDrawerOpen(true));
+
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [userDropdownOpen, setUserDropdownOpen] = useState(false);
   const [activeTab, setActiveTab] = useState<NavItemKey>('home');
   const dropdownRef = useRef<HTMLDivElement>(null);
+
+  // Sync active nav item with current route
+  useEffect(() => {
+    if (pathname === '/products' || pathname.startsWith('/products/')) {
+      setActiveTab('products');
+    } else if (pathname === '/farmers' || pathname.startsWith('/farmers/')) {
+      setActiveTab('farmers');
+    } else if (pathname === '/') {
+      setActiveTab('home');
+    }
+  }, [pathname]);
 
   // Close user dropdown on outside click
   useEffect(() => {
@@ -103,18 +123,31 @@ export const Header: React.FC<HeaderProps> = ({
     key: NavItemKey;
     label: string;
     sectionId: string;
+    href: string;
   }[] = [
-    { key: 'home', label: 'Home', sectionId: 'hero' },
-    { key: 'categories', label: 'Categories', sectionId: 'categories' },
-    { key: 'products', label: 'Products', sectionId: 'products' },
-    { key: 'how-it-works', label: 'How It Works', sectionId: 'how-it-works' },
-    { key: 'intercity', label: 'Intercity Trade', sectionId: 'intercity-trade' },
-    { key: 'about', label: 'About', sectionId: 'about' },
+    { key: 'home', label: 'Home', sectionId: 'hero', href: '/' },
+    { key: 'products', label: 'Products', sectionId: 'products', href: '/products' },
+    { key: 'farmers', label: 'Farmers', sectionId: 'farmers', href: '/farmers' },
+    { key: 'categories', label: 'Categories', sectionId: 'categories', href: '/#categories' },
+    { key: 'how-it-works', label: 'How It Works', sectionId: 'how-it-works', href: '/#how-it-works' },
+    { key: 'intercity', label: 'Intercity Trade', sectionId: 'intercity-trade', href: '/#intercity-trade' },
+    { key: 'about', label: 'About', sectionId: 'about', href: '/#about' },
   ];
 
   const handleNavClick = (item: (typeof navItems)[0]) => {
     setActiveTab(item.key);
-    onScrollTo(item.sectionId);
+    if (item.href === '/products' || item.href === '/farmers') {
+      router.push(item.href);
+    } else if (pathname === '/') {
+      if (onScrollTo) {
+        onScrollTo(item.sectionId);
+      } else {
+        const el = document.getElementById(item.sectionId);
+        if (el) el.scrollIntoView({ behavior: 'smooth' });
+      }
+    } else {
+      router.push(item.href);
+    }
     setMobileMenuOpen(false);
   };
 
@@ -143,7 +176,11 @@ export const Header: React.FC<HeaderProps> = ({
               <button
                 onClick={() => {
                   setActiveTab('home');
-                  onScrollTo('hero');
+                  if (onScrollTo) {
+                    onScrollTo('hero');
+                  } else {
+                    router.push('/');
+                  }
                   setMobileMenuOpen(false);
                 }}
                 className="flex items-center gap-2 sm:gap-2.5 text-left group focus-visible:outline-none rounded-lg p-1 cursor-pointer"
@@ -218,14 +255,14 @@ export const Header: React.FC<HeaderProps> = ({
 
               {/* Cart Button */}
               <button
-                onClick={onOpenCart}
+                onClick={effectiveOpenCart}
                 className="relative p-2.5 text-[#374151] dark:text-[#C5DED2] hover:text-[#075C3B] dark:hover:text-[#34D399] transition-colors cursor-pointer rounded-xl hover:bg-[#E8F5E9] dark:hover:bg-[#18352A] focus:outline-none focus-visible:ring-2 focus-visible:ring-[#075C3B]"
-                aria-label={`Shopping cart with ${cartCount} items`}
+                aria-label={`Shopping cart with ${effectiveCartCount} items`}
               >
                 <ShoppingBag className="w-5 h-5 stroke-[2]" />
-                {cartCount > 0 && (
+                {effectiveCartCount > 0 && (
                   <span className="absolute top-1 right-1 w-4 h-4 rounded-full bg-[#075C3B] dark:bg-[#10B981] text-white text-[10px] font-bold flex items-center justify-center animate-scale">
-                    {cartCount}
+                    {effectiveCartCount}
                   </span>
                 )}
               </button>
@@ -304,14 +341,20 @@ export const Header: React.FC<HeaderProps> = ({
                   </div>
                 </div>
               ) : (
-                // Unauthenticated: Primary Action: Log In
+                // Unauthenticated Guest: Log In and Register
                 <div className="flex items-center gap-2">
                   <Link
                     href="/login"
-                    className="px-5 py-2.5 rounded-full bg-[#075C3B] hover:bg-[#05482E] active:bg-[#043B26] dark:bg-[#10B981] dark:hover:bg-[#059669] text-white text-xs sm:text-sm font-semibold shadow-xs hover:shadow-md transition-all flex items-center gap-1.5"
+                    className="px-4 py-2 rounded-full text-xs sm:text-sm font-semibold text-[#075C3B] dark:text-[#34D399] hover:bg-[#E8F5E9] dark:hover:bg-[#18352A] transition-colors"
                   >
-                    <span>Log In</span>
-                    <ArrowRight className="w-4 h-4" />
+                    Log In
+                  </Link>
+                  <Link
+                    href="/signup"
+                    className="px-4 py-2 rounded-full bg-[#075C3B] hover:bg-[#05482E] active:bg-[#043B26] dark:bg-[#10B981] dark:hover:bg-[#059669] text-white text-xs sm:text-sm font-semibold shadow-xs hover:shadow-md transition-all flex items-center gap-1.5"
+                  >
+                    <span>Register</span>
+                    <ArrowRight className="w-3.5 h-3.5" />
                   </Link>
                 </div>
               )}
@@ -322,14 +365,14 @@ export const Header: React.FC<HeaderProps> = ({
               <ThemeToggle />
 
               <button
-                onClick={onOpenCart}
+                onClick={effectiveOpenCart}
                 className="relative w-9 h-9 sm:w-10 sm:h-10 flex items-center justify-center text-[#075C3B] dark:text-[#34D399] hover:bg-[#E8F5E9] dark:hover:bg-[#18352A] rounded-xl cursor-pointer transition-all"
-                aria-label={`Open Cart (${cartCount} items)`}
+                aria-label={`Open Cart (${effectiveCartCount} items)`}
               >
                 <ShoppingBag className="w-5 h-5" />
-                {cartCount > 0 && (
+                {effectiveCartCount > 0 && (
                   <span className="absolute top-1 right-1 w-4 h-4 rounded-full bg-[#075C3B] dark:bg-[#10B981] text-white text-[10px] font-bold flex items-center justify-center">
-                    {cartCount}
+                    {effectiveCartCount}
                   </span>
                 )}
               </button>

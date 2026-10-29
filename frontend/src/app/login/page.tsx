@@ -3,7 +3,7 @@
 import React, { useState } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import {
   Lock,
   Eye,
@@ -25,6 +25,13 @@ import { GoogleAuthButton } from '@/components/auth/GoogleAuthButton';
 
 export default function LoginPage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const rawRedirect = searchParams.get('redirect');
+
+  // Validate internal destination (reject external or protocol-relative URLs)
+  const safeRedirect = rawRedirect && rawRedirect.startsWith('/') && !rawRedirect.startsWith('//')
+    ? rawRedirect
+    : null;
 
   const [formData, setFormData] = useState({
     identifier: '',
@@ -114,11 +121,19 @@ export default function LoginPage() {
       const onboardingStatus = user?.onboardingStatus;
 
       if (onboardingStatus === 'PENDING_ROLE') {
-        router.push('/dashboard');
+        const nextUrl = safeRedirect
+          ? `/onboarding/select-role?redirect=${encodeURIComponent(safeRedirect)}`
+          : '/dashboard';
+        router.push(nextUrl);
       } else if (onboardingStatus === 'IN_PROGRESS') {
         if (userRole === 'FARMER') router.push('/onboarding/farmer');
         else if (userRole === 'DELIVERY_WORKER') router.push('/onboarding/worker');
-        else router.push('/onboarding/select-role');
+        else {
+          const nextUrl = safeRedirect
+            ? `/onboarding/select-role?redirect=${encodeURIComponent(safeRedirect)}`
+            : '/onboarding/select-role';
+          router.push(nextUrl);
+        }
       } else if (onboardingStatus === 'PENDING_VERIFICATION') {
         if (userRole === 'FARMER') router.push('/dashboard/farmer/verification-status');
         else if (userRole === 'DELIVERY_WORKER') router.push('/dashboard/worker/verification-status');
@@ -132,7 +147,12 @@ export default function LoginPage() {
       } else if (userRole === 'FARMER') {
         router.push('/dashboard/farmer');
       } else {
-        router.push('/dashboard/buyer');
+        // Buyer or default user: return to intended purchase action or buyer dashboard
+        if (safeRedirect) {
+          router.push(safeRedirect);
+        } else {
+          router.push('/dashboard/buyer');
+        }
       }
     }, 1200);
   };
@@ -204,7 +224,10 @@ export default function LoginPage() {
           <div className="flex items-center justify-end">
             <div className="hidden lg:flex items-center gap-3">
               <span className="text-xs text-[#527563] dark:text-[#8BB39D]">New here?</span>
-              <Link href="/signup" className="text-xs sm:text-sm font-bold text-[#075C3B] dark:text-[#34D399] hover:underline px-2.5 py-1.5 rounded-lg hover:bg-[#EAF5EE] dark:hover:bg-[#132A20] transition-colors">
+              <Link
+                href={safeRedirect ? `/signup?redirect=${encodeURIComponent(safeRedirect)}` : '/signup'}
+                className="text-xs sm:text-sm font-bold text-[#075C3B] dark:text-[#34D399] hover:underline px-2.5 py-1.5 rounded-lg hover:bg-[#EAF5EE] dark:hover:bg-[#132A20] transition-colors"
+              >
                 Create an account →
               </Link>
             </div>
@@ -464,7 +487,10 @@ export default function LoginPage() {
                       {/* Footer Link */}
                       <div className="pt-2 text-center text-xs sm:text-sm text-[#527563] dark:text-[#8BB39D]">
                         {"Don't have an account?"}{' '}
-                        <Link href="/signup" className="font-bold text-[#075C3B] dark:text-[#34D399] hover:underline">
+                        <Link
+                          href={safeRedirect ? `/signup?redirect=${encodeURIComponent(safeRedirect)}` : '/signup'}
+                          className="font-bold text-[#075C3B] dark:text-[#34D399] hover:underline"
+                        >
                           Create an account →
                         </Link>
                       </div>

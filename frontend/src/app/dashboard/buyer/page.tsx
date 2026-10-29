@@ -3,7 +3,7 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
-import { useRouter, useParams, usePathname } from 'next/navigation';
+import { useRouter, useParams, usePathname, useSearchParams } from 'next/navigation';
 import {
   LayoutDashboard,
   Search,
@@ -105,6 +105,9 @@ export type BuyerTab =
 export default function BuyerDashboardPage(props: any) {
   const initialTab = props?.initialTab as BuyerTab | undefined;
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const buyNowParam = searchParams.get('buyNow');
+  const checkoutParam = searchParams.get('checkout');
   const params = useParams();
   const pathname = usePathname();
 
@@ -335,6 +338,30 @@ export default function BuyerDashboardPage(props: any) {
     const total = subtotal + deliveryFee + platformCommission;
     return { subtotal, deliveryFee, platformCommission, total };
   }, [cart]);
+
+  // Handle post-authentication purchase resumption (Buy Now / Checkout)
+  useEffect(() => {
+    if (buyNowParam) {
+      const targetId: string = buyNowParam;
+      const resumeBuyNow = async (id: string) => {
+        try {
+          const res = await buyerApi.getProductDetails(id);
+          if (res?.data && res.data.stockQuantity > 0) {
+            addToCart(res.data, 1);
+            setIsCartOpen(true);
+            setCheckoutStep('checkout');
+          } else {
+            showNotification('The selected harvest is no longer available in stock.', 'error');
+          }
+        } catch {
+          showNotification('Unable to verify the selected product for purchase.', 'error');
+        }
+      };
+      resumeBuyNow(targetId);
+    } else if (checkoutParam === 'true') {
+      setIsCartOpen(true);
+    }
+  }, [buyNowParam, checkoutParam]);
 
   // ─── Checkout Flow ──────────────────────────────────────────
   const handleConfirmOrder = async (e: React.FormEvent) => {

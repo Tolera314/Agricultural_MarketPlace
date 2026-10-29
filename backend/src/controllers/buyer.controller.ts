@@ -1,4 +1,5 @@
 import type { Request, Response, NextFunction } from 'express';
+import type { AuthPayload } from '../middleware/requireAuth.js';
 import {
   getBuyerDashboardOverview,
   getNearbyFarmers,
