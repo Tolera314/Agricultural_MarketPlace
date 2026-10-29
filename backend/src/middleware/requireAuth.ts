@@ -51,6 +51,11 @@ export function requireAuth(req: Request, res: Response, next: NextFunction) {
     token = (req as any).cookies.accessToken || (req as any).cookies.token || null;
   }
 
+  // 3. Fallback to query parameter token (e.g., media/document links opened in new browser tabs)
+  if (!token && req.query?.token && typeof req.query.token === 'string') {
+    token = req.query.token;
+  }
+
   if (!token) {
     return res.status(401).json({
       success: false,

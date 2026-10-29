@@ -14,8 +14,11 @@ import {
   handleDemoWorkerAuth,
   handleGoogleAuth,
   handleGoogleLink,
+  handleUploadAvatar,
+  handleDeleteAvatar,
 } from "../controllers/auth.controller.js";
 import { requireAuth } from "../middleware/requireAuth.js";
+import { handleSingleUpload, uploadMemoryImage } from "../middleware/upload.js";
 import {
   authRateLimiter,
   passwordRecoveryLimiter,
@@ -47,5 +50,9 @@ router.post("/demo-worker", handleDemoWorkerAuth);
 // Google OAuth authentication & account linking
 router.post("/google", authRateLimiter, handleGoogleAuth);
 router.post("/google/link", authRateLimiter, handleGoogleLink);
+
+// Cloudinary Avatar Profile Management
+router.post("/profile/avatar", requireAuth, handleSingleUpload("avatar", uploadMemoryImage), handleUploadAvatar);
+router.delete("/profile/avatar", requireAuth, handleDeleteAvatar);
 
 export default router;

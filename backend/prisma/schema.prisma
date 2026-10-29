@@ -285,7 +285,8 @@ model User {
 model UserProfile {
   id          String   @id @default(uuid())
   userId      String   @unique
-  avatarUrl   String?
+  avatarUrl      String?
+  avatarPublicId String?
   bio         String?
   preferences Json?
   createdAt   DateTime @default(now())
@@ -512,6 +513,7 @@ model ListingImage {
   id        String         @id @default(uuid())
   listingId String
   url       String
+  publicId  String?
   altText   String?
   isPrimary Boolean        @default(false)
   sortOrder Int            @default(0)
@@ -702,7 +704,8 @@ model DeliveryJob {
   pickedUpAt          DateTime?
   deliveredAt         DateTime?
   failedAt            DateTime?
-  proofOfDeliveryUrl  String?
+  proofOfDeliveryUrl      String?
+  proofOfDeliveryPublicId String?
   cashCollected       Decimal?       @db.Decimal(14, 4)
   createdAt           DateTime       @default(now())
   updatedAt           DateTime       @updatedAt

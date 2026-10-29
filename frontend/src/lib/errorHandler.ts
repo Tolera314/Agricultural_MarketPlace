@@ -246,3 +246,4 @@ export class ApiClientError extends Error {
     this.status = normalized.status || 500;
   }
 }
+
