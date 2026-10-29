@@ -15,8 +15,23 @@ jobs:
   # 1. Backend: Typecheck, Lint, Test & Build
   # ==============================================================================
   backend-ci:
-    name: Backend CI (Node.js & Prisma)
+    name: Backend CI (Node.js, PostgreSQL & Prisma)
     runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:15-alpine
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgrespassword
+          POSTGRES_DB: final_project
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
     defaults:
       run:
         working-directory: backend
@@ -41,6 +56,17 @@ jobs:
       - name: Generate Prisma Client
         run: npx prisma generate
 
+      - name: Push Prisma Schema to CI Database
+        run: npx prisma db push --skip-generate
+        env:
+          DATABASE_URL: postgresql://postgres:postgrespassword@localhost:5432/final_project?schema=public
+
+      - name: Seed CI Database
+        run: npm run seed
+        env:
+          DATABASE_URL: postgresql://postgres:postgrespassword@localhost:5432/final_project?schema=public
+          ALLOW_PRODUCTION_SEED: 'true'
+
       - name: Backend Typecheck
         run: npx tsc --noEmit
 
@@ -49,7 +75,7 @@ jobs:
         env:
           NODE_ENV: test
           JWT_SECRET: test-jwt-secret-key-minimum-32-characters-long
-          DATABASE_URL: postgresql://postgres:postgres@localhost:5432/final_project?schema=public
+          DATABASE_URL: postgresql://postgres:postgrespassword@localhost:5432/final_project?schema=public
 
       - name: Build Backend (TypeScript Compiler)
         run: npm run build
@@ -107,4 +133,3 @@ jobs:
             exit 1
           fi
           echo "Environment configuration templates are sanitized."
-
