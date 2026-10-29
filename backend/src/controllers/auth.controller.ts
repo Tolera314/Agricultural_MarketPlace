@@ -30,7 +30,7 @@ export function getRefreshCookieOptions(expires?: Date) {
   return {
     httpOnly: true,
     secure: isProduction,
-    sameSite: "lax" as const,
+    sameSite: (isProduction ? "none" : "lax") as "none" | "lax",
     path: "/",
     ...(expires ? { expires } : { maxAge: 7 * 24 * 60 * 60 * 1000 }),
   };
@@ -44,7 +44,7 @@ export function getAccessCookieOptions(expires?: Date) {
   return {
     httpOnly: true,
     secure: isProduction,
-    sameSite: "lax" as const,
+    sameSite: (isProduction ? "none" : "lax") as "none" | "lax",
     path: "/",
     ...(expires ? { expires } : { maxAge: 15 * 60 * 1000 }), // 15 minutes
   };
