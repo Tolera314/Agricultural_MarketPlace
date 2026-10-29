@@ -652,6 +652,7 @@ export async function handleDemoWorkerAuth(req: Request, res: Response, next: Ne
 export async function handleGoogleAuth(req: Request, res: Response, next: NextFunction) {
   try {
     const credential = req.body.credential || req.body.idToken || req.body.code;
+    const redirectUri = req.body.redirectUri;
 
     if (!credential || typeof credential !== "string") {
       return res.status(400).json({
@@ -664,7 +665,7 @@ export async function handleGoogleAuth(req: Request, res: Response, next: NextFu
     }
 
     const meta = extractRequestMeta(req);
-    const result = await authenticateWithGoogle(credential.trim(), meta);
+    const result = await authenticateWithGoogle(credential.trim(), meta, redirectUri);
 
     // Set secure HttpOnly cookies for refresh token and access token
     if (result.refreshToken) {
@@ -722,6 +723,7 @@ export async function handleGoogleLink(req: Request, res: Response, next: NextFu
   try {
     const credential = req.body.credential || req.body.idToken;
     const password = req.body.password;
+    const redirectUri = req.body.redirectUri;
 
     if (!credential) {
       return res.status(400).json({
@@ -738,7 +740,7 @@ export async function handleGoogleLink(req: Request, res: Response, next: NextFu
     }
 
     const meta = extractRequestMeta(req);
-    const result = await linkGoogleAccount(credential.trim(), password, meta);
+    const result = await linkGoogleAccount(credential.trim(), password, meta, redirectUri);
 
     if (result.refreshToken) {
       res.cookie(REFRESH_COOKIE_NAME, result.refreshToken, getRefreshCookieOptions(result.expiresAt));

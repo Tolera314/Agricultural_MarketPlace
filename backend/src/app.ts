@@ -97,6 +97,8 @@ app.use((req: Request, res: Response, next: NextFunction) => {
     'Content-Security-Policy',
     `default-src ${defaultSources}; connect-src ${connectSources}; img-src 'self' data: blob: https:;`
   );
+  res.setHeader('Cross-Origin-Opener-Policy', 'same-origin-allow-popups');
+  res.setHeader('Cross-Origin-Resource-Policy', 'cross-origin');
   next();
 });
 

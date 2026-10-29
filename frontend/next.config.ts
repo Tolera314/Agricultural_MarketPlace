@@ -24,6 +24,19 @@ const nextConfig: NextConfig = {
     NEXT_PUBLIC_API_URL: resolvedApiUrl,
     NEXT_PUBLIC_GOOGLE_CLIENT_ID: process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID || "223577954617-t6a485t3ej0cgjjkiks5s4oggigoku80.apps.googleusercontent.com",
   },
+  async headers() {
+    return [
+      {
+        source: "/:path*",
+        headers: [
+          {
+            key: "Cross-Origin-Opener-Policy",
+            value: "same-origin-allow-popups",
+          },
+        ],
+      },
+    ];
+  },
   async rewrites() {
     return [
       {

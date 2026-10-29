@@ -787,7 +787,7 @@ export function __setGoogleVerifierForTesting(verifier: ((token: string) => Prom
  * Verify a Google ID token or exchange an OAuth authorization code.
  * Validates issuer, audience, signature, expiration, and extracts verified sub and email.
  */
-export async function verifyGoogleCredential(credentialOrCode: string) {
+export async function verifyGoogleCredential(credentialOrCode: string, explicitRedirectUri?: string) {
   if (googleCredentialVerifierOverride) {
     return await googleCredentialVerifierOverride(credentialOrCode);
   }
@@ -803,29 +803,48 @@ export async function verifyGoogleCredential(credentialOrCode: string) {
 
   let idToken = credentialOrCode;
 
-  // Check if credentialOrCode is an authorization code (OAuth 2.0 redirect flow)
+  // Check if credentialOrCode is an authorization code (OAuth 2.0 redirect flow or GIS popup code)
   // Google ID tokens are JWTs with 3 period-separated parts (header.payload.signature)
   const isJwt = credentialOrCode.split(".").length === 3;
   if (!isJwt) {
-    try {
-      const redirectUri =
-        process.env.GOOGLE_REDIRECT_URI ||
-        `${(process.env.FRONTEND_URL || "http://localhost:3000").replace(/\/+$/, "")}/auth/google/callback`;
-      const { tokens } = await client.getToken({
-        code: credentialOrCode,
-        redirect_uri: redirectUri,
-      });
-      if (!tokens.id_token) {
-        const err = new Error("Failed to obtain ID token from Google authorization code.");
-        (err as any).status = 401;
-        throw err;
+    const defaultCallbackUri =
+      process.env.GOOGLE_REDIRECT_URI ||
+      `${(process.env.FRONTEND_URL || "http://localhost:3000").replace(/\/+$/, "")}/auth/google/callback`;
+
+    // GIS popup code flows require 'postmessage', whereas standard redirect flows require callback URL
+    const candidateUris = explicitRedirectUri
+      ? [explicitRedirectUri, "postmessage", defaultCallbackUri, "http://localhost:3000/auth/google/callback"]
+      : ["postmessage", defaultCallbackUri, "http://localhost:3000/auth/google/callback"];
+
+    const uniqueUris = Array.from(new Set(candidateUris.filter(Boolean) as string[]));
+    let tokens: any = null;
+    let lastError: any = null;
+
+    for (const uri of uniqueUris) {
+      try {
+        const res = await client.getToken({
+          code: credentialOrCode,
+          redirect_uri: uri,
+        });
+        tokens = res.tokens;
+        if (tokens?.id_token) break;
+      } catch (err: any) {
+        lastError = err;
+        // Continue trying next candidate if it's a redirect_uri mismatch
+        if (err.message && err.message.toLowerCase().includes("redirect_uri_mismatch")) {
+          continue;
+        }
+        // If code has expired or is invalid, stop trying
+        break;
       }
-      idToken = tokens.id_token;
-    } catch (err: any) {
-      const error = new Error(`Google authorization code exchange failed: ${err.message || "Invalid code"}`);
+    }
+
+    if (!tokens || !tokens.id_token) {
+      const error = new Error(`Google authorization code exchange failed: ${lastError?.message || "Invalid code"}`);
       (error as any).status = 401;
       throw error;
     }
+    idToken = tokens.id_token;
   }
 
   try {
@@ -877,8 +896,8 @@ export async function verifyGoogleCredential(credentialOrCode: string) {
  * - Registration of new accounts with Google
  * - Detection of unlinked accounts with identical email (requires password to prevent takeover)
  */
-export async function authenticateWithGoogle(credential: string, meta: RequestMetadata = {}) {
-  const profile = await verifyGoogleCredential(credential);
+export async function authenticateWithGoogle(credential: string, meta: RequestMetadata = {}, redirectUri?: string) {
+  const profile = await verifyGoogleCredential(credential, redirectUri);
   const { sub, email, emailVerified, name, picture } = profile;
 
   // 1. Check if this Google identity is already linked
@@ -1017,8 +1036,8 @@ export async function authenticateWithGoogle(credential: string, meta: RequestMe
  * Secure Account Linking
  * Requires user to submit their existing account password alongside the Google credential.
  */
-export async function linkGoogleAccount(credential: string, password: string, meta: RequestMetadata = {}) {
-  const profile = await verifyGoogleCredential(credential);
+export async function linkGoogleAccount(credential: string, password: string, meta: RequestMetadata = {}, redirectUri?: string) {
+  const profile = await verifyGoogleCredential(credential, redirectUri);
   const { sub, email, picture } = profile;
 
   if (!password || typeof password !== "string") {

@@ -122,7 +122,7 @@ export function GoogleAuthButton({
     setIsLoading(true);
     setErrorMessage(null);
 
-    const result = await loginWithGoogle(credential);
+    const result = await loginWithGoogle(credential, 'postmessage');
 
     if (result.success && result.user) {
       routeUserAfterAuth(result.user, result.redirectUrl);
@@ -153,7 +153,7 @@ export function GoogleAuthButton({
     setLinkLoading(true);
     setLinkError(null);
 
-    const result = await linkGoogleAccount(pendingCredential, linkPassword);
+    const result = await linkGoogleAccount(pendingCredential, linkPassword, 'postmessage');
     setLinkLoading(false);
 
     if (result.success && result.user) {
@@ -186,6 +186,7 @@ export function GoogleAuthButton({
             if (response.code) {
               handleCredentialVerification(response.code);
             } else if (response.error) {
+              setIsLoading(false);
               if (response.error !== 'popup_closed_by_user') {
                 const msg = `Google sign-in error: ${response.error}`;
                 setErrorMessage(msg);
@@ -194,11 +195,22 @@ export function GoogleAuthButton({
             }
           },
           error_callback: (error: any) => {
-            console.error('Google Auth Popup Error:', error);
-            // Fallback to standard redirect
+            console.warn('Google Auth Popup Notice:', error?.type || error);
+            setIsLoading(false);
+            if (error?.type === 'popup_closed') {
+              // User deliberately closed popup; do not redirect or throw false error
+              return;
+            }
+            if (error?.type === 'popup_failed_to_open') {
+              // Browser popup blocker prevented window from opening; fallback to standard redirect
+              performOAuthRedirect();
+              return;
+            }
+            // Miscellaneous popup issues: fallback to full redirect flow
             performOAuthRedirect();
           },
         });
+        setIsLoading(true);
         client.requestCode();
         return;
       } catch (err) {
@@ -207,6 +219,7 @@ export function GoogleAuthButton({
     }
 
     // Standard OAuth 2.0 Full Redirect Flow fallback
+    setIsLoading(true);
     performOAuthRedirect();
   };
 
