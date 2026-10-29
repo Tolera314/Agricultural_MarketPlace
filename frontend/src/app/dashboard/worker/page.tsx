@@ -1,8 +1,9 @@
 'use client';
 
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState, Suspense } from 'react';
 import Link from 'next/link';
-import { useRouter, useParams, usePathname } from 'next/navigation';
+import { useRouter, useParams, usePathname, useSearchParams } from 'next/navigation';
+import { useAuth } from '@/context/AuthContext';
 import {
   LayoutDashboard,
   Package,
@@ -13,6 +14,7 @@ import {
   Bell,
   ChevronDown,
   LogOut,
+  Lock,
   Menu,
   X,
   Star,
@@ -313,10 +315,12 @@ function VehicleCard({
 
 function NearbyDeliveryRequestsCard({
   requests,
+  isVerified = true,
   onAccept,
   onViewAll,
 }: {
   requests: NearbyRequestItem[];
+  isVerified?: boolean;
   onAccept: (req: NearbyRequestItem) => void;
   onViewAll: () => void;
 }) {
@@ -367,9 +371,15 @@ function NearbyDeliveryRequestsCard({
               ) : (
                 <button
                   onClick={() => onAccept(item)}
-                  className="px-4 py-1.5 rounded-lg bg-[#075C3B] dark:bg-[#10B981] hover:bg-[#05462D] dark:hover:bg-[#059669] active:scale-95 text-white dark:text-[#062417] text-xs font-bold transition-all shadow-xs cursor-pointer"
+                  className={`px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all shadow-xs cursor-pointer flex items-center gap-1 ${
+                    !isVerified
+                      ? 'bg-amber-100 hover:bg-amber-200 dark:bg-amber-950/60 text-amber-900 dark:text-amber-200 border border-amber-300 dark:border-amber-800'
+                      : 'bg-[#075C3B] dark:bg-[#10B981] hover:bg-[#05462D] dark:hover:bg-[#059669] active:scale-95 text-white dark:text-[#062417]'
+                  }`}
+                  title={!isVerified ? 'Courier verification required to accept orders' : 'Accept order'}
                 >
-                  Accept
+                  {!isVerified && <Lock className="w-3 h-3 text-amber-700 dark:text-amber-400" />}
+                  <span>{!isVerified ? 'Accept (Locked)' : 'Accept'}</span>
                 </button>
               )}
               <span className="text-xs text-[#7B998A] dark:text-[#6E9581] font-medium min-w-[36px] text-right">
@@ -737,6 +747,7 @@ function ContactSupportModal({ open, onClose }: { open: boolean; onClose: () => 
 function DashboardSection({
   data,
   nearbyRequests,
+  isVerified = true,
   onAcceptNearbyRequest,
   onNavigateSection,
   onOpenRouteModal,
@@ -744,6 +755,7 @@ function DashboardSection({
 }: {
   data: DashboardData | null;
   nearbyRequests: NearbyRequestItem[];
+  isVerified?: boolean;
   onAcceptNearbyRequest: (item: NearbyRequestItem) => void;
   onNavigateSection: (sec: NavKey) => void;
   onOpenRouteModal: () => void;
@@ -884,6 +896,7 @@ function DashboardSection({
         <div className="lg:col-span-7 space-y-5">
           <NearbyDeliveryRequestsCard
             requests={nearbyRequests}
+            isVerified={isVerified}
             onAccept={onAcceptNearbyRequest}
             onViewAll={() => onNavigateSection('offers')}
           />
@@ -911,9 +924,11 @@ function DashboardSection({
 // ─── Section 2: Delivery Requests (Offers) ─────────────────────
 
 function OffersSection({
+  isVerified = true,
   onAcceptSuccess,
   onSeedDemoOrder,
 }: {
+  isVerified?: boolean;
   onAcceptSuccess: (jobId: string) => void;
   onSeedDemoOrder: () => void;
 }) {
@@ -939,6 +954,10 @@ function OffersSection({
   }, [loadOffers]);
 
   const handleAccept = async (offer: DeliveryOffer) => {
+    if (!isVerified) {
+      alert('Order Acceptance Locked: Your delivery courier account is pending administrator verification. You cannot accept delivery orders until approved.');
+      return;
+    }
     setActingOfferId(offer.offerId);
     try {
       const res = await workerApi.acceptOffer(offer.offerId);
@@ -1085,10 +1104,16 @@ function OffersSection({
                     <button
                       onClick={() => handleAccept(offer)}
                       disabled={isActing}
-                      className="px-4 py-1.5 rounded-xl bg-[#075C3B] hover:bg-[#05462D] text-white text-xs font-bold transition-colors cursor-pointer flex items-center gap-1 disabled:opacity-50"
+                      className={`px-4 py-1.5 rounded-xl text-xs font-bold transition-colors cursor-pointer flex items-center gap-1.5 disabled:opacity-50 ${
+                        !isVerified
+                          ? 'bg-amber-100 hover:bg-amber-200 dark:bg-amber-950/60 text-amber-900 dark:text-amber-200 border border-amber-300 dark:border-amber-800'
+                          : 'bg-[#075C3B] hover:bg-[#05462D] text-white'
+                      }`}
+                      title={!isVerified ? 'Courier verification required to accept orders' : 'Accept order'}
                     >
                       {isActing && <Loader2 className="w-3 h-3 animate-spin" />}
-                      <span>Accept</span>
+                      {!isVerified && <Lock className="w-3 h-3 text-amber-700 dark:text-amber-400" />}
+                      <span>{!isVerified ? 'Accept (Locked)' : 'Accept'}</span>
                     </button>
                   </div>
                 </div>
@@ -1680,11 +1705,15 @@ function IncidentsSection({
 
 // ─── Main Worker Dashboard Page ───────────────────────────────
 
-export default function WorkerDashboardPage(props: any) {
+function WorkerDashboardContent(props: any) {
   const initialSection = props?.initialSection as NavKey | undefined;
   const router = useRouter();
   const params = useParams();
   const pathname = usePathname();
+  const searchParams = useSearchParams();
+  const isJustSubmitted = searchParams?.get('onboardingSuccess') === 'true';
+  const [dismissSubmitted, setDismissSubmitted] = useState(false);
+  const { user } = useAuth();
 
   // Determine active section from URL param, pathname, or prop
   const currentNavKey: NavKey = useMemo(() => {
@@ -1782,7 +1811,7 @@ export default function WorkerDashboardPage(props: any) {
           lastLongitude: 38.75,
           lastLocationAt: new Date().toISOString(),
           activeJobCount: 0,
-          verificationStatus: 'VERIFIED',
+          verificationStatus: (user as any)?.deliveryProfile?.verificationStatus || (user?.isVerified ? 'VERIFIED' : 'PENDING'),
         },
         metrics: {
           availableOrders: 3,
@@ -1799,14 +1828,26 @@ export default function WorkerDashboardPage(props: any) {
     } finally {
       setLoading(false);
     }
-  }, [vehicleState]);
+  }, [vehicleState, user]);
 
   useEffect(() => {
     loadDashboard();
   }, [loadDashboard]);
 
+  // Dynamic calculation of verification status
+  const isWorkerVerified = useMemo(() => {
+    if (dashData?.profile?.verificationStatus === 'VERIFIED') return true;
+    if (user?.isVerified === true) return true;
+    if ((user as any)?.deliveryProfile?.verificationStatus === 'VERIFIED') return true;
+    return false;
+  }, [dashData?.profile?.verificationStatus, user]);
+
   // Handler: Accept nearby delivery request
   const handleAcceptNearbyRequest = async (item: NearbyRequestItem) => {
+    if (!isWorkerVerified) {
+      showToast('⚠️ Order Acceptance Locked: Courier verification pending administrator review.');
+      return;
+    }
     try {
       setNearbyRequests(prev =>
         prev.map(r => (r.id === item.id ? { ...r, accepted: true } : r))
@@ -2053,11 +2094,36 @@ export default function WorkerDashboardPage(props: any) {
         </header>
 
         {/* ─── Page Content Body ─── */}
-        <main className="p-4 sm:p-6 lg:p-7 max-w-7xl mx-auto w-full">
+        <main className="p-4 sm:p-6 lg:p-7 max-w-7xl mx-auto w-full space-y-4">
+          {/* Onboarding Success Celebration Banner */}
+          {isJustSubmitted && !dismissSubmitted && (
+            <div className="p-4 sm:p-5 rounded-2xl bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800 text-emerald-950 dark:text-emerald-100 shadow-sm flex items-start justify-between gap-4 animate-in fade-in duration-200">
+              <div className="flex items-start gap-3">
+                <div className="w-10 h-10 rounded-xl bg-emerald-100 dark:bg-emerald-900/60 text-emerald-700 dark:text-emerald-300 flex items-center justify-center shrink-0">
+                  <Sparkles className="w-5 h-5 text-emerald-600 dark:text-emerald-400" />
+                </div>
+                <div>
+                  <h3 className="font-bold text-sm sm:text-base">🎉 Courier Application Submitted Successfully!</h3>
+                  <p className="text-xs sm:text-sm text-emerald-800/90 dark:text-emerald-300/90 mt-0.5">
+                    Welcome to your AgriMarket Delivery Worker Hub! Your vehicle details, driving license, and credentials have been submitted for administrator review. You can explore your dispatch portal and GPS tools while awaiting approval. Delivery order acceptance and live broadcast dispatches will activate as soon as your account is verified.
+                  </p>
+                </div>
+              </div>
+              <button
+                onClick={() => setDismissSubmitted(true)}
+                className="text-xs font-bold text-emerald-700 hover:text-emerald-900 dark:text-emerald-300 dark:hover:text-emerald-100 shrink-0 p-1 hover:bg-emerald-100/50 dark:hover:bg-emerald-900/40 rounded-lg transition-colors cursor-pointer"
+                title="Dismiss"
+              >
+                ✕
+              </button>
+            </div>
+          )}
+
           {activeSection === 'dashboard' && (
             <DashboardSection
               data={dashData}
               nearbyRequests={nearbyRequests}
+              isVerified={isWorkerVerified}
               onAcceptNearbyRequest={handleAcceptNearbyRequest}
               onNavigateSection={navigateToSection}
               onOpenRouteModal={() => setRouteModalOpen(true)}
@@ -2067,6 +2133,7 @@ export default function WorkerDashboardPage(props: any) {
 
           {activeSection === 'offers' && (
             <OffersSection
+              isVerified={isWorkerVerified}
               onAcceptSuccess={(jobId) => {
                 showToast('Offer accepted! Starting delivery job.');
                 loadDashboard();
@@ -2184,5 +2251,19 @@ export default function WorkerDashboardPage(props: any) {
         </div>
       )}
     </div>
+  );
+}
+
+export default function WorkerDashboardPage(props: any) {
+  return (
+    <Suspense
+      fallback={
+        <div className="min-h-screen bg-[#F4F7F5] dark:bg-[#07130D] flex items-center justify-center">
+          <div className="w-8 h-8 rounded-full border-2 border-emerald-600 border-t-transparent animate-spin" />
+        </div>
+      }
+    >
+      <WorkerDashboardContent {...props} />
+    </Suspense>
   );
 }

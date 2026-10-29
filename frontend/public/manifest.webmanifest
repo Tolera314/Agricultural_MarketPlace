@@ -1,4 +1,5 @@
 {
+  "id": "agrimarket-pwa",
   "name": "AgriMarket — Ethiopian Agricultural Marketplace",
   "short_name": "AgriMarket",
   "description": "Location-based agricultural marketplace connecting Ethiopian farmers, buyers, and delivery workers directly.",
@@ -56,6 +57,13 @@
       "short_name": "Delivery",
       "url": "/dashboard/worker",
       "description": "View live delivery dispatches and active routes",
+      "icons": [{ "src": "/icons/icon-192.png", "sizes": "192x192" }]
+    },
+    {
+      "name": "Admin Portal",
+      "short_name": "Admin",
+      "url": "/dashboard/admin",
+      "description": "Platform management, user verification, and orders",
       "icons": [{ "src": "/icons/icon-192.png", "sizes": "192x192" }]
     }
   ]

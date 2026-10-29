@@ -1,10 +1,10 @@
 'use client';
 
-import React from 'react';
+import React, { Suspense } from 'react';
 import { useRouter } from 'next/navigation';
 import FarmerDashboardContent from '@/components/farmer/FarmerDashboardContent';
 
-export default function (props: any) {
+export default function FarmerDashboardPage(props: any) {
   const onOpenSidebar = props?.onOpenSidebar;
   const router = useRouter();
 
@@ -17,10 +17,12 @@ export default function (props: any) {
   };
 
   return (
-    <FarmerDashboardContent
-      activePage="dashboard"
-      onOpenSidebar={onOpenSidebar || (() => {})}
-      onNavigate={handleNavigate}
-    />
+    <Suspense fallback={null}>
+      <FarmerDashboardContent
+        activePage="dashboard"
+        onOpenSidebar={onOpenSidebar || (() => {})}
+        onNavigate={handleNavigate}
+      />
+    </Suspense>
   );
 }

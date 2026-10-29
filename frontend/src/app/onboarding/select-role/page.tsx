@@ -48,10 +48,10 @@ function SelectRoleContent() {
           return;
         }
 
-        // If in verification review
+        // If in verification review, route to intended role dashboard
         if (status.onboardingStatus === 'PENDING_VERIFICATION') {
-          if (status.role === 'FARMER') router.replace('/dashboard/farmer/verification-status');
-          else if (status.role === 'DELIVERY_WORKER') router.replace('/dashboard/worker/verification-status');
+          if (status.role === 'FARMER') router.replace('/dashboard/farmer');
+          else if (status.role === 'DELIVERY_WORKER') router.replace('/dashboard/worker');
           return;
         }
 

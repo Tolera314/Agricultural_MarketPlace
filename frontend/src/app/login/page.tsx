@@ -135,8 +135,8 @@ function LoginFormContent() {
           router.push(nextUrl);
         }
       } else if (onboardingStatus === 'PENDING_VERIFICATION') {
-        if (userRole === 'FARMER') router.push('/dashboard/farmer/verification-status');
-        else if (userRole === 'DELIVERY_WORKER') router.push('/dashboard/worker/verification-status');
+        if (userRole === 'FARMER') router.push('/dashboard/farmer');
+        else if (userRole === 'DELIVERY_WORKER') router.push('/dashboard/worker');
         else router.push('/dashboard/buyer');
       } else if (userRole === 'DELIVERY_WORKER') {
         router.push('/dashboard/worker');

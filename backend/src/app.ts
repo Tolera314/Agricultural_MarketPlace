@@ -9,6 +9,7 @@ import adminRouter from './routes/admin.routes.js';
 import superadminRouter from './routes/superadmin.routes.js';
 import buyerRouter from './routes/buyer.routes.js';
 import onboardingRouter from './routes/onboarding.routes.js';
+import farmerRouter from './routes/farmer.routes.js';
 
 import cookieParser from 'cookie-parser';
 import { errorHandler } from './middleware/errorHandler.js';
@@ -114,6 +115,7 @@ app.get('/', (req: Request, res: Response) => {
       admin: '/api/admin',
       superadmin: '/api/superadmin',
       buyer: '/api/buyer',
+      farmer: '/api/farmer',
     },
   });
 });
@@ -136,6 +138,7 @@ app.use('/api/location', locationRouter);
 app.use('/api/admin', adminRouter);
 app.use('/api/superadmin', superadminRouter);
 app.use('/api/buyer', buyerRouter);
+app.use('/api/farmer', farmerRouter);
 app.use('/api/onboarding', onboardingRouter);
 
 // Catch-all 404 JSON handler (prevents default HTML 404 with default-src 'none')

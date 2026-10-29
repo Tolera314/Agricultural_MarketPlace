@@ -24,8 +24,10 @@ import {
   Clock,
   ShieldAlert,
   CheckCircle2,
+  Sparkles,
 } from 'lucide-react';
 import Link from 'next/link';
+import { useSearchParams } from 'next/navigation';
 import { onboardingApi } from '@/lib/onboardingApi';
 
 // ────────────────────────────────────────────────────────────
@@ -589,6 +591,10 @@ export default function FarmerDashboardContent({
   const [searchQuery] = useState('');
   void searchQuery; // reserved for future server-side search
 
+  const searchParams = useSearchParams();
+  const isJustSubmitted = searchParams?.get('onboardingSuccess') === 'true';
+  const [dismissSubmitted, setDismissSubmitted] = useState(false);
+
   const [farmerAccount, setFarmerAccount] = useState<{
     fullName: string;
     farmName?: string;
@@ -757,6 +763,30 @@ export default function FarmerDashboardContent({
               </p>
             </div>
           </div>
+
+          {/* Onboarding Success Banner */}
+          {isJustSubmitted && !dismissSubmitted && (
+            <div className="p-4 sm:p-5 rounded-2xl bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800 text-emerald-950 dark:text-emerald-100 shadow-sm flex items-start justify-between gap-4">
+              <div className="flex items-start gap-3">
+                <div className="w-10 h-10 rounded-xl bg-emerald-100 dark:bg-emerald-900/60 text-emerald-700 dark:text-emerald-300 flex items-center justify-center shrink-0">
+                  <Sparkles className="w-5 h-5 text-emerald-600 dark:text-emerald-400" />
+                </div>
+                <div>
+                  <h3 className="font-bold text-sm sm:text-base">🎉 Farm Application Submitted Successfully!</h3>
+                  <p className="text-xs sm:text-sm text-emerald-800/90 dark:text-emerald-300/90 mt-0.5">
+                    Welcome to your AgriMarket Farmer Dashboard! Your profile and credentials have been submitted for review. You can browse your dashboard and monitor market prices while awaiting administrator approval. Product listing creation will be enabled as soon as your farm account is approved.
+                  </p>
+                </div>
+              </div>
+              <button
+                onClick={() => setDismissSubmitted(true)}
+                className="p-1 rounded-lg hover:bg-emerald-100 dark:hover:bg-emerald-900/50 text-emerald-700 dark:text-emerald-300 transition-colors cursor-pointer"
+                aria-label="Dismiss banner"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+          )}
 
           {/* Verification Status Alert Banner */}
           {farmerAccount && farmerAccount.verificationStatus !== 'VERIFIED' && (

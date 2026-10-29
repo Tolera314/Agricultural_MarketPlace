@@ -37,10 +37,11 @@ function PostSignupDashboardContent() {
           return;
         }
 
-        // If pending verification, route to status tracker
+        // If pending verification, route to their intended role dashboard
         if (status.onboardingStatus === 'PENDING_VERIFICATION') {
-          if (status.role === 'FARMER') router.replace('/dashboard/farmer/verification-status');
-          else if (status.role === 'DELIVERY_WORKER') router.replace('/dashboard/worker/verification-status');
+          if (status.role === 'FARMER') router.replace('/dashboard/farmer');
+          else if (status.role === 'DELIVERY_WORKER') router.replace('/dashboard/worker');
+          else router.replace(safeRedirect || '/dashboard/buyer');
           return;
         }
 

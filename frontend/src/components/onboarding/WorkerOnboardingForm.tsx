@@ -250,7 +250,8 @@ export function WorkerOnboardingForm() {
         consentedToTerms: formData.consentedToTerms,
       });
 
-      router.push('/dashboard/worker/verification-status');
+      // Redirect to intended worker dashboard with success flag
+      router.push('/dashboard/worker?onboardingSuccess=true');
     } catch (err: any) {
       const field = err?.field;
       const message = getHumanReadableErrorMessage(err);

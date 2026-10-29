@@ -36,8 +36,8 @@ function GoogleCallbackContent() {
       else if (userRole === 'DELIVERY_WORKER') router.push('/onboarding/worker');
       else router.push('/onboarding/select-role');
     } else if (onboardingStatus === 'PENDING_VERIFICATION') {
-      if (userRole === 'FARMER') router.push('/dashboard/farmer/verification-status');
-      else if (userRole === 'DELIVERY_WORKER') router.push('/dashboard/worker/verification-status');
+      if (userRole === 'FARMER') router.push('/dashboard/farmer');
+      else if (userRole === 'DELIVERY_WORKER') router.push('/dashboard/worker');
       else router.push('/dashboard/buyer');
     } else if (userRole === 'DELIVERY_WORKER') {
       router.push('/dashboard/worker');
