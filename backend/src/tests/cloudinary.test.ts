@@ -12,7 +12,7 @@
  * 8. Access control and authentication enforcement on upload and document endpoints
  */
 
-import 'dotenv/config';
+import '../config/env.js';
 import http from 'http';
 import app from '../app.js';
 import cloudinary, { isCloudinaryConfigured } from '../config/cloudinary.js';

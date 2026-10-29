@@ -1,10 +1,5 @@
 import { v2 as cloudinary } from 'cloudinary';
-import path from 'path';
-import dotenv from 'dotenv';
-
-// Ensure environment variables are loaded from parent root and backend local .env
-dotenv.config({ path: path.resolve(process.cwd(), '../.env') });
-dotenv.config({ path: path.resolve(process.cwd(), '.env') });
+import './env.js';
 
 /**
  * Dynamically resolves Cloudinary credentials from individual variables

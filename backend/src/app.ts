@@ -1,11 +1,6 @@
 import express, { type Request, type Response, type NextFunction } from 'express';
 import cors from 'cors';
-import path from 'path';
-import dotenv from 'dotenv';
-
-// Load root .env first, fallback to local
-dotenv.config({ path: path.resolve(process.cwd(), '../.env') });
-dotenv.config({ path: path.resolve(process.cwd(), '.env') });
+import './config/env.js';
 
 import authRouter from './routes/auth.routes.js';
 import workerRouter from './routes/worker.routes.js';
