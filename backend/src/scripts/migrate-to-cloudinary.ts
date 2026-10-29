@@ -128,3 +128,4 @@ migrateLegacyFiles().catch((err) => {
   console.error('Fatal migration error:', err);
   process.exit(1);
 });
+

@@ -270,6 +270,10 @@ export const onboardingApi = {
       });
     }
 
+    if (parsed.data?.token || parsed.data?.accessToken) {
+      setAccessToken(parsed.data.token || parsed.data.accessToken);
+    }
+
     return parsed.data;
   },
 
@@ -302,6 +306,10 @@ export const onboardingApi = {
         message: 'Unable to submit your delivery courier application. Please verify your information and try again.',
         status: res.status,
       });
+    }
+
+    if (parsed.data?.token || parsed.data?.accessToken) {
+      setAccessToken(parsed.data.token || parsed.data.accessToken);
     }
 
     return parsed.data;

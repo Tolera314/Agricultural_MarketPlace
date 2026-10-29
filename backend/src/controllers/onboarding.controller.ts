@@ -2,8 +2,8 @@ import type { Request, Response, NextFunction } from 'express';
 import crypto from 'crypto';
 import jwt from 'jsonwebtoken';
 import prisma from '../config/prisma.js';
-import cloudinary from '../config/cloudinary.js';
-import { uploadToCloudinary, validateFileBuffer } from '../services/cloudinary.service.js';
+import cloudinary, { isCloudinaryConfigured } from '../config/cloudinary.js';
+import { uploadToCloudinary, validateFileBuffer, inMemoryAssetStore } from '../services/cloudinary.service.js';
 import { VerificationStatus, AuditAction, VehicleType, Prisma } from '@prisma/client';
 import { NotificationService } from '../services/notification.service.js';
 
@@ -448,13 +448,29 @@ export async function serveDocument(req: Request, res: Response, next: NextFunct
     const filenameWithoutExt = filename.replace(/\.[^/.]+$/, '');
     const publicId = `agrimarket/documents/${filenameWithoutExt}`;
 
-    const redirectUrl = cloudinary.url(publicId, {
-      secure: true,
-      resource_type: isPdf ? 'raw' : 'image',
-      format: isPdf ? 'pdf' : undefined,
-    });
+    // 1. If stored in resilient in-memory buffer, serve directly
+    const memoryAsset = inMemoryAssetStore.get(publicId);
+    if (memoryAsset) {
+      res.setHeader('Content-Type', memoryAsset.mime);
+      res.setHeader('Content-Length', memoryAsset.bytes);
+      res.setHeader('Cache-Control', 'public, max-age=86400');
+      return res.end(memoryAsset.buffer);
+    }
 
-    return res.redirect(302, redirectUrl);
+    // 2. If Cloudinary is configured, redirect to the CDN asset URL
+    if (isCloudinaryConfigured()) {
+      const redirectUrl = cloudinary.url(publicId, {
+        secure: true,
+        resource_type: isPdf ? 'raw' : 'image',
+        format: isPdf ? 'pdf' : undefined,
+      });
+      return res.redirect(302, redirectUrl);
+    }
+
+    return res.status(404).json({
+      success: false,
+      error: { field: 'filename', message: 'The requested document could not be found.' },
+    });
   } catch (err: any) {
     return next(err);
   }
@@ -526,7 +542,8 @@ export async function submitFarmerApplication(req: Request, res: Response, next:
 
     const lat = typeof farmLatitude === 'number' && !isNaN(farmLatitude) ? farmLatitude : 9.0222;
     const lon = typeof farmLongitude === 'number' && !isNaN(farmLongitude) ? farmLongitude : 38.7468;
-    const sizeHectares = farmSizeHectares ? parseFloat(farmSizeHectares) : 1.0;
+    const parsedSize = typeof farmSizeHectares === 'number' ? farmSizeHectares : parseFloat(String(farmSizeHectares || '1.0'));
+    const sizeHectares = isNaN(parsedSize) || parsedSize <= 0 ? 1.0 : parsedSize;
 
     // Safe foreign key lookup for marketId (prevents foreign key constraint crash)
     let validMarketId: string | null = null;
@@ -664,10 +681,18 @@ export async function submitFarmerApplication(req: Request, res: Response, next:
       return { user, profile };
     });
 
+    // Refresh JWT with the newly updated FARMER role
+    const token = jwt.sign(
+      { sub: result.user.id, role: result.user.role },
+      JWT_SECRET,
+      { expiresIn: JWT_EXPIRES_IN } as any
+    );
+
     return res.status(200).json({
       success: true,
       message: 'Farmer verification application submitted successfully. Administrator review is pending.',
       data: {
+        token,
         profileId: result.profile.id,
         verificationStatus: result.profile.verificationStatus,
         submittedAt: verificationDocs.submittedAt,
@@ -770,7 +795,8 @@ export async function submitWorkerApplication(req: Request, res: Response, next:
       });
     }
 
-    const capacityKg = vehicleCapacityKg ? parseFloat(vehicleCapacityKg) : isMotorized ? 150 : 25;
+    const parsedCap = typeof vehicleCapacityKg === 'number' ? vehicleCapacityKg : parseFloat(String(vehicleCapacityKg || ''));
+    const capacityKg = isNaN(parsedCap) || parsedCap <= 0 ? (isMotorized ? 150 : 25) : parsedCap;
 
     // Safe foreign key lookup for deliveryZoneId (prevents foreign key constraint crash)
     let validDeliveryZoneId: string | null = null;
@@ -899,10 +925,18 @@ export async function submitWorkerApplication(req: Request, res: Response, next:
       return { user, profile };
     });
 
+    // Refresh JWT with the newly updated DELIVERY_WORKER role
+    const token = jwt.sign(
+      { sub: result.user.id, role: result.user.role },
+      JWT_SECRET,
+      { expiresIn: JWT_EXPIRES_IN } as any
+    );
+
     return res.status(200).json({
       success: true,
       message: 'Delivery Worker application submitted successfully. Administrator review is pending.',
       data: {
+        token,
         profileId: result.profile.id,
         verificationStatus: result.profile.verificationStatus,
         submittedAt: verificationDocs.submittedAt,

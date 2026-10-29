@@ -36,6 +36,7 @@ backend/generated/
 # Uploaded Files & User Content
 backend/uploads/
 uploads/
+backend/.env
 
 # Logs & Diagnostic Files
 *.log
