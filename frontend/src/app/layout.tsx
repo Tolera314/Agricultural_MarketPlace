@@ -4,6 +4,7 @@ import { ThemeProvider } from '@/context/ThemeContext';
 import { AuthProvider } from '@/context/AuthContext';
 import { CartProvider } from '@/context/CartContext';
 import { PwaRegistrar } from '@/components/pwa/PwaRegistrar';
+import { PwaInstallPrompt } from '@/components/pwa/PwaInstallPrompt';
 
 export const metadata: Metadata = {
   title: 'AgriMarket — Location-Based Agricultural Marketplace',
@@ -82,6 +83,7 @@ export default function RootLayout({
           <AuthProvider>
             <CartProvider>
               <PwaRegistrar />
+              <PwaInstallPrompt />
               {children}
             </CartProvider>
           </AuthProvider>

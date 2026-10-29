@@ -67,14 +67,8 @@ export function RouteGuard({
         return;
       }
 
-      // Application pending verification -> restricted operational pages redirect to tracker
-      if (user.onboardingStatus === 'PENDING_VERIFICATION') {
-        const isStatusPage = pathname.includes('/verification-status');
-        if (!allowPendingVerification && !isStatusPage) {
-          router.replace(`/dashboard/${rolePrefix}/verification-status`);
-          return;
-        }
-      }
+      // Note: Users with PENDING_VERIFICATION are permitted to view their intended role dashboards
+      // Feature gates (product listing for farmers, order acceptance for workers) are enforced contextually.
     }
   }, [isLoading, isAuthenticated, user, pathname, allowedRoles, allowPendingVerification, router]);
 

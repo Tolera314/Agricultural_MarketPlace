@@ -244,16 +244,29 @@ export async function deleteFromCloudinary(
 
   try {
     configureCloudinary();
-    const res = await cloudinary.uploader.destroy(publicId, {
-      resource_type: resourceType,
-      invalidate: true,
+    return await new Promise<{ success: boolean; result: string }>((resolve) => {
+      cloudinary.uploader.destroy(
+        publicId,
+        {
+          resource_type: resourceType,
+          invalidate: true,
+        },
+        (error: any, res: any) => {
+          if (error) {
+            console.warn(`[Cloudinary Warning] Failed to delete asset ${publicId}:`, error?.message || error);
+            resolve({ success: false, result: error?.message || 'error' });
+          } else {
+            const isSuccess = res?.result === 'ok' || res?.result === 'not found';
+            resolve({
+              success: isSuccess,
+              result: res?.result || 'ok',
+            });
+          }
+        }
+      );
     });
-    return {
-      success: res.result === 'ok' || res.result === 'not found',
-      result: res.result,
-    };
   } catch (err: any) {
-    console.warn(`[Cloudinary Warning] Failed to delete asset ${publicId}:`, err?.message);
+    console.warn(`[Cloudinary Warning] Failed to delete asset ${publicId}:`, err?.message || err);
     return { success: false, result: err?.message || 'error' };
   }
 }

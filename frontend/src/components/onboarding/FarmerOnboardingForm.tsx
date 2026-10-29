@@ -284,8 +284,8 @@ export function FarmerOnboardingForm() {
         consentedToTerms: formData.consentedToTerms,
       });
 
-      // Redirect to verification status page
-      router.push('/dashboard/farmer/verification-status');
+      // Redirect to intended farmer dashboard with success flag
+      router.push('/dashboard/farmer?onboardingSuccess=true');
     } catch (err: any) {
       const field = err?.field;
       const message = getHumanReadableErrorMessage(err);

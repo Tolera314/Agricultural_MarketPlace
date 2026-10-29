@@ -1,13 +1,16 @@
 'use client';
 
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import Image from 'next/image';
+import Link from 'next/link';
 import {
   Plus, Search, Filter, Pencil, Trash2, Eye, X, Check,
   ChevronDown, Upload, Package, AlertTriangle,
   ToggleLeft, ToggleRight, CheckSquare, Square, Menu,
-  ArrowUpDown, LayoutGrid, List, Sparkles,
+  ArrowUpDown, LayoutGrid, List, Sparkles, Lock, ShieldAlert,
 } from 'lucide-react';
+import { onboardingApi } from '@/lib/onboardingApi';
+import { useAuth } from '@/context/AuthContext';
 
 // ─────────────────────────────────────────────
 // Types
@@ -98,8 +101,9 @@ function DeleteModal({ names, onConfirm, onCancel }: {
 // ─────────────────────────────────────────────
 // Add / Edit Slide-over Modal
 // ─────────────────────────────────────────────
-function ProductModal({ initial, onSave, onClose }: {
+function ProductModal({ initial, isVerified = true, onSave, onClose }: {
   initial?: Product;
+  isVerified?: boolean;
   onSave: (data: Omit<Product, 'id'> & { id?: string }, draft: boolean) => void;
   onClose: () => void;
 }) {
@@ -119,6 +123,10 @@ function ProductModal({ initial, onSave, onClose }: {
 
   const handleSubmit = (draft: boolean) => {
     if (!form.name.trim() || !form.price) return;
+    if (!draft && !isVerified) {
+      alert('Product publishing is locked until your farm account is verified by an administrator.');
+      return;
+    }
     onSave({
       ...(initial ? { id: initial.id } : {}),
       name: form.name.trim(), category: form.category as Category,
@@ -250,15 +258,30 @@ function ProductModal({ initial, onSave, onClose }: {
         </div>
 
         {/* Footer */}
-        <div className="px-6 py-4 border-t border-gray-100 dark:border-white/5 flex gap-3 shrink-0">
-          <button onClick={() => handleSubmit(true)}
-            className="flex-1 py-2.5 rounded-xl border border-gray-200 dark:border-white/10 text-sm font-semibold text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-white/5 transition-colors cursor-pointer">
-            Save as Draft
-          </button>
-          <button onClick={() => handleSubmit(false)}
-            className="flex-1 py-2.5 rounded-xl bg-[#1B4332] hover:bg-[#2D6A4F] text-white text-sm font-bold transition-colors cursor-pointer flex items-center justify-center gap-2">
-            <Check className="w-4 h-4" /> Publish
-          </button>
+        <div className="px-6 py-4 border-t border-gray-100 dark:border-white/5 flex flex-col gap-2 shrink-0">
+          {!isVerified && (
+            <div className="p-2.5 rounded-xl bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800 text-[11px] text-amber-800 dark:text-amber-300 font-medium flex items-center gap-2">
+              <Lock className="w-4 h-4 shrink-0 text-amber-600" />
+              <span>Public marketplace publishing is locked pending admin review. You can still save drafts.</span>
+            </div>
+          )}
+          <div className="flex gap-3">
+            <button onClick={() => handleSubmit(true)}
+              className="flex-1 py-2.5 rounded-xl border border-gray-200 dark:border-white/10 text-sm font-semibold text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-white/5 transition-colors cursor-pointer">
+              Save as Draft
+            </button>
+            <button
+              onClick={() => handleSubmit(false)}
+              disabled={!isVerified}
+              className={`flex-1 py-2.5 rounded-xl text-sm font-bold transition-all flex items-center justify-center gap-2 ${
+                !isVerified
+                  ? 'bg-gray-100 dark:bg-white/10 text-gray-400 dark:text-gray-500 cursor-not-allowed border border-gray-200 dark:border-white/10'
+                  : 'bg-[#1B4332] hover:bg-[#2D6A4F] text-white cursor-pointer'
+              }`}>
+              {!isVerified ? <Lock className="w-4 h-4" /> : <Check className="w-4 h-4" />}
+              {!isVerified ? 'Publish (Locked)' : 'Publish'}
+            </button>
+          </div>
         </div>
       </div>
     </div>
@@ -365,6 +388,29 @@ function Stars({ grade }: { grade: string }) {
 // Main Component
 // ─────────────────────────────────────────────
 export default function MyProductsContent({ onOpenSidebar }: { onOpenSidebar: () => void }) {
+  const { user } = useAuth();
+  const [verificationStatus, setVerificationStatus] = useState<'PENDING' | 'VERIFIED' | 'REJECTED' | 'SUSPENDED'>('PENDING');
+  const [verificationNotice, setVerificationNotice] = useState(false);
+
+  useEffect(() => {
+    async function checkStatus() {
+      try {
+        const res = await onboardingApi.getStatus();
+        const status = res.farmerProfile?.verificationStatus || (res.role === 'FARMER' ? 'PENDING' : 'VERIFIED');
+        setVerificationStatus(status as any);
+      } catch {
+        if (user?.role === 'FARMER' && user?.onboardingStatus === 'PENDING_VERIFICATION') {
+          setVerificationStatus('PENDING');
+        } else if (user?.isVerified) {
+          setVerificationStatus('VERIFIED');
+        }
+      }
+    }
+    checkStatus();
+  }, [user]);
+
+  const isVerified = verificationStatus === 'VERIFIED';
+
   const [products, setProducts]       = useState<Product[]>(INITIAL_PRODUCTS);
   const [search, setSearch]           = useState('');
   const [catFilter, setCatFilter]     = useState('All');
@@ -406,7 +452,11 @@ export default function MyProductsContent({ onOpenSidebar }: { onOpenSidebar: ()
   };
 
   // ── CRUD ───────────────────────────────────
-  const saveProduct = (data: Omit<Product, 'id'> & { id?: string }) => {
+  const saveProduct = (data: Omit<Product, 'id'> & { id?: string }, draft: boolean = false) => {
+    if (!draft && !isVerified) {
+      setVerificationNotice(true);
+      return;
+    }
     if (data.id) {
       setProducts(prev => prev.map(p => p.id === data.id ? { ...p, ...data, id: p.id } : p));
     } else {
@@ -472,17 +522,61 @@ export default function MyProductsContent({ onOpenSidebar }: { onOpenSidebar: ()
         </div>
 
         {/* Add button */}
-        <button onClick={() => setModal('add')}
-          className="ml-auto shrink-0 flex items-center gap-2 px-4 py-2 rounded-xl bg-[#1B4332] hover:bg-[#2D6A4F] text-white text-xs font-bold transition-colors cursor-pointer shadow-sm">
-          <Plus className="w-4 h-4" />
-          <span className="hidden sm:inline">Add New Product</span>
-          <span className="sm:hidden">Add</span>
+        <button
+          onClick={() => {
+            if (!isVerified) {
+              setVerificationNotice(true);
+              return;
+            }
+            setModal('add');
+          }}
+          className={`ml-auto shrink-0 flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer shadow-sm ${
+            !isVerified
+              ? 'bg-amber-100 hover:bg-amber-200 dark:bg-amber-950/60 dark:hover:bg-amber-900/60 text-amber-900 dark:text-amber-200 border border-amber-300 dark:border-amber-800'
+              : 'bg-[#1B4332] hover:bg-[#2D6A4F] text-white'
+          }`}
+          title={!isVerified ? 'Verification required to list products' : 'Add new product listing'}
+        >
+          {!isVerified ? <Lock className="w-4 h-4 text-amber-700 dark:text-amber-400" /> : <Plus className="w-4 h-4" />}
+          <span className="hidden sm:inline">{!isVerified ? 'Add Product (Locked)' : 'Add New Product'}</span>
+          <span className="sm:hidden">{!isVerified ? 'Locked' : 'Add'}</span>
         </button>
       </header>
 
       {/* ── Scrollable Body ─────────────────────── */}
       <div className="flex-1 overflow-y-auto bg-[#F4F6F5] dark:bg-[#0B1512]">
         <div className="max-w-screen-xl mx-auto px-4 sm:px-6 py-5 space-y-4">
+
+          {/* Unverified Farmer Alert Banner */}
+          {!isVerified && (
+            <div className="bg-amber-50/90 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800 rounded-2xl p-4 sm:p-5 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 text-amber-900 dark:text-amber-200 shadow-xs">
+              <div className="flex items-start gap-3">
+                <div className="w-10 h-10 rounded-xl bg-amber-100 dark:bg-amber-900/50 flex items-center justify-center shrink-0 text-amber-600 dark:text-amber-400">
+                  <Lock className="w-5 h-5" />
+                </div>
+                <div>
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <span className="font-bold text-xs sm:text-sm">
+                      Product Listing Locked — Administrator Approval Required
+                    </span>
+                    <span className="px-2 py-0.5 rounded-full text-[10px] font-extrabold uppercase bg-amber-200/70 dark:bg-amber-900/70 text-amber-900 dark:text-amber-300">
+                      {verificationStatus}
+                    </span>
+                  </div>
+                  <p className="text-xs text-amber-800/90 dark:text-amber-300/80 mt-1">
+                    Your farm account is currently pending administrator verification. Creating and publishing public produce listings will be enabled as soon as your farm credentials are confirmed.
+                  </p>
+                </div>
+              </div>
+
+              <Link
+                href="/dashboard/farmer/verification-status"
+                className="px-4 py-2 rounded-xl text-xs font-bold bg-amber-600 hover:bg-amber-700 text-white transition-colors shrink-0 shadow-xs text-center"
+              >
+                Track Status
+              </Link>
+            </div>
+          )}
 
           {/* Control bar */}
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-white dark:bg-[#0D2118] px-4 py-3 rounded-2xl border border-gray-100 dark:border-white/10 shadow-sm">
@@ -697,9 +791,43 @@ export default function MyProductsContent({ onOpenSidebar }: { onOpenSidebar: ()
       {modal !== null && (
         <ProductModal
           initial={modal !== 'add' ? (modal as Product) : undefined}
+          isVerified={isVerified}
           onSave={saveProduct}
           onClose={() => setModal(null)}
         />
+      )}
+      {verificationNotice && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+          <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={() => setVerificationNotice(false)} />
+          <div className="relative bg-white dark:bg-[#0D2118] rounded-3xl shadow-2xl p-6 sm:p-8 w-full max-w-md border border-amber-200 dark:border-amber-900/50 text-center space-y-4">
+            <div className="w-16 h-16 rounded-2xl bg-amber-100 dark:bg-amber-950/80 text-amber-600 dark:text-amber-400 flex items-center justify-center mx-auto border border-amber-200 dark:border-amber-800">
+              <Lock className="w-8 h-8" />
+            </div>
+            <div className="space-y-2">
+              <h3 className="text-lg font-black text-gray-900 dark:text-white">Product Listing Requires Verification</h3>
+              <p className="text-xs sm:text-sm text-gray-600 dark:text-gray-300 leading-relaxed">
+                Your farm registration has been submitted and is currently awaiting administrator review. Only verified farmers can publish produce and accept purchase orders on AgriMarket.
+              </p>
+            </div>
+            <div className="p-3 rounded-xl bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800/40 text-xs text-amber-800 dark:text-amber-300 font-medium text-left">
+              💡 Tip: Review and track your uploaded Kebele ID or Land Certificate in the verification portal.
+            </div>
+            <div className="flex gap-3 pt-2">
+              <button
+                onClick={() => setVerificationNotice(false)}
+                className="flex-1 py-2.5 rounded-xl border border-gray-200 dark:border-white/10 text-xs font-bold text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-white/5 transition-colors cursor-pointer"
+              >
+                Dismiss
+              </button>
+              <Link
+                href="/dashboard/farmer/verification-status"
+                className="flex-1 py-2.5 rounded-xl bg-amber-600 hover:bg-amber-700 text-white text-xs font-bold flex items-center justify-center transition-colors shadow-xs"
+              >
+                View Status
+              </Link>
+            </div>
+          </div>
+        </div>
       )}
       {deleteTarget && (
         <DeleteModal
