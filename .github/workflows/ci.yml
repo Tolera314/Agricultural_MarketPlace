@@ -57,7 +57,7 @@ jobs:
         run: npx prisma generate
 
       - name: Push Prisma Schema to CI Database
-        run: npx prisma db push --skip-generate
+        run: npx prisma db push --accept-data-loss
         env:
           DATABASE_URL: postgresql://postgres:postgrespassword@localhost:5432/final_project?schema=public
 
