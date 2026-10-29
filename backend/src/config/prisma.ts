@@ -1,12 +1,7 @@
 import { PrismaClient } from '@prisma/client';
 import { Pool } from 'pg';
 import { PrismaPg } from '@prisma/adapter-pg';
-import path from 'path';
-import dotenv from 'dotenv';
-
-// Load root .env first, fallback to local
-dotenv.config({ path: path.resolve(process.cwd(), '../.env') });
-dotenv.config({ path: path.resolve(process.cwd(), '.env') });
+import './env.js';
 
 const connectionString = process.env.DATABASE_URL;
 const pool = new Pool({ connectionString });

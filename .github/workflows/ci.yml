@@ -76,6 +76,9 @@ jobs:
           NODE_ENV: test
           JWT_SECRET: test-jwt-secret-key-minimum-32-characters-long
           DATABASE_URL: postgresql://postgres:postgrespassword@localhost:5432/final_project?schema=public
+          CLOUDINARY_CLOUD_NAME: ${{ secrets.CLOUDINARY_CLOUD_NAME }}
+          CLOUDINARY_API_KEY: ${{ secrets.CLOUDINARY_API_KEY }}
+          CLOUDINARY_API_SECRET: ${{ secrets.CLOUDINARY_API_SECRET }}
 
       - name: Build Backend (TypeScript Compiler)
         run: npm run build

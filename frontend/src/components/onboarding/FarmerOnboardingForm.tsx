@@ -241,7 +241,22 @@ export function FarmerOnboardingForm() {
 
   // Final Submit
   const handleSubmitApplication = async () => {
-    if (!validateCurrentStep()) return;
+    // Comprehensive prerequisite validation
+    if (!formData.farmName.trim() || formData.farmName.trim().length < 2) {
+      setErrors({ farmName: 'Farm name is required (at least 2 characters).', submit: 'Farm name is required (at least 2 characters). Please review Step 3.' });
+      setCurrentStep(3);
+      return;
+    }
+    if (!formData.identityType || !formData.identityNumber.trim()) {
+      setErrors({ identityNumber: 'Identification number is required.', submit: 'Identification number is required. Please review Step 2.' });
+      setCurrentStep(2);
+      return;
+    }
+    if (!formData.consentedToTerms) {
+      setErrors({ consentedToTerms: 'You must confirm accuracy and agree to terms.', submit: 'Declaration consent is required. Please review Step 5.' });
+      setCurrentStep(5);
+      return;
+    }
 
     setIsSubmitting(true);
     setErrors({});

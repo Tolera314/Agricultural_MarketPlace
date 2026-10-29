@@ -1,4 +1,4 @@
-import 'dotenv/config';
+import '../config/env.js';
 import fs from 'fs';
 import path from 'path';
 import prisma from '../config/prisma.js';
@@ -128,3 +128,4 @@ migrateLegacyFiles().catch((err) => {
   console.error('Fatal migration error:', err);
   process.exit(1);
 });
+

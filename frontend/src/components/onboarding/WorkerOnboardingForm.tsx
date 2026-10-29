@@ -202,7 +202,32 @@ export function WorkerOnboardingForm() {
   };
 
   const handleSubmitApplication = async () => {
-    if (!validateCurrentStep()) return;
+    // Comprehensive prerequisite validation
+    if (!formData.identityType || !formData.identityNumber.trim()) {
+      setErrors({ identityNumber: 'Identification number is required.', submit: 'Identification number is required. Please review Step 2.' });
+      setCurrentStep(2);
+      return;
+    }
+    const isMotorizedVehicle = ['MOTORCYCLE', 'THREE_WHEELER', 'PICKUP_TRUCK', 'TRUCK'].includes(formData.vehicleType);
+    if (isMotorizedVehicle && (!formData.vehiclePlate.trim() || formData.vehiclePlate.trim().length < 3)) {
+      setErrors({ vehiclePlate: 'Vehicle plate number is required for motorized vehicles.', submit: 'Vehicle plate number is required. Please review Step 3.' });
+      setCurrentStep(3);
+      return;
+    }
+    if (isMotorizedVehicle && !formData.driverLicenseNumber.trim()) {
+      setErrors({ driverLicenseNumber: 'Driver license number is required for motorized vehicles.', submit: 'Driver license number is required. Please review Step 3.' });
+      setCurrentStep(3);
+      return;
+    }
+    if (!formData.locationConsent) {
+      setErrors({ locationConsent: 'Duty location consent is required.', submit: 'Location consent is required. Please review Step 4.' });
+      setCurrentStep(4);
+      return;
+    }
+    if (!formData.consentedToTerms) {
+      setErrors({ consentedToTerms: 'You must agree to courier partner terms.', submit: 'Please confirm agreement to courier partner terms.' });
+      return;
+    }
 
     setIsSubmitting(true);
     setErrors({});
