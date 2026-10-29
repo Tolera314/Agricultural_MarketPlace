@@ -51,10 +51,19 @@ export function requireAuth(req: Request, res: Response, next: NextFunction) {
     token = (req as any).cookies.accessToken || (req as any).cookies.token || null;
   }
 
+  // 3. Fallback to query parameter token (e.g., media/document links opened in new browser tabs)
+  if (!token && req.query?.token && typeof req.query.token === 'string') {
+    token = req.query.token;
+  }
+
   if (!token) {
     return res.status(401).json({
       success: false,
-      error: { message: 'Authentication required. Please sign in to access this resource.' },
+      error: {
+        code: 'AUTH_REQUIRED',
+        message: 'Authentication required. Please sign in to access this resource.',
+        status: 401,
+      },
     });
   }
 
@@ -76,6 +85,17 @@ export function requireAuth(req: Request, res: Response, next: NextFunction) {
   }
 }
 
+function formatRoleName(role: string): string {
+  switch (role) {
+    case 'BUYER': return 'Customer (Buyer)';
+    case 'FARMER': return 'Farmer (Seller)';
+    case 'DELIVERY_WORKER': return 'Delivery Courier';
+    case 'ADMIN': return 'Administrator';
+    case 'SUPERADMIN': return 'System Administrator';
+    default: return role;
+  }
+}
+
 /**
  * Middleware factory: Enforce role-based access control (RBAC)
  */
@@ -84,16 +104,22 @@ export function requireRole(...roles: string[]) {
     if (!req.auth) {
       return res.status(401).json({
         success: false,
-        error: { message: 'Authentication required.' },
+        error: {
+          code: 'AUTH_REQUIRED',
+          message: 'Please sign in to access this feature.',
+          status: 401,
+        },
       });
     }
 
     if (!roles.includes(req.auth.role)) {
+      const friendlyRoles = roles.map(formatRoleName).join(' or ');
       return res.status(403).json({
         success: false,
         error: {
           code: 'FORBIDDEN_ROLE',
-          message: `Access denied. This feature requires one of the following roles: ${roles.join(', ')}.`,
+          message: `Access denied. This feature is reserved for ${friendlyRoles} accounts.`,
+          status: 403,
         },
       });
     }

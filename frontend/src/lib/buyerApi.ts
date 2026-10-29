@@ -2,6 +2,7 @@
 
 import { getAccessToken } from './auth';
 import { API_BASE_URL } from './apiConfig';
+import { safeParseApiResponse, ApiClientError, getHumanReadableErrorMessage } from './errorHandler';
 
 const API = API_BASE_URL;
 
@@ -18,23 +19,36 @@ async function apiFetch<T>(path: string, options: RequestInit = {}): Promise<T> 
     ...((options.headers as Record<string, string>) ?? {}),
   };
 
+  let res: Response;
   try {
-    const res = await fetch(`${API}${path}`, {
+    res = await fetch(`${API}${path}`, {
       ...options,
       credentials: 'include',
       headers,
     });
-
-    const data = await res.json().catch(() => null);
-
-    if (!res.ok) {
-      throw new Error(data?.error?.message || `Request failed with status ${res.status}`);
-    }
-
-    return data as T;
-  } catch (err: any) {
-    throw err;
+  } catch (netErr: any) {
+    throw new ApiClientError({
+      code: 'NETWORK_ERROR',
+      message: getHumanReadableErrorMessage(netErr),
+      status: 0,
+    });
   }
+
+  const parsed = await safeParseApiResponse<T>(res);
+
+  if (!parsed.ok) {
+    throw new ApiClientError(parsed.error || {
+      message: getHumanReadableErrorMessage(res.status),
+      status: res.status,
+    });
+  }
+
+  // Return the full envelope (or data) preserving callers' expectations
+  return {
+    success: true,
+    data: parsed.data,
+    ...(typeof parsed.data === 'object' && parsed.data !== null ? parsed.data : {}),
+  } as T;
 }
 
 export const buyerApi = {

@@ -20,6 +20,7 @@ import {
 import { ThemeToggle } from '@/components/layout/ThemeToggle';
 import { validatePasswordStrength } from '@/lib/auth';
 import { API_BASE_URL } from '@/lib/apiConfig';
+import { safeParseApiResponse, getHumanReadableErrorMessage } from '@/lib/errorHandler';
 
 function ResetPasswordContent() {
   const router = useRouter();
@@ -84,13 +85,17 @@ function ResetPasswordContent() {
         }),
       });
 
-      const data = await res.json();
+      const parsed = await safeParseApiResponse<{
+        success?: boolean;
+        message?: string;
+        error?: { message?: string; field?: string };
+      }>(res);
 
-      if (!res.ok) {
-        if (data.error?.field) {
-          setErrors({ [data.error.field]: data.error.message });
+      if (!res.ok || !parsed.ok) {
+        if (parsed.error?.field) {
+          setErrors({ [parsed.error.field]: parsed.error.message });
         } else {
-          setErrors({ general: data.error?.message || 'Password reset failed. Please check your code.' });
+          setErrors({ general: parsed.error?.message || 'Password reset failed. Please check your recovery code and try again.' });
         }
         setIsLoading(false);
         return;
@@ -98,10 +103,10 @@ function ResetPasswordContent() {
 
       setIsSuccess(true);
       setIsLoading(false);
-    } catch {
+    } catch (err) {
       setIsLoading(false);
       setErrors({
-        general: 'Could not connect to the server. Please check your internet connection.',
+        general: getHumanReadableErrorMessage(err),
       });
     }
   };

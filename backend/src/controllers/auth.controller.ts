@@ -17,6 +17,7 @@ import {
 } from "../services/auth.service.js";
 import prisma from "../config/prisma.js";
 import jwt from "jsonwebtoken";
+import { replaceCloudinaryAsset, deleteFromCloudinary, validateFileBuffer } from "../services/cloudinary.service.js";
 
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const JWT_SECRET = process.env.JWT_SECRET || "changeme_dev_secret";
@@ -766,6 +767,135 @@ export async function handleGoogleLink(req: Request, res: Response, next: NextFu
         },
       });
     }
+    return next(error);
+  }
+}
+
+
+/**
+ * POST /api/auth/profile/avatar
+ * Uploads/replaces user profile avatar in Cloudinary directly from memory buffer.
+ */
+export async function handleUploadAvatar(req: Request, res: Response, next: NextFunction) {
+  try {
+    const userId = req.auth?.sub;
+    if (!userId) {
+      return res.status(401).json({
+        success: false,
+        error: { field: "auth", message: "Authentication required to update avatar." },
+      });
+    }
+
+    if (!req.file || !req.file.buffer) {
+      return res.status(400).json({
+        success: false,
+        error: { field: "avatar", message: "Please select an image file to upload as your avatar." },
+      });
+    }
+
+    const detectedMime = validateFileBuffer(
+      req.file.buffer,
+      req.file.originalname,
+      req.file.mimetype,
+      {
+        allowedMimes: ["image/jpeg", "image/png", "image/webp"],
+        maxSizeBytes: 3 * 1024 * 1024,
+        fieldName: "avatar",
+      }
+    );
+
+    const user = await prisma.user.findUnique({
+      where: { id: userId },
+      include: { userProfile: true },
+    });
+
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        error: { field: "user", message: "User account could not be found." },
+      });
+    }
+
+    // Replace old avatar in Cloudinary (uploads new first, deletes old afterwards)
+    const uploaded = await replaceCloudinaryAsset(
+      user.userProfile?.avatarPublicId,
+      req.file.buffer,
+      {
+        folder: "agrimarket/avatars",
+        resourceType: "image",
+        tags: ["avatar", `user_${userId}`],
+      }
+    );
+
+    const updatedProfile = await prisma.userProfile.upsert({
+      where: { userId },
+      create: {
+        userId,
+        avatarUrl: uploaded.secureUrl,
+        avatarPublicId: uploaded.publicId,
+      },
+      update: {
+        avatarUrl: uploaded.secureUrl,
+        avatarPublicId: uploaded.publicId,
+      },
+    });
+
+    return res.status(200).json({
+      success: true,
+      message: "Avatar updated successfully.",
+      data: {
+        avatarUrl: updatedProfile.avatarUrl,
+        avatarPublicId: updatedProfile.avatarPublicId,
+      },
+    });
+  } catch (error: any) {
+    return next(error);
+  }
+}
+
+/**
+ * DELETE /api/auth/profile/avatar
+ * Deletes user profile avatar from Cloudinary and clears database fields.
+ */
+export async function handleDeleteAvatar(req: Request, res: Response, next: NextFunction) {
+  try {
+    const userId = req.auth?.sub;
+    if (!userId) {
+      return res.status(401).json({
+        success: false,
+        error: { field: "auth", message: "Authentication required." },
+      });
+    }
+
+    const user = await prisma.user.findUnique({
+      where: { id: userId },
+      include: { userProfile: true },
+    });
+
+    if (!user || !user.userProfile) {
+      return res.status(200).json({
+        success: true,
+        message: "No avatar to remove.",
+      });
+    }
+
+    if (user.userProfile.avatarPublicId) {
+      await deleteFromCloudinary(user.userProfile.avatarPublicId, "image");
+    }
+
+    await prisma.userProfile.update({
+      where: { userId },
+      data: {
+        avatarUrl: null,
+        avatarPublicId: null,
+      },
+    });
+
+    return res.status(200).json({
+      success: true,
+      message: "Avatar removed successfully.",
+    });
+  } catch (error: any) {
     return next(error);
   }
 }

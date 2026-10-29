@@ -6,6 +6,7 @@ import { CartItem, MarketLocation } from '@/types';
 import { useAuth } from '@/context/AuthContext';
 import { AuthRequiredModal } from '@/components/auth/AuthRequiredModal';
 import { buyerApi } from '@/lib/buyerApi';
+import { getHumanReadableErrorMessage } from '@/lib/errorHandler';
 
 interface CartDrawerProps {
   isOpen: boolean;
@@ -99,12 +100,11 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({
       setCheckoutStep('confirmed');
       onClearCart();
     } catch (err: any) {
-      console.warn('Backend order submission fallback:', err?.message);
-      // Resilient fallback for demo/in-memory mode
-      const generatedRef = `AGRI-${Math.floor(100000 + Math.random() * 900000)}`;
-      setOrderRef(generatedRef);
-      setCheckoutStep('confirmed');
-      onClearCart();
+      const friendlyMessage = getHumanReadableErrorMessage(
+        err,
+        'Unable to complete your order at this time. Please check available stock and try again.'
+      );
+      setOrderError(friendlyMessage);
     } finally {
       setIsSubmittingOrder(false);
     }

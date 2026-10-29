@@ -1,20 +1,14 @@
 import type { Request, Response, NextFunction } from 'express';
-import path from 'path';
-import fs from 'fs';
+import crypto from 'crypto';
 import jwt from 'jsonwebtoken';
 import prisma from '../config/prisma.js';
+import cloudinary from '../config/cloudinary.js';
+import { uploadToCloudinary, validateFileBuffer } from '../services/cloudinary.service.js';
 import { VerificationStatus, AuditAction, VehicleType, Prisma } from '@prisma/client';
 import { NotificationService } from '../services/notification.service.js';
 
 const JWT_SECRET = process.env.JWT_SECRET || 'changeme_dev_secret';
 const JWT_EXPIRES_IN = process.env.JWT_EXPIRES_IN || '7d';
-
-export const UPLOAD_DIR = path.resolve(process.cwd(), 'uploads', 'verification_docs');
-
-// Ensure upload directory exists securely
-if (!fs.existsSync(UPLOAD_DIR)) {
-  fs.mkdirSync(UPLOAD_DIR, { recursive: true });
-}
 
 /**
  * 1. GET /api/onboarding/status
@@ -96,11 +90,7 @@ export async function getOnboardingStatus(req: Request, res: Response, next: Nex
       },
     });
   } catch (err: any) {
-    console.error('Error in getOnboardingStatus:', err);
-    return res.status(500).json({
-      success: false,
-      error: { message: 'Unable to retrieve your onboarding status at this time. Please refresh the page.' },
-    });
+    return next(err);
   }
 }
 
@@ -209,11 +199,7 @@ export async function selectRole(req: Request, res: Response, next: NextFunction
       },
     });
   } catch (err: any) {
-    console.error('Error in selectRole:', err);
-    return res.status(500).json({
-      success: false,
-      error: { message: 'Unable to update account role at this time. Please try again.' },
-    });
+    return next(err);
   }
 }
 
@@ -259,11 +245,7 @@ export async function saveDraft(req: Request, res: Response, next: NextFunction)
       data: { savedAt: new Date().toISOString() },
     });
   } catch (err: any) {
-    console.error('Error in saveDraft:', err);
-    return res.status(500).json({
-      success: false,
-      error: { message: 'Unable to save draft at this time. Please try again.' },
-    });
+    return next(err);
   }
 }
 
@@ -291,17 +273,14 @@ export async function getDraft(req: Request, res: Response, next: NextFunction) 
       data: { draft: (user as any)?.onboardingDraft || null },
     });
   } catch (err: any) {
-    console.error('Error in getDraft:', err);
-    return res.status(500).json({
-      success: false,
-      error: { message: 'Unable to retrieve your saved application draft. Please try again.' },
-    });
+    return next(err);
   }
 }
 
 /**
  * 5. POST /api/onboarding/upload
- * Secure document upload handler.
+ * Secure document upload handler:
+ * Streams directly from memory buffer into Cloudinary (zero local disk persistence).
  */
 export async function uploadDocument(req: Request, res: Response, next: NextFunction) {
   try {
@@ -313,39 +292,61 @@ export async function uploadDocument(req: Request, res: Response, next: NextFunc
       });
     }
 
-    if (!req.file) {
+    if (!req.file || !req.file.buffer) {
       return res.status(400).json({
         success: false,
         error: { field: 'file', message: 'Please select a photo or document file to upload.' },
       });
     }
 
-    const file = req.file;
-    const documentUrl = `/api/onboarding/documents/${file.filename}`;
+    const detectedMime = validateFileBuffer(
+      req.file.buffer,
+      req.file.originalname,
+      req.file.mimetype,
+      {
+        allowedMimes: ['image/jpeg', 'image/png', 'image/webp', 'application/pdf'],
+        maxSizeBytes: 5 * 1024 * 1024,
+        fieldName: 'file',
+      }
+    );
+
+    const isPdf = detectedMime === 'application/pdf';
+    const extension = isPdf ? 'pdf' : (detectedMime.split('/')[1] || 'jpg');
+    const safeBaseId = `${Date.now()}-${crypto.randomUUID()}`;
+    const filename = `${safeBaseId}.${extension}`;
+
+    // Upload memory buffer directly to Cloudinary
+    const uploaded = await uploadToCloudinary(req.file.buffer, {
+      folder: 'agrimarket/documents',
+      publicId: safeBaseId,
+      resourceType: isPdf ? 'raw' : 'image',
+      tags: ['verification_doc', `user_${userId}`],
+    });
+
+    const documentUrl = `/api/onboarding/documents/${filename}`;
 
     return res.status(201).json({
       success: true,
       message: 'Document uploaded successfully.',
       data: {
         documentUrl,
-        filename: file.filename,
-        originalName: file.originalname,
-        mimeType: file.mimetype,
-        sizeBytes: file.size,
+        secureUrl: uploaded.secureUrl,
+        publicId: uploaded.publicId,
+        filename,
+        originalName: req.file.originalname,
+        mimeType: detectedMime,
+        sizeBytes: uploaded.bytes,
       },
     });
   } catch (err: any) {
-    console.error('Error in uploadDocument:', err);
-    return res.status(500).json({
-      success: false,
-      error: { message: 'Failed to process document upload. Please ensure your file is under 5 MB.' },
-    });
+    return next(err);
   }
 }
 
 /**
  * 6. GET /api/onboarding/documents/:filename
  * Secure document retrieval with authentication and ownership validation.
+ * Redirects authorized callers directly to the Cloudinary asset.
  */
 export async function serveDocument(req: Request, res: Response, next: NextFunction) {
   try {
@@ -364,14 +365,6 @@ export async function serveDocument(req: Request, res: Response, next: NextFunct
       return res.status(400).json({
         success: false,
         error: { field: 'filename', message: 'Invalid document filename requested.' },
-      });
-    }
-
-    const filePath = path.resolve(UPLOAD_DIR, filename);
-    if (!fs.existsSync(filePath)) {
-      return res.status(404).json({
-        success: false,
-        error: { field: 'filename', message: 'The requested document could not be found.' },
       });
     }
 
@@ -435,10 +428,14 @@ export async function serveDocument(req: Request, res: Response, next: NextFunct
       });
 
       if (!isOwner) {
-        // Fallback: allow recent uploads within current session (within last 24h)
-        const stat = fs.statSync(filePath);
-        const ageHours = (Date.now() - stat.mtimeMs) / (1000 * 60 * 60);
-        if (ageHours > 24) {
+        // Also check if user has this document in their active onboarding draft
+        const userWithDraft = await prisma.user.findUnique({
+          where: { id: userId },
+          select: { onboardingDraft: true },
+        });
+
+        const draftString = JSON.stringify(userWithDraft?.onboardingDraft || {});
+        if (!draftString.includes(filename)) {
           return res.status(403).json({
             success: false,
             error: { message: 'You do not have permission to view this verification document.' },
@@ -447,13 +444,19 @@ export async function serveDocument(req: Request, res: Response, next: NextFunct
       }
     }
 
-    return res.sendFile(filePath);
-  } catch (err: any) {
-    console.error('Error in serveDocument:', err);
-    return res.status(500).json({
-      success: false,
-      error: { message: 'Unable to retrieve the requested document.' },
+    const isPdf = filename.toLowerCase().endsWith('.pdf');
+    const filenameWithoutExt = filename.replace(/\.[^/.]+$/, '');
+    const publicId = `agrimarket/documents/${filenameWithoutExt}`;
+
+    const redirectUrl = cloudinary.url(publicId, {
+      secure: true,
+      resource_type: isPdf ? 'raw' : 'image',
+      format: isPdf ? 'pdf' : undefined,
     });
+
+    return res.redirect(302, redirectUrl);
+  } catch (err: any) {
+    return next(err);
   }
 }
 
@@ -671,28 +674,7 @@ export async function submitFarmerApplication(req: Request, res: Response, next:
       },
     });
   } catch (err: any) {
-    console.error('Error in submitFarmerApplication:', err);
-    if (err?.code === 'P2003') {
-      return res.status(400).json({
-        success: false,
-        error: { message: 'A selected market or regional hub could not be verified. Please check your selections.' },
-      });
-    }
-    if (err?.code === 'P2002') {
-      return res.status(409).json({
-        success: false,
-        error: { message: 'A farmer profile with these details already exists on your account.' },
-      });
-    }
-    return res.status(err?.status || 500).json({
-      success: false,
-      error: {
-        message:
-          err?.message && !err.message.includes('invocation')
-            ? err.message
-            : 'Unable to submit your farmer application. Please verify your details and try again.',
-      },
-    });
+    return next(err);
   }
 }
 
@@ -927,27 +909,6 @@ export async function submitWorkerApplication(req: Request, res: Response, next:
       },
     });
   } catch (err: any) {
-    console.error('Error in submitWorkerApplication:', err);
-    if (err?.code === 'P2003') {
-      return res.status(400).json({
-        success: false,
-        error: { message: 'A selected delivery zone or city hub could not be verified. Please check your selections.' },
-      });
-    }
-    if (err?.code === 'P2002') {
-      return res.status(409).json({
-        success: false,
-        error: { message: 'A delivery courier profile with these details already exists on your account.' },
-      });
-    }
-    return res.status(err?.status || 500).json({
-      success: false,
-      error: {
-        message:
-          err?.message && !err.message.includes('invocation')
-            ? err.message
-            : 'Unable to submit your courier application. Please check your details and try again.',
-      },
-    });
+    return next(err);
   }
 }

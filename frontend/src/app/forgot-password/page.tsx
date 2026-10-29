@@ -17,6 +17,7 @@ import {
 } from 'lucide-react';
 import { ThemeToggle } from '@/components/layout/ThemeToggle';
 import { API_BASE_URL } from '@/lib/apiConfig';
+import { safeParseApiResponse, getHumanReadableErrorMessage } from '@/lib/errorHandler';
 
 export default function ForgotPasswordPage() {
   const router = useRouter();
@@ -53,30 +54,34 @@ export default function ForgotPasswordPage() {
         body: JSON.stringify({ identifier: clean }),
       });
 
-      const data = await res.json();
+      const parsed = await safeParseApiResponse<{
+        message?: string;
+        data?: { channel?: string; recipient?: string };
+        error?: { message?: string; retryAfterSeconds?: number };
+      }>(res);
 
       if (res.status === 429) {
-        setRetryAfter(data.error?.retryAfterSeconds || 900);
-        setError(data.error?.message || 'Too many attempts. Please try again later.');
+        setRetryAfter(900);
+        setError(parsed.error?.message || 'Too many attempts. Please try again in a few minutes.');
         setIsLoading(false);
         return;
       }
 
-      if (!res.ok) {
-        setError(data.error?.message || 'Could not process request. Please try again.');
+      if (!res.ok || !parsed.ok) {
+        setError(parsed.error?.message || 'We could not process this password reset request. Please try again.');
         setIsLoading(false);
         return;
       }
 
       setSubmittedData({
-        message: data.message,
-        channel: data.data?.channel,
-        recipient: data.data?.recipient,
+        message: parsed.data?.message || 'A verification code has been dispatched to your contact method.',
+        channel: parsed.data?.data?.channel,
+        recipient: parsed.data?.data?.recipient,
       });
       setIsLoading(false);
-    } catch {
+    } catch (err) {
       setIsLoading(false);
-      setError('Could not connect to the server. Please check your internet connection.');
+      setError(getHumanReadableErrorMessage(err));
     }
   };
 

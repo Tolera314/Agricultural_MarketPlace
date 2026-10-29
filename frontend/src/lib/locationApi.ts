@@ -2,6 +2,7 @@
 
 import { getAccessToken } from './auth';
 import { API_BASE_URL } from './apiConfig';
+import { safeParseApiResponse, ApiClientError, getHumanReadableErrorMessage } from './errorHandler';
 
 const API = API_BASE_URL;
 
@@ -19,23 +20,35 @@ async function apiFetch<T>(path: string, options: RequestInit = {}): Promise<T> 
     ? { Authorization: `Bearer ${token}` }
     : { [DEV_BYPASS_HEADER]: DEV_BYPASS_SECRET };
 
-  const res = await fetch(`${API}${path}`, {
-    ...options,
-    credentials: 'include',
-    headers: {
-      'Content-Type': 'application/json',
-      ...authHeaders,
-      ...(options.headers ?? {}),
-    },
-  });
-
-  const data = await res.json().catch(() => null);
-
-  if (!res.ok) {
-    throw new Error(data?.error?.message || `Request failed with status ${res.status}`);
+  let res: Response;
+  try {
+    res = await fetch(`${API}${path}`, {
+      ...options,
+      credentials: 'include',
+      headers: {
+        'Content-Type': 'application/json',
+        ...authHeaders,
+        ...(options.headers ?? {}),
+      },
+    });
+  } catch (netErr: any) {
+    throw new ApiClientError({
+      code: 'NETWORK_ERROR',
+      message: getHumanReadableErrorMessage(netErr),
+      status: 0,
+    });
   }
 
-  return data as T;
+  const parsed = await safeParseApiResponse<T>(res);
+
+  if (!parsed.ok) {
+    throw new ApiClientError(parsed.error || {
+      message: getHumanReadableErrorMessage(res.status),
+      status: res.status,
+    });
+  }
+
+  return parsed.data as T;
 }
 
 export interface ShareLocationPayload {

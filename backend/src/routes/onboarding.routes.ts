@@ -1,8 +1,6 @@
 import { Router } from 'express';
-import multer from 'multer';
-import path from 'path';
-import crypto from 'crypto';
 import { requireAuth } from '../middleware/requireAuth.js';
+import { handleSingleUpload, uploadMemoryDocument } from '../middleware/upload.js';
 import {
   getOnboardingStatus,
   selectRole,
@@ -12,35 +10,9 @@ import {
   serveDocument,
   submitFarmerApplication,
   submitWorkerApplication,
-  UPLOAD_DIR,
 } from '../controllers/onboarding.controller.js';
 
 const router = Router();
-
-// Multer Storage Configuration
-const storage = multer.diskStorage({
-  destination: (req, file, cb) => {
-    cb(null, UPLOAD_DIR);
-  },
-  filename: (req, file, cb) => {
-    const ext = path.extname(file.originalname).toLowerCase();
-    const unique = crypto.randomUUID();
-    cb(null, `${Date.now()}-${unique}${ext}`);
-  },
-});
-
-const upload = multer({
-  storage,
-  limits: { fileSize: 5 * 1024 * 1024 }, // 5 MB max
-  fileFilter: (req, file, cb) => {
-    const allowedMime = ['image/jpeg', 'image/png', 'image/webp', 'application/pdf'];
-    if (allowedMime.includes(file.mimetype)) {
-      cb(null, true);
-    } else {
-      cb(new Error('Invalid file type. Only JPEG, PNG, WEBP, and PDF documents are supported.'));
-    }
-  },
-});
 
 // All onboarding endpoints require an authenticated user
 router.use(requireAuth);
@@ -55,40 +27,14 @@ router.post('/select-role', selectRole);
 router.get('/draft', getDraft);
 router.post('/draft', saveDraft);
 
-// 4. Document upload & secure retrieval
+// 4. Document upload (in-memory buffer directly streamed to Cloudinary)
 router.post(
   '/upload',
-  (req, res, next) => {
-    upload.single('file')(req, res, (err: any) => {
-      if (err) {
-        if (err instanceof multer.MulterError) {
-          if (err.code === 'LIMIT_FILE_SIZE') {
-            return res.status(400).json({
-              success: false,
-              error: {
-                field: 'file',
-                message: 'The uploaded file exceeds the 5 MB maximum size limit. Please choose a smaller document or photo.',
-              },
-            });
-          }
-          return res.status(400).json({
-            success: false,
-            error: { field: 'file', message: `File upload error: ${err.message}` },
-          });
-        }
-        return res.status(400).json({
-          success: false,
-          error: {
-            field: 'file',
-            message: err.message || 'Invalid file format. Only JPEG, PNG, WEBP, and PDF documents are supported.',
-          },
-        });
-      }
-      next();
-    });
-  },
+  handleSingleUpload('file', uploadMemoryDocument),
   uploadDocument
 );
+
+// Secure access-controlled document retrieval / redirection
 router.get('/documents/:filename', serveDocument);
 
 // 5. Verification Application Submissions

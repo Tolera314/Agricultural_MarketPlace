@@ -1,5 +1,6 @@
 import { Router } from 'express';
 import { requireAuth, requireRole } from '../middleware/requireAuth.js';
+import { handleSingleUpload, uploadMemoryImage } from '../middleware/upload.js';
 import {
   getDashboard,
   getMyOffers,
@@ -17,6 +18,7 @@ import {
   getNotifications,
   dispatchOrderAction,
   seedDemoOrderAction,
+  uploadProofOfDelivery,
 } from '../controllers/worker.controller.js';
 
 const router = Router();
@@ -33,6 +35,7 @@ router.get('/deliveries', getMyDeliveries);
 router.get('/deliveries/active', getActiveDelivery);
 router.patch('/deliveries/:jobId/status', updateDeliveryStatus);
 router.post('/deliveries/:jobId/incident', reportDeliveryIncident);
+router.post('/deliveries/upload-proof', handleSingleUpload('file', uploadMemoryImage), uploadProofOfDelivery);
 
 router.get('/earnings', getEarnings);
 router.get('/reconciliations', getCashReconciliations);

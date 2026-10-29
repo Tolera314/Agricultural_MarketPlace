@@ -1,6 +1,7 @@
 import type { Request, Response, NextFunction } from 'express';
 import prisma from '../config/prisma.js';
 import { haversineKm, dispatchOrder, seedDemoOrderAndDispatch } from '../services/dispatch.service.js';
+import { uploadToCloudinary, validateFileBuffer } from '../services/cloudinary.service.js';
 
 // ─── GET /api/worker/dashboard ────────────────────────────────
 export async function getDashboard(req: Request, res: Response, next: NextFunction) {
@@ -1037,6 +1038,50 @@ export async function seedDemoOrderAction(req: Request, res: Response, next: Nex
       success: true,
       message: 'Demo order created and dispatched to eligible delivery workers.',
       data: result,
+    });
+  } catch (err) {
+    next(err);
+  }
+}
+
+
+// ─── POST /api/worker/upload-proof ────────────────────────────
+export async function uploadProofOfDelivery(req: Request, res: Response, next: NextFunction) {
+  try {
+    const workerId = req.auth!.sub;
+    if (!req.file || !req.file.buffer) {
+      return res.status(400).json({
+        success: false,
+        error: { field: 'file', message: 'Please select an image file to upload as delivery proof.' },
+      });
+    }
+
+    const detectedMime = validateFileBuffer(
+      req.file.buffer,
+      req.file.originalname,
+      req.file.mimetype,
+      {
+        allowedMimes: ['image/jpeg', 'image/png', 'image/webp'],
+        maxSizeBytes: 5 * 1024 * 1024,
+        fieldName: 'file',
+      }
+    );
+
+    const uploaded = await uploadToCloudinary(req.file.buffer, {
+      folder: 'agrimarket/deliveries',
+      resourceType: 'image',
+      tags: ['delivery_proof', `worker_${workerId}`],
+    });
+
+    return res.status(201).json({
+      success: true,
+      message: 'Delivery proof photo uploaded successfully.',
+      data: {
+        secureUrl: uploaded.secureUrl,
+        publicId: uploaded.publicId,
+        format: uploaded.format,
+        bytes: uploaded.bytes,
+      },
     });
   } catch (err) {
     next(err);
