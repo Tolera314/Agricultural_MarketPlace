@@ -341,19 +341,13 @@ export const Header: React.FC<HeaderProps> = ({
                   </div>
                 </div>
               ) : (
-                // Unauthenticated Guest: Log In and Register
-                <div className="flex items-center gap-2">
+                // Unauthenticated Guest: Log In only
+                <div className="flex items-center">
                   <Link
                     href="/login"
-                    className="px-4 py-2 rounded-full text-xs sm:text-sm font-semibold text-[#075C3B] dark:text-[#34D399] hover:bg-[#E8F5E9] dark:hover:bg-[#18352A] transition-colors"
-                  >
-                    Log In
-                  </Link>
-                  <Link
-                    href="/signup"
                     className="px-4 py-2 rounded-full bg-[#075C3B] hover:bg-[#05482E] active:bg-[#043B26] dark:bg-[#10B981] dark:hover:bg-[#059669] text-white text-xs sm:text-sm font-semibold shadow-xs hover:shadow-md transition-all flex items-center gap-1.5"
                   >
-                    <span>Register</span>
+                    <span>Log In</span>
                     <ArrowRight className="w-3.5 h-3.5" />
                   </Link>
                 </div>
@@ -464,21 +458,14 @@ export const Header: React.FC<HeaderProps> = ({
                     <span>Sign Out</span>
                   </button>
                 ) : (
-                  <div className="grid grid-cols-2 gap-2">
+                  <div>
                     <Link
                       href="/login"
                       onClick={() => setMobileMenuOpen(false)}
-                      className="py-3 text-center text-xs sm:text-sm font-bold rounded-xl bg-[#075C3B] dark:bg-[#10B981] hover:bg-[#05482E] text-white shadow-xs transition-colors flex items-center justify-center gap-1.5"
+                      className="w-full py-3 text-center text-xs sm:text-sm font-bold rounded-xl bg-[#075C3B] dark:bg-[#10B981] hover:bg-[#05482E] text-white shadow-xs transition-colors flex items-center justify-center gap-1.5"
                     >
                       <span>Log In</span>
                       <ArrowRight className="w-3.5 h-3.5" />
-                    </Link>
-                    <Link
-                      href="/signup"
-                      onClick={() => setMobileMenuOpen(false)}
-                      className="py-3 text-center text-xs sm:text-sm font-bold rounded-xl border border-[#075C3B] dark:border-[#10B981] text-[#075C3B] dark:text-[#34D399] hover:bg-[#E8F5E9] dark:hover:bg-[#18352A] transition-colors flex items-center justify-center gap-1.5"
-                    >
-                      <span>Register</span>
                     </Link>
                   </div>
                 )}
