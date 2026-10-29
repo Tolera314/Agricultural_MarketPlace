@@ -44,6 +44,7 @@ import {
 import { ThemeToggle } from '@/components/layout/ThemeToggle';
 import { buyerApi } from '@/lib/buyerApi';
 import { getCachedUserProfile, logout } from '@/lib/auth';
+import { DashboardScreenSkeleton } from '@/components/ui/Skeleton';
 
 const BUYER_NAV_ITEMS = [
   { id: 'dashboard', label: 'Overview', href: '/dashboard/buyer', icon: LayoutDashboard },
@@ -2085,13 +2086,7 @@ function BuyerDashboardContent(props: any) {
 
 export default function BuyerDashboardPage(props: any) {
   return (
-    <Suspense
-      fallback={
-        <div className="min-h-screen bg-[#FDF8F0] dark:bg-[#111A15] flex items-center justify-center">
-          <div className="w-8 h-8 border-4 border-emerald-600 border-t-transparent rounded-full animate-spin" />
-        </div>
-      }
-    >
+    <Suspense fallback={<DashboardScreenSkeleton />}>
       <BuyerDashboardContent {...props} />
     </Suspense>
   );

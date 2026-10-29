@@ -202,8 +202,10 @@ export const Footer: React.FC<FooterProps> = ({
             {/* Social Icons */}
             <div className="flex items-center gap-2.5 mt-5 text-[#3E5C50] dark:text-[#8BB39F]">
               <a
-                href="#facebook"
-                aria-label="Facebook"
+                href="https://facebook.com"
+                target="_blank"
+                rel="noopener noreferrer"
+                aria-label="AgriMarket Facebook"
                 className="w-8 h-8 rounded-lg bg-[#F0F5F2] dark:bg-[#152B22] hover:bg-[#E8F5E9] dark:hover:bg-[#1E3E31] hover:text-[#2E7D32] dark:hover:text-[#34D399] flex items-center justify-center transition-colors"
               >
                 <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
@@ -212,8 +214,10 @@ export const Footer: React.FC<FooterProps> = ({
               </a>
 
               <a
-                href="#twitter"
-                aria-label="X"
+                href="https://x.com"
+                target="_blank"
+                rel="noopener noreferrer"
+                aria-label="AgriMarket X (Twitter)"
                 className="w-8 h-8 rounded-lg bg-[#F0F5F2] dark:bg-[#152B22] hover:bg-[#E8F5E9] dark:hover:bg-[#1E3E31] hover:text-[#2E7D32] dark:hover:text-[#34D399] flex items-center justify-center transition-colors"
               >
                 <svg className="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 24 24">
@@ -222,8 +226,10 @@ export const Footer: React.FC<FooterProps> = ({
               </a>
 
               <a
-                href="#linkedin"
-                aria-label="LinkedIn"
+                href="https://linkedin.com"
+                target="_blank"
+                rel="noopener noreferrer"
+                aria-label="AgriMarket LinkedIn"
                 className="w-8 h-8 rounded-lg bg-[#F0F5F2] dark:bg-[#152B22] hover:bg-[#E8F5E9] dark:hover:bg-[#1E3E31] hover:text-[#2E7D32] dark:hover:text-[#34D399] flex items-center justify-center transition-colors"
               >
                 <svg className="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 24 24">
@@ -232,8 +238,10 @@ export const Footer: React.FC<FooterProps> = ({
               </a>
 
               <a
-                href="#youtube"
-                aria-label="YouTube"
+                href="https://youtube.com"
+                target="_blank"
+                rel="noopener noreferrer"
+                aria-label="AgriMarket YouTube"
                 className="w-8 h-8 rounded-lg bg-[#F0F5F2] dark:bg-[#152B22] hover:bg-[#E8F5E9] dark:hover:bg-[#1E3E31] hover:text-[#2E7D32] dark:hover:text-[#34D399] flex items-center justify-center transition-colors"
               >
                 <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
@@ -248,24 +256,24 @@ export const Footer: React.FC<FooterProps> = ({
         <div className="pt-6 flex flex-col sm:flex-row items-center justify-between text-xs text-[#7A988B] dark:text-[#688879] gap-3">
           <p>© 2026 AgriMarket. All rights reserved.</p>
           <div className="flex items-center gap-5">
-            <button
-              onClick={() => handleScroll('hero')}
+            <Link
+              href="/privacy"
               className="hover:text-[#2E7D32] dark:hover:text-[#34D399] transition-colors cursor-pointer"
             >
               Privacy Policy
-            </button>
-            <button
-              onClick={() => handleScroll('hero')}
+            </Link>
+            <Link
+              href="/terms"
               className="hover:text-[#2E7D32] dark:hover:text-[#34D399] transition-colors cursor-pointer"
             >
               Terms of Service
-            </button>
-            <button
-              onClick={() => handleScroll('hero')}
+            </Link>
+            <a
+              href="mailto:support@agrimarket.et"
               className="hover:text-[#2E7D32] dark:hover:text-[#34D399] transition-colors cursor-pointer"
             >
               Support Center
-            </button>
+            </a>
           </div>
         </div>
       </div>

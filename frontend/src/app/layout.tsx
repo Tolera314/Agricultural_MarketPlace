@@ -60,6 +60,8 @@ export default function RootLayout({
       <head>
         <link rel="manifest" href="/manifest.webmanifest" />
         <link rel="apple-touch-icon" href="/icons/apple-touch-icon.png" />
+        {/* LCP Optimization: Preload above-the-fold hero background */}
+        <link rel="preload" as="image" href="/images/hero_farm_bg.jpg" fetchPriority="high" />
         <script
           dangerouslySetInnerHTML={{
             __html: `

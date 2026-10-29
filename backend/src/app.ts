@@ -44,6 +44,15 @@ app.use(
         return callback(null, true);
       }
 
+      // Always allow hosted Vercel and Render deployments of AgriMarket
+      if (
+        normalizedOrigin.endsWith('.vercel.app') ||
+        normalizedOrigin.includes('agricultural-market') ||
+        normalizedOrigin.endsWith('.onrender.com')
+      ) {
+        return callback(null, true);
+      }
+
       // Allow localhost/127.0.0.1 in non-production or test environments
       if (isDevelopment || process.env.NODE_ENV === 'test') {
         if (
@@ -88,6 +97,8 @@ app.use((req: Request, res: Response, next: NextFunction) => {
     'Content-Security-Policy',
     `default-src ${defaultSources}; connect-src ${connectSources}; img-src 'self' data: blob: https:;`
   );
+  res.setHeader('Cross-Origin-Opener-Policy', 'same-origin-allow-popups');
+  res.setHeader('Cross-Origin-Resource-Policy', 'cross-origin');
   next();
 });
 

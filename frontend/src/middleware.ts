@@ -66,6 +66,7 @@ export function middleware(request: NextRequest) {
 
     const response = NextResponse.redirect(loginUrl);
     response.headers.set('X-Robots-Tag', 'noindex, nofollow');
+    response.headers.set('Cross-Origin-Opener-Policy', 'same-origin-allow-popups');
     return response;
   }
 
@@ -87,6 +88,7 @@ export function middleware(request: NextRequest) {
   response.headers.set('X-Content-Type-Options', 'nosniff');
   response.headers.set('Referrer-Policy', 'strict-origin-when-cross-origin');
   response.headers.set('Permissions-Policy', 'camera=(), microphone=(), geolocation=(self)');
+  response.headers.set('Cross-Origin-Opener-Policy', 'same-origin-allow-popups');
 
   return response;
 }

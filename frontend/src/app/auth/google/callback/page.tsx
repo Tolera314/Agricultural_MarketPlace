@@ -72,7 +72,10 @@ function GoogleCallbackContent() {
 
     async function verify() {
       try {
-        const result = await loginWithGoogle(code!);
+        const callbackUri = typeof window !== 'undefined'
+          ? `${window.location.origin}/auth/google/callback`
+          : undefined;
+        const result = await loginWithGoogle(code!, callbackUri);
         if (!isMounted) return;
 
         if (result.success && result.user) {
@@ -112,7 +115,10 @@ function GoogleCallbackContent() {
     setLinkLoading(true);
     setLinkError(null);
 
-    const result = await linkGoogleAccount(authCode, password);
+    const callbackUri = typeof window !== 'undefined'
+      ? `${window.location.origin}/auth/google/callback`
+      : undefined;
+    const result = await linkGoogleAccount(authCode, password, callbackUri);
     setLinkLoading(false);
 
     if (result.success && result.user) {

@@ -421,13 +421,13 @@ export interface GoogleAuthResult {
 /**
  * Sign In or Sign Up with Google credential (ID token or OAuth authorization code)
  */
-export async function loginWithGoogle(credential: string): Promise<GoogleAuthResult> {
+export async function loginWithGoogle(credential: string, redirectUri?: string): Promise<GoogleAuthResult> {
   try {
     const res = await fetch(`${API_URL}/api/auth/google`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       credentials: 'include',
-      body: JSON.stringify({ credential }),
+      body: JSON.stringify({ credential, redirectUri }),
     });
 
     const data = await res.json();
@@ -472,14 +472,15 @@ export async function loginWithGoogle(credential: string): Promise<GoogleAuthRes
  */
 export async function linkGoogleAccount(
   credential: string,
-  password: string
+  password: string,
+  redirectUri?: string
 ): Promise<{ success: boolean; user?: AuthUser; redirectUrl?: string; error?: string }> {
   try {
     const res = await fetch(`${API_URL}/api/auth/google/link`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       credentials: 'include',
-      body: JSON.stringify({ credential, password }),
+      body: JSON.stringify({ credential, password, redirectUri }),
     });
 
     const data = await res.json();
