@@ -1,8 +1,9 @@
 'use client';
 
 import { getAccessToken } from './auth';
+import { API_BASE_URL } from './apiConfig';
 
-const API = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
+const API = API_BASE_URL;
 
 function getToken(): string | null {
   return getAccessToken();

@@ -16,6 +16,7 @@ import {
   XCircle,
 } from 'lucide-react';
 import { adminApi } from '@/lib/adminApi';
+import { API_BASE_URL } from '@/lib/apiConfig';
 
 export default function AdminFarmersPage() {
   const [farmers, setFarmers] = useState<any[]>([]);
@@ -82,7 +83,7 @@ export default function AdminFarmersPage() {
     }
   };
 
-  const getApiUrl = () => process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
+  const getApiUrl = () => API_BASE_URL;
 
   return (
     <div className="space-y-6 max-w-7xl mx-auto pb-12">

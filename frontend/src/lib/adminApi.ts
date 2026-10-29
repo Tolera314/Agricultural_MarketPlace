@@ -1,11 +1,10 @@
 import { getAccessToken, getCurrentUser } from './auth';
+import { API_BASE_URL } from './apiConfig';
 
 // ─── Dev bypass: admin dashboard works without any login ─────────────────────
 // The backend requireAuth middleware accepts this header and injects SUPERADMIN role.
 const DEV_BYPASS_HEADER = 'x-dev-admin-bypass';
 const DEV_BYPASS_SECRET = 'agrimarket_dev_2026';
-
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
 
 /**
  * Returns auth headers. Uses stored JWT token if present (logged-in user),

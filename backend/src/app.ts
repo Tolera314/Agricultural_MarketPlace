@@ -19,19 +19,74 @@ import cookieParser from 'cookie-parser';
 
 const app = express();
 
-// Security and CORS middleware
-app.use(cors({
-  origin: ['http://localhost:3000', 'http://127.0.0.1:3000'],
-  credentials: true,
-}));
+// Security and CORS middleware: Dynamically resolve allowed origins from FRONTEND_URL and environment
+const configuredFrontend = process.env.FRONTEND_URL?.trim().replace(/\/+$/, '');
+const extraAllowedOrigins = (process.env.ALLOWED_ORIGINS || '')
+  .split(',')
+  .map((o) => o.trim().replace(/\/+$/, ''))
+  .filter(Boolean);
+
+const isDevelopment = process.env.NODE_ENV !== 'production';
+
+app.use(
+  cors({
+    origin: (origin, callback) => {
+      // Allow non-browser requests (mobile apps, curl, server-to-server)
+      if (!origin) return callback(null, true);
+
+      const normalizedOrigin = origin.replace(/\/+$/, '');
+
+      // Allow configured FRONTEND_URL or explicit ALLOWED_ORIGINS
+      if (configuredFrontend && normalizedOrigin === configuredFrontend) {
+        return callback(null, true);
+      }
+      if (extraAllowedOrigins.includes(normalizedOrigin)) {
+        return callback(null, true);
+      }
+
+      // Allow localhost/127.0.0.1 in non-production or test environments
+      if (isDevelopment || process.env.NODE_ENV === 'test') {
+        if (
+          normalizedOrigin.startsWith('http://localhost') ||
+          normalizedOrigin.startsWith('http://127.0.0.1')
+        ) {
+          return callback(null, true);
+        }
+      }
+
+      // In production, allow same root domain / subdomains if matching configured frontend
+      if (configuredFrontend && configuredFrontend.startsWith('https://')) {
+        try {
+          const configuredHost = new URL(configuredFrontend).hostname;
+          const incomingHost = new URL(normalizedOrigin).hostname;
+          if (incomingHost === configuredHost || incomingHost.endsWith('.' + configuredHost)) {
+            return callback(null, true);
+          }
+        } catch {
+          // ignore parsing error
+        }
+      }
+
+      return callback(new Error(`CORS error: Origin ${origin} is not allowed by CORS policy.`), false);
+    },
+    credentials: true,
+  })
+);
 
 app.use(cookieParser());
 
-// Configure permissive CSP headers so browser DevTools and local clients never get blocked
+// Configure Content-Security-Policy dynamically based on environment
 app.use((req: Request, res: Response, next: NextFunction) => {
+  const frontendOrigin = process.env.FRONTEND_URL ? process.env.FRONTEND_URL.trim().replace(/\/+$/, '') : '';
+  const backendOrigin = process.env.BACKEND_URL ? process.env.BACKEND_URL.trim().replace(/\/+$/, '') : '';
+  const devOrigins = isDevelopment ? 'http://localhost:3000 http://localhost:5000 ws://localhost:3000 ws://localhost:5000' : '';
+
+  const connectSources = ["'self'", frontendOrigin, backendOrigin, devOrigins, 'https:', 'wss:'].filter(Boolean).join(' ');
+  const defaultSources = ["'self'", frontendOrigin, backendOrigin, devOrigins, 'https:'].filter(Boolean).join(' ');
+
   res.setHeader(
     'Content-Security-Policy',
-    "default-src 'self' http://localhost:3000 http://localhost:5000; connect-src 'self' http://localhost:3000 http://localhost:5000 ws://localhost:3000 ws://localhost:5000 https:; img-src 'self' data: blob: https:;"
+    `default-src ${defaultSources}; connect-src ${connectSources}; img-src 'self' data: blob: https:;`
   );
   next();
 });

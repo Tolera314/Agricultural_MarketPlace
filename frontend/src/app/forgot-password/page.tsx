@@ -16,6 +16,7 @@ import {
   Clock,
 } from 'lucide-react';
 import { ThemeToggle } from '@/components/layout/ThemeToggle';
+import { API_BASE_URL } from '@/lib/apiConfig';
 
 export default function ForgotPasswordPage() {
   const router = useRouter();
@@ -44,7 +45,7 @@ export default function ForgotPasswordPage() {
     setRetryAfter(null);
 
     try {
-      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
+      const apiUrl = API_BASE_URL;
       const res = await fetch(`${apiUrl}/api/auth/forgot-password`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
