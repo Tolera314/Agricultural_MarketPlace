@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, Suspense } from 'react';
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { ArrowRight, Loader2, Sparkles, UserCheck } from 'lucide-react';
@@ -8,7 +8,7 @@ import { ThemeToggle } from '@/components/layout/ThemeToggle';
 import { onboardingApi } from '@/lib/onboardingApi';
 import { getCachedUserProfile } from '@/lib/auth';
 
-export default function PostSignupDashboardPage() {
+function PostSignupDashboardContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const rawRedirect = searchParams.get('redirect');
@@ -173,5 +173,19 @@ export default function PostSignupDashboardPage() {
       </footer>
 
     </div>
+  );
+}
+
+export default function PostSignupDashboardPage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="min-h-screen bg-[#FDF8F0] dark:bg-[#111A15] flex items-center justify-center">
+          <div className="w-8 h-8 border-4 border-emerald-600 border-t-transparent rounded-full animate-spin" />
+        </div>
+      }
+    >
+      <PostSignupDashboardContent />
+    </Suspense>
   );
 }

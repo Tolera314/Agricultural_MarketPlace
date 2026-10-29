@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import React, { useState, useEffect, useCallback, useMemo, Suspense } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
 import { useRouter, useParams, usePathname, useSearchParams } from 'next/navigation';
@@ -102,7 +102,7 @@ export type BuyerTab =
   | 'profile'
   | 'settings';
 
-export default function BuyerDashboardPage(props: any) {
+function BuyerDashboardContent(props: any) {
   const initialTab = props?.initialTab as BuyerTab | undefined;
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -2080,5 +2080,19 @@ export default function BuyerDashboardPage(props: any) {
       )}
 
     </div>
+  );
+}
+
+export default function BuyerDashboardPage(props: any) {
+  return (
+    <Suspense
+      fallback={
+        <div className="min-h-screen bg-[#FDF8F0] dark:bg-[#111A15] flex items-center justify-center">
+          <div className="w-8 h-8 border-4 border-emerald-600 border-t-transparent rounded-full animate-spin" />
+        </div>
+      }
+    >
+      <BuyerDashboardContent {...props} />
+    </Suspense>
   );
 }

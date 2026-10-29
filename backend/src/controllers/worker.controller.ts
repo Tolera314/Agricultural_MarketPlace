@@ -719,7 +719,7 @@ export async function updateDeliveryStatus(req: Request, res: Response, next: Ne
       }
 
       return j;
-    });
+    }, { maxWait: 10000, timeout: 15000 });
 
     return res.json({ success: true, message: `Delivery status updated to ${status}.`, data: { id: updated.id, status: updated.status } });
   } catch (err) {
@@ -787,7 +787,7 @@ export async function reportDeliveryIncident(req: Request, res: Response, next: 
           data: { activeJobCount: { decrement: 1 } },
         });
       }
-    });
+    }, { maxWait: 10000, timeout: 15000 });
 
     return res.json({
       success: true,
