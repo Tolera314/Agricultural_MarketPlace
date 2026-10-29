@@ -94,11 +94,16 @@ export function setCurrentUser(user: AuthUser | null) {
     try {
       if (user) {
         localStorage.setItem(USER_CACHE_KEY, JSON.stringify(user));
+        // Set client session cookie for Next.js middleware (7 days)
+        const isSecure = window.location.protocol === 'https:';
+        document.cookie = `agrimarket_session=1; path=/; max-age=604800; SameSite=Lax; ${isSecure ? 'Secure;' : ''}`;
       } else {
         localStorage.removeItem(USER_CACHE_KEY);
         // Also remove legacy plain tokens if any existed
         localStorage.removeItem('agrimarket_token');
         localStorage.removeItem('agrimarket_user');
+        // Clear client session cookie
+        document.cookie = 'agrimarket_session=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT; SameSite=Lax;';
       }
     } catch {
       // Storage might fail in sandboxed or private mode
@@ -329,6 +334,7 @@ export async function logout(): Promise<void> {
     setAccessToken(null);
     setCurrentUser(null);
     if (typeof window !== 'undefined') {
+      document.cookie = 'agrimarket_session=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT; SameSite=Lax;';
       window.location.href = '/login';
     }
   }
@@ -346,6 +352,7 @@ export async function logoutAll(): Promise<void> {
     setAccessToken(null);
     setCurrentUser(null);
     if (typeof window !== 'undefined') {
+      document.cookie = 'agrimarket_session=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT; SameSite=Lax;';
       window.location.href = '/login';
     }
   }

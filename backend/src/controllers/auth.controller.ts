@@ -37,6 +37,20 @@ export function getRefreshCookieOptions(expires?: Date) {
 }
 
 /**
+ * Secure cookie options for access token (SSR & middleware access)
+ */
+export function getAccessCookieOptions(expires?: Date) {
+  const isProduction = process.env.NODE_ENV === "production";
+  return {
+    httpOnly: true,
+    secure: isProduction,
+    sameSite: "lax" as const,
+    path: "/",
+    ...(expires ? { expires } : { maxAge: 15 * 60 * 1000 }), // 15 minutes
+  };
+}
+
+/**
  * Extract client IP and User-Agent for audit and session tracking
  */
 function extractRequestMeta(req: Request) {
@@ -181,9 +195,12 @@ export async function handleLogin(req: Request, res: Response, next: NextFunctio
     const meta = extractRequestMeta(req);
     const result = await loginUser(loginIdentifier, password, meta);
 
-    // Set secure HttpOnly cookie for refresh token
+    // Set secure HttpOnly cookie for refresh token and access token
     const cookieOptions = getRefreshCookieOptions(rememberMe ? result.expiresAt : undefined);
     res.cookie(REFRESH_COOKIE_NAME, result.refreshToken, cookieOptions);
+    if (result.accessToken) {
+      res.cookie("accessToken", result.accessToken, getAccessCookieOptions());
+    }
 
     return res.status(200).json({
       success: true,
@@ -238,8 +255,11 @@ export async function handleRefreshToken(req: Request, res: Response, next: Next
     const meta = extractRequestMeta(req);
     const result = await rotateRefreshToken(rawRefreshToken, meta);
 
-    // Update HttpOnly cookie with new rotated refresh token
+    // Update HttpOnly cookie with new rotated refresh token and new access token
     res.cookie(REFRESH_COOKIE_NAME, result.refreshToken, getRefreshCookieOptions(result.expiresAt));
+    if (result.accessToken) {
+      res.cookie("accessToken", result.accessToken, getAccessCookieOptions());
+    }
 
     return res.status(200).json({
       success: true,
@@ -276,6 +296,7 @@ export async function handleLogout(req: Request, res: Response, next: NextFuncti
     }
 
     res.clearCookie(REFRESH_COOKIE_NAME, { path: "/" });
+    res.clearCookie("accessToken", { path: "/" });
 
     return res.status(200).json({
       success: true,
@@ -283,6 +304,7 @@ export async function handleLogout(req: Request, res: Response, next: NextFuncti
     });
   } catch (error: any) {
     res.clearCookie(REFRESH_COOKIE_NAME, { path: "/" });
+    res.clearCookie("accessToken", { path: "/" });
     return next(error);
   }
 }
@@ -644,9 +666,12 @@ export async function handleGoogleAuth(req: Request, res: Response, next: NextFu
     const meta = extractRequestMeta(req);
     const result = await authenticateWithGoogle(credential.trim(), meta);
 
-    // Set secure HttpOnly cookie for refresh token
+    // Set secure HttpOnly cookies for refresh token and access token
     if (result.refreshToken) {
       res.cookie(REFRESH_COOKIE_NAME, result.refreshToken, getRefreshCookieOptions(result.expiresAt));
+    }
+    if (result.accessToken) {
+      res.cookie("accessToken", result.accessToken, getAccessCookieOptions());
     }
 
     const redirectUrl = result.isNewUser

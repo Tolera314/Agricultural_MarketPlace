@@ -54,6 +54,14 @@ export const buyerApi = {
     return apiFetch<any>(`/api/buyer/farmers/nearby${qs}`);
   },
 
+  getFarmerProfile: (farmerId: string, lat?: number, lng?: number) => {
+    const q = new URLSearchParams();
+    if (lat !== undefined) q.set('lat', String(lat));
+    if (lng !== undefined) q.set('lng', String(lng));
+    const qs = q.toString() ? `?${q.toString()}` : '';
+    return apiFetch<any>(`/api/buyer/farmers/${encodeURIComponent(farmerId)}${qs}`);
+  },
+
   searchProducts: (params?: {
     search?: string;
     category?: string;
@@ -74,6 +82,16 @@ export const buyerApi = {
     const qs = q.toString() ? `?${q.toString()}` : '';
     return apiFetch<any>(`/api/buyer/products${qs}`);
   },
+
+  getProductDetails: (productId: string, lat?: number, lng?: number) => {
+    const q = new URLSearchParams();
+    if (lat !== undefined) q.set('lat', String(lat));
+    if (lng !== undefined) q.set('lng', String(lng));
+    const qs = q.toString() ? `?${q.toString()}` : '';
+    return apiFetch<any>(`/api/buyer/products/${encodeURIComponent(productId)}${qs}`);
+  },
+
+  getCategories: () => apiFetch<any>('/api/buyer/categories'),
 
   calculateCheckout: (items: { listingId: string; quantity: number }[], deliveryAddressId?: string) =>
     apiFetch<any>('/api/buyer/checkout/calculate', {
