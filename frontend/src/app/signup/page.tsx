@@ -215,32 +215,35 @@ function SignupFormContent() {
       }
 
       const data = parsed.data;
+      const payload = data?.data !== undefined ? data.data : data;
 
       setIsLoading(false);
 
-      // Handle verification flow
-      if (data.data?.requiresVerification) {
+      // Handle verification flow (OTP Verification UI activation)
+      if (payload?.requiresVerification) {
         setVerificationState({
           required: true,
-          channel: data.data.verificationChannel || (formData.email.trim() ? 'email' : 'sms'),
-          recipient: data.data.recipient || (formData.email.trim() || formData.phone.trim()),
-          identifier: data.data.user?.phone || formData.phone.trim(),
+          channel: payload.verificationChannel || (formData.email.trim() ? 'email' : 'sms'),
+          recipient: payload.recipient || (formData.email.trim() || formData.phone.trim()),
+          identifier: payload.user?.phone || formData.phone.trim(),
         });
         setResendCooldown(30); // 30s initial resend cooldown
         return;
       }
 
       // If already verified or no verification required
-      if (data.data?.accessToken || data.data?.token) {
-        setAccessToken(data.data.accessToken || data.data.token);
-        setCurrentUser(data.data.user);
+      if (payload?.accessToken || payload?.token) {
+        setAccessToken(payload.accessToken || payload.token);
+        if (payload.user) {
+          setCurrentUser(payload.user);
+        }
       }
 
-      setSuccessData(data.data);
+      setSuccessData(payload);
       setTimeout(() => {
         const nextUrl = safeRedirect
           ? `/onboarding/select-role?redirect=${encodeURIComponent(safeRedirect)}`
-          : '/dashboard';
+          : '/onboarding/select-role';
         router.push(nextUrl);
       }, 900);
     } catch (err: any) {
@@ -334,11 +337,14 @@ function SignupFormContent() {
       }
 
       const data = parsed.data;
+      const payload = data?.data !== undefined ? data.data : data;
 
       // Store in memory
-      if (data?.data?.accessToken || data?.data?.token) {
-        setAccessToken(data.data.accessToken || data.data.token);
-        setCurrentUser(data.data.user);
+      if (payload?.accessToken || payload?.token) {
+        setAccessToken(payload.accessToken || payload.token);
+      }
+      if (payload?.user) {
+        setCurrentUser(payload.user);
       }
 
       setVerifiedSuccess(true);
@@ -347,7 +353,7 @@ function SignupFormContent() {
       setTimeout(() => {
         const nextUrl = safeRedirect
           ? `/onboarding/select-role?redirect=${encodeURIComponent(safeRedirect)}`
-          : '/dashboard';
+          : '/onboarding/select-role';
         router.push(nextUrl);
       }, 1100);
     } catch (err) {

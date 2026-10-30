@@ -696,6 +696,15 @@ export async function submitFarmerApplication(req: Request, res: Response, next:
         profileId: result.profile.id,
         verificationStatus: result.profile.verificationStatus,
         submittedAt: verificationDocs.submittedAt,
+        user: {
+          id: result.user.id,
+          fullName: result.user.fullName,
+          phone: result.user.phone,
+          email: result.user.email,
+          role: result.user.role,
+          isVerified: result.user.isVerified,
+          onboardingStatus: result.user.onboardingStatus,
+        },
       },
     });
   } catch (err: any) {
@@ -940,6 +949,15 @@ export async function submitWorkerApplication(req: Request, res: Response, next:
         profileId: result.profile.id,
         verificationStatus: result.profile.verificationStatus,
         submittedAt: verificationDocs.submittedAt,
+        user: {
+          id: result.user.id,
+          fullName: result.user.fullName,
+          phone: result.user.phone,
+          email: result.user.email,
+          role: result.user.role,
+          isVerified: result.user.isVerified,
+          onboardingStatus: result.user.onboardingStatus,
+        },
       },
     });
   } catch (err: any) {

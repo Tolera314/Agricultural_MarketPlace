@@ -44,6 +44,11 @@ export function RouteGuard({
 
     // 3. Role-based Access Control: Enforce allowed roles for this subtree
     if (allowedRoles && allowedRoles.length > 0 && !allowedRoles.includes(user.role)) {
+      const isJustSubmitted = typeof window !== 'undefined' && window.location.search.includes('onboardingSuccess=true');
+      if (isJustSubmitted) {
+        return;
+      }
+
       setDeniedRoleMessage(
         `This section is restricted to ${allowedRoles.join(' / ')} accounts. You are currently signed in as ${user.role}.`
       );
@@ -60,8 +65,15 @@ export function RouteGuard({
     // 4. Onboarding lifecycle check for Farmers & Delivery Workers
     if (user.role === 'FARMER' || user.role === 'DELIVERY_WORKER') {
       const rolePrefix = user.role === 'FARMER' ? 'farmer' : 'worker';
+      const isJustSubmitted = typeof window !== 'undefined' && window.location.search.includes('onboardingSuccess=true');
+      const isOnRoleDashboard = pathname.startsWith(`/dashboard/${rolePrefix}`);
 
-      // Application in-progress -> finish onboarding forms
+      // If user has submitted onboarding or is on their intended dashboard with onboardingSuccess flag, allow direct access
+      if (isJustSubmitted || isOnRoleDashboard || user.onboardingStatus === 'PENDING_VERIFICATION' || user.onboardingStatus === 'COMPLETED') {
+        return;
+      }
+
+      // Application genuinely in-progress and user is not on onboarding form -> finish onboarding forms
       if (user.onboardingStatus === 'IN_PROGRESS' && !pathname.startsWith(`/onboarding/${rolePrefix}`)) {
         router.replace(`/onboarding/${rolePrefix}`);
         return;

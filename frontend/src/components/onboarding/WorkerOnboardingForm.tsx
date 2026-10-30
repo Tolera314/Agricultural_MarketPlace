@@ -19,6 +19,7 @@ import {
 import { onboardingApi } from '@/lib/onboardingApi';
 import { compressDocumentImage } from '@/lib/imageCompressor';
 import { getHumanReadableErrorMessage } from '@/lib/errorHandler';
+import { getCurrentUser, setCurrentUser } from '@/lib/auth';
 
 export function WorkerOnboardingForm() {
   const router = useRouter();
@@ -70,6 +71,13 @@ export function WorkerOnboardingForm() {
     async function loadInitial() {
       try {
         const status = await onboardingApi.getStatus();
+
+        // If user already submitted their application, lead directly to dashboard
+        if (status.onboardingStatus === 'PENDING_VERIFICATION' || status.onboardingStatus === 'COMPLETED') {
+          router.replace('/dashboard/worker');
+          return;
+        }
+
         setFormData((prev) => ({
           ...prev,
           fullName: status.fullName || prev.fullName,
@@ -233,7 +241,7 @@ export function WorkerOnboardingForm() {
     setErrors({});
 
     try {
-      await onboardingApi.submitWorkerApplication({
+      const submitRes: any = await onboardingApi.submitWorkerApplication({
         vehicleType: formData.vehicleType,
         vehiclePlate: formData.vehiclePlate.trim() || undefined,
         vehicleCapacityKg: formData.vehicleCapacityKg,
@@ -249,6 +257,17 @@ export function WorkerOnboardingForm() {
         locationConsent: formData.locationConsent,
         consentedToTerms: formData.consentedToTerms,
       });
+
+      // Synchronously update local user cache so RouteGuard recognizes the role and status immediately
+      const current = getCurrentUser();
+      const updatedUser = submitRes?.user || (current ? {
+        ...current,
+        role: 'DELIVERY_WORKER' as const,
+        onboardingStatus: 'PENDING_VERIFICATION',
+      } : null);
+      if (updatedUser) {
+        setCurrentUser(updatedUser);
+      }
 
       // Redirect to intended worker dashboard with success flag
       router.push('/dashboard/worker?onboardingSuccess=true');
