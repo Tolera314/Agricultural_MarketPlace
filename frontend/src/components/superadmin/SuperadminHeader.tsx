@@ -6,6 +6,7 @@ import { useRouter } from 'next/navigation';
 import { Search, Bell, LogOut, Shield, Menu } from 'lucide-react';
 import { ThemeToggle } from '@/components/layout/ThemeToggle';
 import { getCachedUserProfile, logout } from '@/lib/auth';
+import { useAuth } from '@/context/AuthContext';
 
 interface SuperadminHeaderProps {
   onSearch?: (query: string) => void;
@@ -14,19 +15,21 @@ interface SuperadminHeaderProps {
 
 export function SuperadminHeader({ onSearch, onOpenMobileMenu }: SuperadminHeaderProps) {
   const router = useRouter();
-  const [adminName, setAdminName] = useState('Yonas Tadesse');
+  const { user } = useAuth();
+  const cached = getCachedUserProfile();
+  const [adminName, setAdminName] = useState(() => user?.fullName || cached?.fullName || 'Superadmin');
   const [adminRole, setAdminRole] = useState('Superadmin');
   const [avatarUrl, setAvatarUrl] = useState('/images/avatar_selamawit_hd.jpg');
   const [searchVal, setSearchVal] = useState('');
   const [showDropdown, setShowDropdown] = useState(false);
 
   useEffect(() => {
-    const cached = getCachedUserProfile();
-    if (cached) {
-      if (cached.fullName) setAdminName(cached.fullName);
-      if (cached.role === 'SUPERADMIN') setAdminRole('Superadmin');
+    const current = user || getCachedUserProfile();
+    if (current) {
+      if (current.fullName) setAdminName(current.fullName);
+      if (current.role === 'SUPERADMIN') setAdminRole('Superadmin');
     }
-  }, []);
+  }, [user]);
 
   const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setSearchVal(e.target.value);

@@ -17,6 +17,7 @@ import { CityTradeOverviewTable } from '@/components/superadmin/CityTradeOvervie
 import { RecentActivitiesCard } from '@/components/superadmin/RecentActivitiesCard';
 import { QuickActionsCard } from '@/components/superadmin/QuickActionsCard';
 import { superadminApi, SuperadminDashboardData } from '@/lib/superadminApi';
+import { useAuth } from '@/context/AuthContext';
 
 const PERIOD_OPTIONS = [
   { label: 'Last 7 days', value: '7d' },
@@ -26,11 +27,14 @@ const PERIOD_OPTIONS = [
 ];
 
 export default function SuperadminDashboardPage() {
+  const { user } = useAuth();
   const [period, setPeriod] = useState<string>('30d');
   const [showPeriodDropdown, setShowPeriodDropdown] = useState(false);
   const [data, setData] = useState<SuperadminDashboardData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+
+  const superadminFirstName = user?.fullName ? user.fullName.split(' ')[0] : 'Superadmin';
 
   const loadDashboard = useCallback(async (selectedPeriod: string) => {
     setLoading(true);
@@ -59,10 +63,10 @@ export default function SuperadminDashboardPage() {
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
           <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-[#142E24] dark:text-[#E6F0EB] font-display">
-            Superadmin Dashboard
+            Welcome back, {superadminFirstName}! 🛡️
           </h1>
           <p className="text-sm font-medium text-gray-500 dark:text-gray-400 mt-0.5">
-            Full system control and oversight
+            Full system control, administrative oversight, and platform security
           </p>
         </div>
 

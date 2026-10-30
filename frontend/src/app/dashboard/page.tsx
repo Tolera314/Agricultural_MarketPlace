@@ -7,10 +7,12 @@ import { ArrowRight, Sparkles, UserCheck } from 'lucide-react';
 import { ThemeToggle } from '@/components/layout/ThemeToggle';
 import { onboardingApi } from '@/lib/onboardingApi';
 import { getCachedUserProfile } from '@/lib/auth';
+import { useAuth } from '@/context/AuthContext';
 import { DashboardScreenSkeleton } from '@/components/ui/Skeleton';
 
 function PostSignupDashboardContent() {
   const router = useRouter();
+  const { user } = useAuth();
   const searchParams = useSearchParams();
   const rawRedirect = searchParams.get('redirect');
   const safeRedirect = rawRedirect && rawRedirect.startsWith('/') && !rawRedirect.startsWith('//')
@@ -18,7 +20,7 @@ function PostSignupDashboardContent() {
     : null;
 
   const [loading, setLoading] = useState(true);
-  const [userName, setUserName] = useState<string>('');
+  const [userName, setUserName] = useState<string>(() => user?.fullName || getCachedUserProfile()?.fullName || '');
 
   useEffect(() => {
     async function checkUserStatus() {

@@ -4,6 +4,7 @@ import React, { useCallback, useEffect, useMemo, useState, Suspense } from 'reac
 import Link from 'next/link';
 import { useRouter, useParams, usePathname, useSearchParams } from 'next/navigation';
 import { useAuth } from '@/context/AuthContext';
+import { WorkerBottomNav } from '@/components/layout/MobileBottomNav';
 import {
   LayoutDashboard,
   Package,
@@ -761,9 +762,15 @@ function DashboardSection({
   onOpenRouteModal: () => void;
   onOpenVehicleModal: () => void;
 }) {
+  const { user } = useAuth();
   const workerFirstName = useMemo(() => {
-    return data?.worker?.fullName?.split(' ')[0] || 'Abebe';
-  }, [data]);
+    const rawName = user?.fullName || data?.worker?.fullName;
+    if (rawName && rawName.trim()) {
+      return rawName.trim().split(' ')[0];
+    }
+    if (user?.phone) return user.phone;
+    return 'Courier';
+  }, [data, user]);
 
   const metrics = data?.metrics;
   const activeJob = data?.activeJob;
@@ -1797,10 +1804,10 @@ function WorkerDashboardContent(props: any) {
       // Fallback data matching reference
       setDashData({
         worker: {
-          id: 'worker-demo-abebe',
-          fullName: 'Abebe Mekonnen',
-          email: 'abebe.delivery@agrimarket.et',
-          phone: '+251 911 234 567',
+          id: user?.id || 'worker-current',
+          fullName: user?.fullName || 'Delivery Partner',
+          email: user?.email || '',
+          phone: user?.phone || '',
         },
         profile: {
           vehicleType: vehicleState.vehicleType as any,
@@ -1990,7 +1997,7 @@ function WorkerDashboardContent(props: any) {
       )}
 
       {/* Main Content Container */}
-      <div className="flex-1 flex flex-col lg:ml-60 min-w-0">
+      <div className="flex-1 flex flex-col lg:ml-60 min-w-0 pb-20 lg:pb-0">
         <header className="sticky top-0 z-40 bg-white/95 dark:bg-[#0A1812]/95 backdrop-blur-md border-b border-[#E3EDE6] dark:border-[#1A3326] h-16 px-4 sm:px-6 flex items-center justify-between gap-4 shadow-xs transition-colors">
           <div className="flex items-center gap-3">
             <button
@@ -2034,13 +2041,13 @@ function WorkerDashboardContent(props: any) {
                 <div className="relative w-8 h-8 rounded-full overflow-hidden border border-[#D5E6DC] dark:border-[#1E4130] bg-slate-100 dark:bg-slate-800 shrink-0">
                   <img
                     src="/images/avatar_mekonnen_hd.jpg"
-                    alt="Abebe Mekonnen"
+                    alt={user?.fullName || dashData?.worker?.fullName || 'Delivery Partner'}
                     className="w-full h-full object-cover"
                   />
                 </div>
                 <div className="hidden md:block text-left leading-tight">
                   <p className="text-xs font-bold text-[#0B3322] dark:text-[#EEFAF3]">
-                    {dashData?.worker?.fullName || 'Abebe Mekonnen'}
+                    {user?.fullName || dashData?.worker?.fullName || 'Delivery Partner'}
                   </p>
                   <p className="text-[10px] text-[#719985] dark:text-[#88B8A0] font-semibold">Delivery Worker</p>
                 </div>
@@ -2245,11 +2252,18 @@ function WorkerDashboardContent(props: any) {
 
       {/* Toast Notification */}
       {toastMessage && (
-        <div className="fixed bottom-6 right-6 z-50 bg-[#0B3322] text-white px-4 py-3 rounded-2xl shadow-xl flex items-center gap-2.5 text-xs font-bold border border-[#16573C] animate-in slide-in-from-bottom duration-200">
+        <div className="fixed bottom-20 sm:bottom-6 right-6 z-50 bg-[#0B3322] text-white px-4 py-3 rounded-2xl shadow-xl flex items-center gap-2.5 text-xs font-bold border border-[#16573C] animate-in slide-in-from-bottom duration-200">
           <CheckCircle2 className="w-4 h-4 text-emerald-400" />
           <span>{toastMessage}</span>
         </div>
       )}
+
+      {/* Native-style Mobile Bottom Tab Bar */}
+      <WorkerBottomNav
+        activeSection={activeSection}
+        onSelectSection={(sec) => setActiveSection(sec)}
+        onOpenMenu={() => setSidebarOpen(true)}
+      />
     </div>
   );
 }

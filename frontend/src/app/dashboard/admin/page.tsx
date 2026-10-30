@@ -17,6 +17,7 @@ import { TopProductsCard } from '@/components/admin/TopProductsCard';
 import { RecentOrdersCard } from '@/components/admin/RecentOrdersCard';
 import { SystemAlertsCard } from '@/components/admin/SystemAlertsCard';
 import { adminApi, DashboardData } from '@/lib/adminApi';
+import { useAuth } from '@/context/AuthContext';
 
 const PERIOD_OPTIONS = [
   { label: 'Today', value: 'today' },
@@ -27,11 +28,14 @@ const PERIOD_OPTIONS = [
 ];
 
 export default function AdminDashboardPage() {
+  const { user } = useAuth();
   const [period, setPeriod] = useState<string>('7d');
   const [showPeriodDropdown, setShowPeriodDropdown] = useState(false);
   const [data, setData] = useState<DashboardData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+
+  const adminFirstName = user?.fullName ? user.fullName.split(' ')[0] : 'Administrator';
 
   const loadDashboard = useCallback(async (selectedPeriod: string) => {
     setLoading(true);
@@ -60,10 +64,10 @@ export default function AdminDashboardPage() {
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
           <h1 className="text-2xl font-bold tracking-tight text-[#142E24] dark:text-[#E6F0EB] font-display">
-            Admin Dashboard
+            Welcome back, {adminFirstName}! 👋
           </h1>
           <p className="text-sm font-medium text-gray-500 dark:text-gray-400 mt-0.5">
-            System overview and key metrics
+            System overview and key operational metrics
           </p>
         </div>
 

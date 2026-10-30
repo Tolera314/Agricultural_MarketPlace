@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import Image from 'next/image';
 import {
   User,
@@ -13,10 +13,55 @@ import {
   Menu,
   Sparkles,
 } from 'lucide-react';
+import { useAuth } from '@/context/AuthContext';
+import { getCachedUserProfile } from '@/lib/auth';
+import { onboardingApi } from '@/lib/onboardingApi';
 
 export default function (props: any) {
   const onOpenSidebar = props?.onOpenSidebar;
   const [saved, setSaved] = useState(false);
+  const { user } = useAuth();
+  const cachedUser = getCachedUserProfile();
+  const [farmInfo, setFarmInfo] = useState<{
+    fullName: string;
+    phone: string;
+    email: string;
+    farmName: string;
+    location: string;
+  }>({
+    fullName: user?.fullName || cachedUser?.fullName || 'Farmer Profile',
+    phone: user?.phone || cachedUser?.phone || '+251 911 000 000',
+    email: user?.email || cachedUser?.email || 'farmer@agrimarket.et',
+    farmName: 'Local Producer Farm',
+    location: 'Oromia Regional State',
+  });
+
+  useEffect(() => {
+    async function loadProfile() {
+      try {
+        const res = await onboardingApi.getStatus();
+        const docs = (res.farmerProfile?.verificationDocuments as any) || {};
+        setFarmInfo({
+          fullName: res.fullName || user?.fullName || cachedUser?.fullName || 'Farmer Profile',
+          phone: res.phone || user?.phone || cachedUser?.phone || '+251 911 000 000',
+          email: res.email || user?.email || cachedUser?.email || 'farmer@agrimarket.et',
+          farmName: res.farmerProfile?.farmName || 'Local Producer Farm',
+          location: `${docs.region || 'Oromia'}, ${docs.woreda || 'Central Hub'}`,
+        });
+      } catch (err) {
+        // Fallback to in-memory/cached user
+        if (user || cachedUser) {
+          setFarmInfo((prev) => ({
+            ...prev,
+            fullName: user?.fullName || cachedUser?.fullName || prev.fullName,
+            phone: user?.phone || cachedUser?.phone || prev.phone,
+            email: user?.email || cachedUser?.email || prev.email,
+          }));
+        }
+      }
+    }
+    loadProfile();
+  }, [user]);
 
   return (
     <div className="flex-1 flex flex-col overflow-hidden bg-[#F4F6F5] dark:bg-[#0B1512]">
@@ -58,7 +103,7 @@ export default function (props: any) {
           <div className="h-32 bg-gradient-to-r from-emerald-800 to-teal-700 relative">
             <div className="absolute -bottom-10 left-6">
               <div className="w-20 h-20 rounded-2xl border-4 border-white dark:border-[#0D2118] overflow-hidden relative shadow-md bg-emerald-100">
-                <Image src="/images/avatar_abebe_hd.jpg" alt="Tesfaye Abebe" fill className="object-cover" />
+                <Image src="/images/avatar_abebe_hd.jpg" alt={farmInfo.fullName} fill className="object-cover" />
               </div>
             </div>
           </div>
@@ -66,10 +111,10 @@ export default function (props: any) {
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
               <div>
                 <h2 className="text-xl font-black text-gray-800 dark:text-white flex items-center gap-2">
-                  Tesfaye Abebe
+                  {farmInfo.fullName}
                   <CheckCircle2 className="w-5 h-5 text-emerald-500" />
                 </h2>
-                <p className="text-xs text-gray-500">Green Highland Valley Organic Farm · Certified Producer</p>
+                <p className="text-xs text-gray-500">{farmInfo.farmName} · Certified Producer</p>
               </div>
               <span className="self-start px-3 py-1 rounded-full text-xs font-extrabold bg-emerald-100 text-emerald-800 dark:bg-emerald-900/40 dark:text-emerald-300">
                 Verified Seller (Tier 1)
@@ -79,15 +124,15 @@ export default function (props: any) {
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs text-gray-600 dark:text-gray-300 pt-2 border-t border-gray-100 dark:border-white/5">
               <div className="flex items-center gap-2">
                 <MapPin className="w-4 h-4 text-emerald-600" />
-                <span>Sebeta, Oromia Special Zone</span>
+                <span>{farmInfo.location}</span>
               </div>
               <div className="flex items-center gap-2">
                 <Phone className="w-4 h-4 text-emerald-600" />
-                <span>+251 911 234 567</span>
+                <span>{farmInfo.phone}</span>
               </div>
               <div className="flex items-center gap-2">
                 <Mail className="w-4 h-4 text-emerald-600" />
-                <span>tesfaye.farm@agrimarket.et</span>
+                <span>{farmInfo.email}</span>
               </div>
             </div>
           </div>

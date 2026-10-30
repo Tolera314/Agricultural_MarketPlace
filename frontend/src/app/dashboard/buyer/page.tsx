@@ -44,6 +44,8 @@ import {
 import { ThemeToggle } from '@/components/layout/ThemeToggle';
 import { buyerApi } from '@/lib/buyerApi';
 import { getCachedUserProfile, logout } from '@/lib/auth';
+import { useAuth } from '@/context/AuthContext';
+import { BuyerBottomNav } from '@/components/layout/MobileBottomNav';
 import { DashboardScreenSkeleton } from '@/components/ui/Skeleton';
 
 const BUYER_NAV_ITEMS = [
@@ -202,11 +204,23 @@ function BuyerDashboardContent(props: any) {
   const [feedbackMessage, setFeedbackMessage] = useState<{ text: string; type: 'success' | 'error' } | null>(null);
 
   // User Profile
-  const [userProfile, setUserProfile] = useState<{ fullName: string; phone: string; role: string }>({
-    fullName: 'Selamawit Kebede',
-    phone: '+251 91 123 4567',
+  const { user } = useAuth();
+  const cachedUser = getCachedUserProfile();
+  const [userProfile, setUserProfile] = useState<{ fullName: string; phone: string; role: string }>(() => ({
+    fullName: user?.fullName || cachedUser?.fullName || 'Customer',
+    phone: user?.phone || cachedUser?.phone || '',
     role: 'Buyer',
-  });
+  }));
+
+  useEffect(() => {
+    if (user?.fullName) {
+      setUserProfile((prev) => ({
+        ...prev,
+        fullName: user.fullName,
+        phone: user.phone || prev.phone,
+      }));
+    }
+  }, [user]);
 
   const showNotification = (text: string, type: 'success' | 'error' = 'success') => {
     setFeedbackMessage({ text, type });
@@ -608,8 +622,8 @@ function BuyerDashboardContent(props: any) {
         </div>
       )}
 
-      {/* Main Content Container with lg:ml-60 */}
-      <div className="flex-1 flex flex-col lg:ml-60 min-w-0">
+      {/* Main Content Container with lg:ml-60 and bottom padding for mobile tabs */}
+      <div className="flex-1 flex flex-col lg:ml-60 min-w-0 pb-20 lg:pb-0">
         {/* Top Header Navigation Bar */}
         <header className="sticky top-0 z-40 bg-white/95 dark:bg-[#0A1A14]/95 backdrop-blur-md border-b border-[#E5EDE7] dark:border-[#132A20] px-4 sm:px-6 py-2.5 flex items-center justify-between gap-4">
           <div className="flex items-center gap-3">
@@ -712,7 +726,13 @@ function BuyerDashboardContent(props: any) {
               <div className="relative rounded-3xl bg-white dark:bg-[#0D221A] border border-[#E5EDE7] dark:border-[#132A20] p-6 lg:p-8 flex flex-col md:flex-row items-center justify-between gap-6 shadow-xs overflow-hidden">
                 <div className="space-y-2 z-10">
                   <h1 className="text-2xl sm:text-3xl font-display font-bold text-[#075C3B] dark:text-[#34D399] tracking-tight">
-                    Good morning, Selamawit! 🌱
+                    {(() => {
+                      const hour = new Date().getHours();
+                      const greeting = hour < 12 ? 'Good morning' : hour < 17 ? 'Good afternoon' : 'Good evening';
+                      const rawName = userProfile.fullName || user?.fullName || cachedUser?.fullName || 'Customer';
+                      const firstName = rawName.trim().split(' ')[0] || rawName;
+                      return `${greeting}, ${firstName}! 🌱`;
+                    })()}
                   </h1>
                   <p className="text-sm text-[#517663] dark:text-[#88B8A0] font-medium">
                     Fresh products. Local farmers. Better food.
@@ -2080,6 +2100,15 @@ function BuyerDashboardContent(props: any) {
         </div>
       )}
 
+      {/* Native-style Mobile Bottom Tab Bar */}
+      <BuyerBottomNav
+        activeTab={activeTab === 'dashboard' ? 'overview' : activeTab}
+        onSelectTab={(tab) => {
+          setActiveTab(tab === 'overview' ? 'dashboard' : tab);
+        }}
+        onOpenMenu={() => setSidebarOpen(true)}
+        cartCount={totalCartCount}
+      />
     </div>
   );
 }
