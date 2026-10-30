@@ -308,6 +308,7 @@ export class SuperadminService {
     search?: string;
     role?: Role | 'ALL';
     status?: 'ALL' | 'ACTIVE' | 'INACTIVE';
+    verificationStatus?: 'ALL' | 'PENDING' | 'VERIFIED' | 'REJECTED';
     page?: number;
     limit?: number;
   }) {
@@ -315,24 +316,37 @@ export class SuperadminService {
     const limit = Math.min(100, Math.max(1, Number(options.limit) || 20));
     const skip = (page - 1) * limit;
 
-    const where: any = {};
+    const andConditions: any[] = [];
 
     if (options.role && options.role !== 'ALL') {
-      where.role = options.role;
+      andConditions.push({ role: options.role });
     }
 
     if (options.status && options.status !== 'ALL') {
-      where.isActive = options.status === 'ACTIVE';
+      andConditions.push({ isActive: options.status === 'ACTIVE' });
+    }
+
+    if (options.verificationStatus && options.verificationStatus !== 'ALL') {
+      andConditions.push({
+        OR: [
+          { farmerProfile: { verificationStatus: options.verificationStatus } },
+          { deliveryProfile: { verificationStatus: options.verificationStatus } },
+        ],
+      });
     }
 
     if (options.search) {
       const q = options.search.trim();
-      where.OR = [
-        { fullName: { contains: q, mode: 'insensitive' } },
-        { phone: { contains: q } },
-        { email: { contains: q, mode: 'insensitive' } },
-      ];
+      andConditions.push({
+        OR: [
+          { fullName: { contains: q, mode: 'insensitive' } },
+          { phone: { contains: q } },
+          { email: { contains: q, mode: 'insensitive' } },
+        ],
+      });
     }
+
+    const where: any = andConditions.length > 0 ? { AND: andConditions } : {};
 
     const [total, users] = await Promise.all([
       prisma.user.count({ where }),
@@ -349,11 +363,35 @@ export class SuperadminService {
           role: true,
           isActive: true,
           isVerified: true,
+          onboardingStatus: true,
           tokenVersion: true,
           createdAt: true,
           updatedAt: true,
-          farmerProfile: { select: { verificationStatus: true, farmName: true } },
-          deliveryProfile: { select: { verificationStatus: true, vehicleType: true } },
+          farmerProfile: {
+            select: {
+              id: true,
+              farmName: true,
+              farmDescription: true,
+              verificationStatus: true,
+              verificationNote: true,
+              verificationDocuments: true,
+              farmLatitude: true,
+              farmLongitude: true,
+              isOrganic: true,
+            },
+          },
+          deliveryProfile: {
+            select: {
+              id: true,
+              vehicleType: true,
+              vehiclePlate: true,
+              vehicleCapacityKg: true,
+              verificationStatus: true,
+              verificationNote: true,
+              verificationDocuments: true,
+              availability: true,
+            },
+          },
         },
       }),
     ]);

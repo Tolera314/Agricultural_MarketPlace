@@ -48,6 +48,7 @@ import { useAuth } from '@/context/AuthContext';
 import { BuyerBottomNav } from '@/components/layout/MobileBottomNav';
 import { UserAvatar } from '@/components/ui/UserAvatar';
 import { DashboardScreenSkeleton } from '@/components/ui/Skeleton';
+import { BuyerChatView } from '@/components/chat/BuyerChatView';
 
 const BUYER_NAV_ITEMS = [
   { id: 'dashboard', label: 'Overview', href: '/dashboard/buyer', icon: LayoutDashboard },
@@ -112,8 +113,12 @@ function BuyerDashboardContent(props: any) {
   const searchParams = useSearchParams();
   const buyNowParam = searchParams.get('buyNow');
   const checkoutParam = searchParams.get('checkout');
+  const tabParam = searchParams.get('tab');
+  const farmerIdParam = searchParams.get('farmerId');
   const params = useParams();
   const pathname = usePathname();
+
+  const [chatFarmerId, setChatFarmerId] = useState<string | null>(farmerIdParam || null);
 
   const currentTab: BuyerTab = useMemo(() => {
     if (initialTab) return initialTab;
@@ -143,8 +148,18 @@ function BuyerDashboardContent(props: any) {
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
   useEffect(() => {
-    setActiveTab(currentTab);
-  }, [currentTab]);
+    if (tabParam === 'messages' || farmerIdParam) {
+      setActiveTab('messages');
+      if (farmerIdParam) setChatFarmerId(farmerIdParam);
+    } else {
+      setActiveTab(currentTab);
+    }
+  }, [currentTab, tabParam, farmerIdParam]);
+
+  const handleStartChatWithFarmer = (farmerId: string) => {
+    setChatFarmerId(farmerId);
+    setActiveTab('messages');
+  };
 
   const navigateToTab = (tab: BuyerTab) => {
     setActiveTab(tab);
@@ -891,16 +906,26 @@ function BuyerDashboardContent(props: any) {
                           </div>
                         </div>
 
-                        {/* View Action Button */}
-                        <button
-                          onClick={() => {
-                            setSearchQuery(farmer.name);
-                            navigateToTab('products');
-                          }}
-                          className="px-4 py-1.5 rounded-xl bg-[#075C3B] hover:bg-[#05482D] dark:bg-[#10B981] dark:hover:bg-[#059669] text-white text-xs font-bold transition-colors cursor-pointer shrink-0"
-                        >
-                          View
-                        </button>
+                        {/* Actions */}
+                        <div className="flex items-center gap-1.5 shrink-0">
+                          <button
+                            type="button"
+                            onClick={() => handleStartChatWithFarmer(farmer.id)}
+                            className="p-2 rounded-xl bg-emerald-50 dark:bg-emerald-950/40 text-[#075C3B] dark:text-[#34D399] hover:bg-emerald-100 border border-emerald-200/50 text-xs font-bold transition-colors cursor-pointer"
+                            title={`Talk with ${farmer.name}`}
+                          >
+                            <MessageSquare className="w-3.5 h-3.5" />
+                          </button>
+                          <button
+                            onClick={() => {
+                              setSearchQuery(farmer.name);
+                              navigateToTab('products');
+                            }}
+                            className="px-3 py-1.5 rounded-xl bg-[#075C3B] hover:bg-[#05482D] dark:bg-[#10B981] dark:hover:bg-[#059669] text-white text-xs font-bold transition-colors cursor-pointer"
+                          >
+                            View
+                          </button>
+                        </div>
                       </div>
                     ))}
                   </div>
@@ -1360,6 +1385,14 @@ function BuyerDashboardContent(props: any) {
 
                     <div className="flex items-center gap-2 pt-2 border-t border-[#E5EDE7] dark:border-[#132A20]">
                       <button
+                        type="button"
+                        onClick={() => handleStartChatWithFarmer(farmer.id)}
+                        className="py-1.5 px-3 rounded-xl bg-emerald-50 dark:bg-emerald-950/40 text-[#075C3B] dark:text-[#34D399] hover:bg-emerald-100 border border-emerald-200/50 text-xs font-bold transition-colors cursor-pointer flex items-center justify-center gap-1.5"
+                      >
+                        <MessageSquare className="w-3.5 h-3.5" />
+                        <span>Message</span>
+                      </button>
+                      <button
                         onClick={() => {
                           setSearchQuery(farmer.name);
                           setActiveTab('products');
@@ -1497,13 +1530,11 @@ function BuyerDashboardContent(props: any) {
 
           {/* TAB 7: MESSAGES */}
           {activeTab === 'messages' && (
-            <div className="bg-white dark:bg-[#0D221A] rounded-2xl border border-[#E5EDE7] dark:border-[#132A20] p-8 text-center space-y-3">
-              <MessageSquare className="w-12 h-12 text-[#075C3B] mx-auto opacity-40" />
-              <h3 className="font-bold text-base text-[#1E2923] dark:text-white">Direct Messages</h3>
-              <p className="text-xs text-[#517663] dark:text-[#88B8A0] max-w-md mx-auto">
-                Authorized communications with farmers and assigned couriers appear here once an order enters preparation or delivery.
-              </p>
-            </div>
+            <BuyerChatView
+              initialFarmerId={chatFarmerId}
+              onClearInitialFarmer={() => setChatFarmerId(null)}
+              onNavigateToFarmers={() => setActiveTab('farmers')}
+            />
           )}
 
           {/* TAB 8: PROFILE */}

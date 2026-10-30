@@ -83,7 +83,10 @@ export default function AdminFarmersPage() {
     }
   };
 
-  const getApiUrl = () => API_BASE_URL;
+  const resolveDocUrl = (url?: string | null) => {
+    if (!url) return '';
+    return url.startsWith('http://') || url.startsWith('https://') ? url : `${API_BASE_URL}${url}`;
+  };
 
   return (
     <div className="space-y-6 max-w-7xl mx-auto pb-12">
@@ -324,7 +327,7 @@ export default function AdminFarmersPage() {
                     </div>
                     {inspectFarmer.verificationDocuments.identityDocUrl ? (
                       <a
-                        href={`${getApiUrl()}${inspectFarmer.verificationDocuments.identityDocUrl}`}
+                        href={resolveDocUrl(inspectFarmer.verificationDocuments.identityDocUrl)}
                         target="_blank"
                         rel="noreferrer"
                         className="px-3 py-1.5 rounded-lg text-xs font-semibold bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800 flex items-center gap-1.5"
@@ -347,7 +350,7 @@ export default function AdminFarmersPage() {
                         <div className="text-[11px] text-gray-400">Agricultural land verification evidence</div>
                       </div>
                       <a
-                        href={`${getApiUrl()}${inspectFarmer.verificationDocuments.landCertificateUrl}`}
+                        href={resolveDocUrl(inspectFarmer.verificationDocuments.landCertificateUrl)}
                         target="_blank"
                         rel="noreferrer"
                         className="px-3 py-1.5 rounded-lg text-xs font-semibold bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800 flex items-center gap-1.5"
