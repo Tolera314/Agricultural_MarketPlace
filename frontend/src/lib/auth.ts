@@ -204,6 +204,18 @@ export async function restoreSession(): Promise<AuthUser | null> {
     }
   }
 
+  // Check if client has had an active session before attempting refresh
+  const hasSessionHint =
+    typeof document !== 'undefined' &&
+    (document.cookie.includes('agrimarket_session=1') ||
+      document.cookie.includes('accessToken=') ||
+      Boolean(localStorage.getItem(USER_CACHE_KEY)));
+
+  if (!hasSessionHint && !memoryAccessToken && !memoryUser) {
+    notifyListeners(false);
+    return null;
+  }
+
   try {
     const token = await refreshSession();
     if (!token && !memoryUser) {

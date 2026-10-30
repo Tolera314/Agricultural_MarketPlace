@@ -126,16 +126,24 @@ function VerifyOtpContent() {
         return;
       }
 
-      if (data.data?.accessToken || data.data?.token) {
-        setAccessToken(data.data.accessToken || data.data.token);
-        setCurrentUser(data.data.user);
+      const payload = data.data !== undefined ? data.data : data;
+
+      if (payload?.accessToken || payload?.token) {
+        setAccessToken(payload.accessToken || payload.token);
+      }
+      if (payload?.user) {
+        setCurrentUser(payload.user);
       }
 
       setVerifiedSuccess(true);
       setIsVerifying(false);
 
       setTimeout(() => {
-        router.push('/dashboard');
+        if (payload?.user?.onboardingStatus === 'PENDING_ROLE') {
+          router.push('/onboarding/select-role');
+        } else {
+          router.push('/dashboard');
+        }
       }, 1200);
     } catch (err) {
       setIsVerifying(false);

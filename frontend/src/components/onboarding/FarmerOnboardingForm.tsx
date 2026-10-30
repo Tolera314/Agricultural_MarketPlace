@@ -24,6 +24,7 @@ import {
 import { onboardingApi } from '@/lib/onboardingApi';
 import { compressDocumentImage } from '@/lib/imageCompressor';
 import { getHumanReadableErrorMessage } from '@/lib/errorHandler';
+import { getCurrentUser, setCurrentUser } from '@/lib/auth';
 
 export function FarmerOnboardingForm() {
   const router = useRouter();
@@ -82,6 +83,13 @@ export function FarmerOnboardingForm() {
     async function loadInitial() {
       try {
         const status = await onboardingApi.getStatus();
+
+        // If user already submitted their application, lead directly to dashboard
+        if (status.onboardingStatus === 'PENDING_VERIFICATION' || status.onboardingStatus === 'COMPLETED') {
+          router.replace('/dashboard/farmer');
+          return;
+        }
+
         // Prefill contact info
         setFormData((prev) => ({
           ...prev,
@@ -262,7 +270,7 @@ export function FarmerOnboardingForm() {
     setErrors({});
 
     try {
-      await onboardingApi.submitFarmerApplication({
+      const submitRes: any = await onboardingApi.submitFarmerApplication({
         farmName: formData.farmName.trim(),
         farmDescription: formData.farmDescription.trim() || undefined,
         region: formData.region,
@@ -283,6 +291,17 @@ export function FarmerOnboardingForm() {
         landCertificateUrl: formData.landCertificateUrl || undefined,
         consentedToTerms: formData.consentedToTerms,
       });
+
+      // Synchronously update local user cache so RouteGuard recognizes the role and status immediately
+      const current = getCurrentUser();
+      const updatedUser = submitRes?.user || (current ? {
+        ...current,
+        role: 'FARMER' as const,
+        onboardingStatus: 'PENDING_VERIFICATION',
+      } : null);
+      if (updatedUser) {
+        setCurrentUser(updatedUser);
+      }
 
       // Redirect to intended farmer dashboard with success flag
       router.push('/dashboard/farmer?onboardingSuccess=true');

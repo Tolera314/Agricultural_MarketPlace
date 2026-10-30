@@ -3,7 +3,7 @@
  * Handles role selection, draft persistence, document upload, and farmer/worker verification submissions.
  */
 
-import { getAccessToken, setAccessToken, setCurrentUser } from './auth';
+import { getAccessToken, setAccessToken, setCurrentUser, getCurrentUser } from './auth';
 import { API_BASE_URL } from './apiConfig';
 import { safeParseApiResponse, ApiClientError, getHumanReadableErrorMessage } from './errorHandler';
 
@@ -270,11 +270,26 @@ export const onboardingApi = {
       });
     }
 
-    if (parsed.data?.token || parsed.data?.accessToken) {
-      setAccessToken(parsed.data.token || parsed.data.accessToken);
+    const payload = parsed.data?.data !== undefined ? parsed.data.data : parsed.data;
+
+    if (payload?.token || payload?.accessToken) {
+      setAccessToken(payload.token || payload.accessToken);
     }
 
-    return parsed.data;
+    if (payload?.user) {
+      setCurrentUser(payload.user);
+    } else {
+      const current = getCurrentUser();
+      if (current) {
+        setCurrentUser({
+          ...current,
+          role: 'FARMER',
+          onboardingStatus: 'PENDING_VERIFICATION',
+        });
+      }
+    }
+
+    return payload;
   },
 
   /**
@@ -308,10 +323,25 @@ export const onboardingApi = {
       });
     }
 
-    if (parsed.data?.token || parsed.data?.accessToken) {
-      setAccessToken(parsed.data.token || parsed.data.accessToken);
+    const payload = parsed.data?.data !== undefined ? parsed.data.data : parsed.data;
+
+    if (payload?.token || payload?.accessToken) {
+      setAccessToken(payload.token || payload.accessToken);
     }
 
-    return parsed.data;
+    if (payload?.user) {
+      setCurrentUser(payload.user);
+    } else {
+      const current = getCurrentUser();
+      if (current) {
+        setCurrentUser({
+          ...current,
+          role: 'DELIVERY_WORKER',
+          onboardingStatus: 'PENDING_VERIFICATION',
+        });
+      }
+    }
+
+    return payload;
   },
 };
