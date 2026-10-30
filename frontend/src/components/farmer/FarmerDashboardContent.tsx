@@ -31,6 +31,7 @@ import { useSearchParams } from 'next/navigation';
 import { onboardingApi } from '@/lib/onboardingApi';
 import { useAuth } from '@/context/AuthContext';
 import { getCachedUserProfile } from '@/lib/auth';
+import { UserAvatar } from '@/components/ui/UserAvatar';
 
 // ────────────────────────────────────────────────────────────
 // Global search data — products, orders, buyers, categories
@@ -663,9 +664,7 @@ export default function FarmerDashboardContent({
               <span className="absolute top-1.5 right-1.5 w-2 h-2 rounded-full bg-rose-500" />
             </button>
             <button className="flex items-center gap-2 px-2 py-1 rounded-xl hover:bg-gray-50 dark:hover:bg-white/5 transition-colors cursor-pointer">
-              <div className="w-8 h-8 rounded-full bg-emerald-100 dark:bg-emerald-900/40 border-2 border-emerald-400 overflow-hidden">
-                <Image src="/images/avatar_abebe_hd.jpg" alt={farmerDisplayName} width={32} height={32} className="w-full h-full object-cover" />
-              </div>
+              <UserAvatar name={farmerDisplayName} src={(user as any)?.avatarUrl} size="sm" />
               <span className="hidden sm:block text-sm font-semibold text-gray-700 dark:text-gray-200">{farmerDisplayName}</span>
               <ChevronDown className="w-3.5 h-3.5 text-gray-400" />
             </button>
@@ -711,15 +710,7 @@ export default function FarmerDashboardContent({
 
           {/* User avatar + name */}
           <button className="flex items-center gap-2 px-2 py-1 rounded-xl hover:bg-gray-50 dark:hover:bg-white/5 transition-colors cursor-pointer">
-            <div className="w-8 h-8 rounded-full bg-emerald-100 dark:bg-emerald-900/40 border-2 border-emerald-400 overflow-hidden shrink-0">
-              <Image
-                src="/images/avatar_abebe_hd.jpg"
-                alt={farmerDisplayName}
-                width={32}
-                height={32}
-                className="w-full h-full object-cover"
-              />
-            </div>
+            <UserAvatar name={farmerDisplayName} src={(user as any)?.avatarUrl} size="sm" />
             <div className="hidden sm:flex flex-col items-start">
               <span className="text-xs font-bold text-gray-800 dark:text-gray-100 leading-tight">{farmerDisplayName}</span>
               <span className="text-[10px] text-gray-400 dark:text-gray-500 leading-tight">Farmer</span>

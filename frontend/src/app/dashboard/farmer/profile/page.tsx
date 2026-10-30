@@ -16,6 +16,7 @@ import {
 import { useAuth } from '@/context/AuthContext';
 import { getCachedUserProfile } from '@/lib/auth';
 import { onboardingApi } from '@/lib/onboardingApi';
+import { UserAvatar } from '@/components/ui/UserAvatar';
 
 export default function (props: any) {
   const onOpenSidebar = props?.onOpenSidebar;
@@ -102,8 +103,13 @@ export default function (props: any) {
         <div className="bg-white dark:bg-[#0D2118] rounded-3xl border border-gray-100 dark:border-white/5 shadow-xs overflow-hidden">
           <div className="h-32 bg-gradient-to-r from-emerald-800 to-teal-700 relative">
             <div className="absolute -bottom-10 left-6">
-              <div className="w-20 h-20 rounded-2xl border-4 border-white dark:border-[#0D2118] overflow-hidden relative shadow-md bg-emerald-100">
-                <Image src="/images/avatar_abebe_hd.jpg" alt={farmInfo.fullName} fill className="object-cover" />
+              <div className="w-20 h-20 rounded-2xl border-4 border-white dark:border-[#0D2118] overflow-hidden relative shadow-md">
+                <UserAvatar
+                  name={farmInfo.fullName}
+                  src={(user as any)?.avatarUrl}
+                  size="xl"
+                  className="w-full h-full text-2xl rounded-none"
+                />
               </div>
             </div>
           </div>

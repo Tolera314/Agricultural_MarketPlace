@@ -7,6 +7,7 @@ import { Search, Bell, LogOut, Shield, Menu } from 'lucide-react';
 import { ThemeToggle } from '@/components/layout/ThemeToggle';
 import { getCachedUserProfile, logout } from '@/lib/auth';
 import { useAuth } from '@/context/AuthContext';
+import { UserAvatar } from '@/components/ui/UserAvatar';
 
 interface SuperadminHeaderProps {
   onSearch?: (query: string) => void;
@@ -87,15 +88,11 @@ export function SuperadminHeader({ onSearch, onOpenMobileMenu }: SuperadminHeade
             onClick={() => setShowDropdown(!showDropdown)}
             className="flex items-center gap-2.5 sm:gap-3 cursor-pointer group p-1 rounded-xl hover:bg-gray-50 dark:hover:bg-[#0E261D] transition-colors"
           >
-            <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-full overflow-hidden border-2 border-[#10B981]/40 shrink-0 relative shadow-sm">
-              <Image
-                src={avatarUrl}
-                alt={adminName}
-                fill
-                className="object-cover"
-                sizes="40px"
-              />
-            </div>
+            <UserAvatar
+              name={adminName}
+              src={(user as any)?.avatarUrl}
+              size="md"
+            />
             <div className="text-left hidden sm:block">
               <div className="text-sm font-semibold text-[#1B362C] dark:text-[#E2EBE6] leading-tight group-hover:text-[#059669] transition-colors">
                 {adminName}

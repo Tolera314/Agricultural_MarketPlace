@@ -1,13 +1,36 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import FarmerSidebar from '@/components/farmer/FarmerSidebar';
 import { RouteGuard } from '@/components/auth/RouteGuard';
 import { FarmerBottomNav } from '@/components/layout/MobileBottomNav';
 import { SidebarProvider } from '@/context/SidebarContext';
+import { farmerApi } from '@/lib/farmerApi';
 
 function FarmerLayoutInner({ children }: { children: React.ReactNode }) {
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [pendingOrdersCount, setPendingOrdersCount] = useState<number>(0);
+
+  useEffect(() => {
+    let isMounted = true;
+    async function fetchFarmerMetrics() {
+      try {
+        const res = await farmerApi.getDashboard();
+        if (isMounted && res?.data?.metrics?.pendingOrders !== undefined) {
+          setPendingOrdersCount(res.data.metrics.pendingOrders);
+        }
+      } catch {
+        // Handled silently
+      }
+    }
+
+    fetchFarmerMetrics();
+    const interval = setInterval(fetchFarmerMetrics, 20000);
+    return () => {
+      isMounted = false;
+      clearInterval(interval);
+    };
+  }, []);
 
   return (
     <div className="min-h-screen bg-[#F4F7F5] dark:bg-[#07130D] flex font-sans text-slate-800 dark:text-[#E6F4ED] transition-colors duration-200">
@@ -29,8 +52,11 @@ function FarmerLayoutInner({ children }: { children: React.ReactNode }) {
         })}
       </div>
 
-      {/* Native-style Mobile Bottom Tab Bar */}
-      <FarmerBottomNav onOpenMenu={() => setSidebarOpen(true)} />
+      {/* Native-style Mobile Bottom Tab Bar with Live Unfulfilled Orders Badge */}
+      <FarmerBottomNav
+        onOpenMenu={() => setSidebarOpen(true)}
+        pendingOrdersCount={pendingOrdersCount}
+      />
     </div>
   );
 }

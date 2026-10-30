@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { useRouter, useParams, usePathname, useSearchParams } from 'next/navigation';
 import { useAuth } from '@/context/AuthContext';
 import { WorkerBottomNav } from '@/components/layout/MobileBottomNav';
+import { UserAvatar } from '@/components/ui/UserAvatar';
 import {
   LayoutDashboard,
   Package,
@@ -2038,13 +2039,11 @@ function WorkerDashboardContent(props: any) {
                 onClick={() => setProfileDropdownOpen(p => !p)}
                 className="flex items-center gap-2.5 p-1 sm:pr-3 rounded-full hover:bg-[#F0F5F2] dark:hover:bg-[#163828] transition-colors cursor-pointer"
               >
-                <div className="relative w-8 h-8 rounded-full overflow-hidden border border-[#D5E6DC] dark:border-[#1E4130] bg-slate-100 dark:bg-slate-800 shrink-0">
-                  <img
-                    src="/images/avatar_mekonnen_hd.jpg"
-                    alt={user?.fullName || dashData?.worker?.fullName || 'Delivery Partner'}
-                    className="w-full h-full object-cover"
-                  />
-                </div>
+                <UserAvatar
+                  name={user?.fullName || dashData?.worker?.fullName || 'Delivery Partner'}
+                  src={(user as any)?.avatarUrl || (dashData?.worker as any)?.avatarUrl}
+                  size="sm"
+                />
                 <div className="hidden md:block text-left leading-tight">
                   <p className="text-xs font-bold text-[#0B3322] dark:text-[#EEFAF3]">
                     {user?.fullName || dashData?.worker?.fullName || 'Delivery Partner'}
@@ -2263,6 +2262,8 @@ function WorkerDashboardContent(props: any) {
         activeSection={activeSection}
         onSelectSection={(sec) => setActiveSection(sec)}
         onOpenMenu={() => setSidebarOpen(true)}
+        activeJobsCount={dashData?.profile?.activeJobCount || (dashData?.activeJob ? 1 : 0)}
+        availableOrdersCount={dashData?.metrics?.availableOrders || nearbyRequests.filter((r) => !r.accepted).length}
       />
     </div>
   );

@@ -26,7 +26,7 @@ export async function getFarmerDashboard(req: Request, res: Response, next: Next
     const profile = user.farmerProfile;
     const isVerified = profile.verificationStatus === 'VERIFIED';
 
-    const [totalProducts, activeProducts, totalOrders] = await Promise.all([
+    const [totalProducts, activeProducts, totalOrders, pendingOrders] = await Promise.all([
       prisma.productListing.count({
         where: { farmerId },
       }),
@@ -37,6 +37,18 @@ export async function getFarmerDashboard(req: Request, res: Response, next: Next
         where: {
           listing: {
             farmerId,
+          },
+        },
+      }),
+      prisma.orderItem.count({
+        where: {
+          listing: {
+            farmerId,
+          },
+          order: {
+            status: {
+              in: ['CONFIRMED', 'PREPARING', 'READY_FOR_PICKUP', 'PENDING_APPROVAL', 'APPROVED'],
+            },
           },
         },
       }),
@@ -64,6 +76,7 @@ export async function getFarmerDashboard(req: Request, res: Response, next: Next
           totalProducts,
           activeProducts,
           totalOrders,
+          pendingOrders,
         },
       },
     });

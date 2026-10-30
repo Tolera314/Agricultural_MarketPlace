@@ -46,6 +46,7 @@ import { buyerApi } from '@/lib/buyerApi';
 import { getCachedUserProfile, logout } from '@/lib/auth';
 import { useAuth } from '@/context/AuthContext';
 import { BuyerBottomNav } from '@/components/layout/MobileBottomNav';
+import { UserAvatar } from '@/components/ui/UserAvatar';
 import { DashboardScreenSkeleton } from '@/components/ui/Skeleton';
 
 const BUYER_NAV_ITEMS = [
@@ -693,15 +694,11 @@ function BuyerDashboardContent(props: any) {
 
             {/* User Profile Pill */}
             <div className="flex items-center gap-2.5 pl-2 border-l border-[#E5EDE7] dark:border-[#132A20]">
-              <div className="w-8 h-8 rounded-full overflow-hidden border border-[#075C3B]/20 relative shrink-0">
-                <Image
-                  src="/images/avatar_selamawit_hd.jpg"
-                  alt="Selamawit Kebede"
-                  width={32}
-                  height={32}
-                  className="w-full h-full object-cover"
-                />
-              </div>
+              <UserAvatar
+                name={userProfile.fullName || user?.fullName}
+                src={(user as any)?.avatarUrl}
+                size="sm"
+              />
               <div className="hidden md:block text-left">
                 <div className="text-xs font-bold text-[#1E2923] dark:text-[#EDF7F1] leading-tight">
                   {userProfile.fullName}
@@ -1513,15 +1510,12 @@ function BuyerDashboardContent(props: any) {
           {activeTab === 'profile' && (
             <div className="bg-white dark:bg-[#0D221A] rounded-2xl border border-[#E5EDE7] dark:border-[#132A20] p-6 max-w-xl mx-auto space-y-5">
               <div className="flex items-center gap-4">
-                <div className="w-16 h-16 rounded-full overflow-hidden border-2 border-[#075C3B] relative shrink-0">
-                  <Image
-                    src="/images/avatar_selamawit_hd.jpg"
-                    alt="Selamawit Kebede"
-                    width={64}
-                    height={64}
-                    className="w-full h-full object-cover"
-                  />
-                </div>
+                <UserAvatar
+                  name={userProfile.fullName || user?.fullName}
+                  src={(user as any)?.avatarUrl}
+                  size="xl"
+                  className="w-16 h-16 text-xl"
+                />
                 <div>
                   <h3 className="font-bold text-base text-[#1E2923] dark:text-white">
                     {userProfile.fullName}
@@ -2108,6 +2102,7 @@ function BuyerDashboardContent(props: any) {
         }}
         onOpenMenu={() => setSidebarOpen(true)}
         cartCount={totalCartCount}
+        activeOrdersCount={orders.filter((o: any) => o.status !== 'DELIVERED' && o.status !== 'CANCELLED').length}
       />
     </div>
   );
