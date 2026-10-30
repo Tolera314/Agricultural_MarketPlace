@@ -166,11 +166,23 @@ export function MobileBottomNav({
  * Farmer Mobile Bottom Navigation:
  * Overview -> Products -> Orders -> Earnings -> Menu
  */
-export function FarmerBottomNav({ onOpenMenu }: { onOpenMenu: () => void }) {
+export function FarmerBottomNav({
+  onOpenMenu,
+  pendingOrdersCount,
+}: {
+  onOpenMenu: () => void;
+  pendingOrdersCount?: number;
+}) {
   const items: BottomNavItem[] = [
     { id: 'dashboard', label: 'Overview', href: '/dashboard/farmer', icon: LayoutDashboard },
     { id: 'products', label: 'Products', href: '/dashboard/farmer/products', icon: Package },
-    { id: 'orders', label: 'Orders', href: '/dashboard/farmer/orders', icon: ShoppingCart },
+    {
+      id: 'orders',
+      label: 'Orders',
+      href: '/dashboard/farmer/orders',
+      icon: ShoppingCart,
+      badge: pendingOrdersCount && pendingOrdersCount > 0 ? pendingOrdersCount : undefined,
+    },
     { id: 'earnings', label: 'Earnings', href: '/dashboard/farmer/earnings', icon: DollarSign },
     { id: 'menu', label: 'Menu', icon: Menu, action: onOpenMenu },
   ];
@@ -186,14 +198,30 @@ export function WorkerBottomNav({
   activeSection,
   onSelectSection,
   onOpenMenu,
+  activeJobsCount,
+  availableOrdersCount,
 }: {
   activeSection: string;
   onSelectSection: (section: any) => void;
   onOpenMenu: () => void;
+  activeJobsCount?: number;
+  availableOrdersCount?: number;
 }) {
   const items: BottomNavItem[] = [
-    { id: 'radar', label: 'Radar', icon: Compass, action: () => onSelectSection('radar') },
-    { id: 'active', label: 'Active', icon: Truck, action: () => onSelectSection('active') },
+    {
+      id: 'radar',
+      label: 'Radar',
+      icon: Compass,
+      badge: availableOrdersCount && availableOrdersCount > 0 ? availableOrdersCount : undefined,
+      action: () => onSelectSection('radar'),
+    },
+    {
+      id: 'active',
+      label: 'Active',
+      icon: Truck,
+      badge: activeJobsCount && activeJobsCount > 0 ? activeJobsCount : undefined,
+      action: () => onSelectSection('active'),
+    },
     { id: 'earnings', label: 'Earnings', icon: DollarSign, action: () => onSelectSection('earnings') },
     { id: 'history', label: 'History', icon: Clock, action: () => onSelectSection('history') },
     { id: 'menu', label: 'Menu', icon: Menu, action: onOpenMenu },
@@ -211,15 +239,23 @@ export function BuyerBottomNav({
   onSelectTab,
   onOpenMenu,
   cartCount,
+  activeOrdersCount,
 }: {
   activeTab: string;
   onSelectTab: (tab: any) => void;
   onOpenMenu: () => void;
   cartCount?: number;
+  activeOrdersCount?: number;
 }) {
   const items: BottomNavItem[] = [
     { id: 'overview', label: 'Market', icon: ShoppingBag, action: () => onSelectTab('overview') },
-    { id: 'orders', label: 'Orders', icon: Package, action: () => onSelectTab('orders') },
+    {
+      id: 'orders',
+      label: 'Orders',
+      icon: Package,
+      badge: activeOrdersCount && activeOrdersCount > 0 ? activeOrdersCount : undefined,
+      action: () => onSelectTab('orders'),
+    },
     { id: 'cart', label: 'Cart', icon: ShoppingCart, badge: cartCount && cartCount > 0 ? cartCount : undefined, action: () => onSelectTab('cart') },
     { id: 'messages', label: 'Messages', icon: MessageSquare, action: () => onSelectTab('messages') },
     { id: 'menu', label: 'Menu', icon: Menu, action: onOpenMenu },

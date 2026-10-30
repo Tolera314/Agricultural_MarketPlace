@@ -7,8 +7,8 @@
   "scope": "/",
   "display": "standalone",
   "orientation": "portrait-primary",
-  "background_color": "#07130D",
-  "theme_color": "#075C3B",
+  "background_color": "#071912",
+  "theme_color": "#071912",
   "lang": "en-ET",
   "categories": ["business", "shopping", "food"],
   "icons": [

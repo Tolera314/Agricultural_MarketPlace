@@ -17,10 +17,12 @@ import {
   Loader2,
   AlertCircle,
   ChevronRight,
+  MessageSquare,
 } from 'lucide-react';
 import { Header, Footer } from '@/components/layout';
 import { CartDrawer } from '@/components/cart/CartDrawer';
 import { AuthRequiredModal } from '@/components/auth/AuthRequiredModal';
+import { UserAvatar } from '@/components/ui/UserAvatar';
 import { useAuth } from '@/context/AuthContext';
 import { useCart } from '@/context/CartContext';
 import { buyerApi } from '@/lib/buyerApi';
@@ -41,10 +43,19 @@ export default function FarmerProfilePage() {
   const [isLoading, setIsLoading] = useState(true);
   const [addedNotice, setAddedNotice] = useState<string | null>(null);
 
-  // Authentication Required Modal for Guests on Purchase Actions
+  // Authentication Required Modal for Guests on Purchase & Message Actions
   const [showAuthModal, setShowAuthModal] = useState(false);
   const [authRedirectUrl, setAuthRedirectUrl] = useState<string>(`/farmers/${farmerId}`);
   const [roleNotice, setRoleNotice] = useState<string | null>(null);
+
+  const handleTalkWithFarmer = () => {
+    if (!isAuthenticated || !user) {
+      setAuthRedirectUrl(`/dashboard/buyer?tab=messages&farmerId=${farmerId}`);
+      setShowAuthModal(true);
+      return;
+    }
+    router.push(`/dashboard/buyer?tab=messages&farmerId=${farmerId}`);
+  };
 
   useEffect(() => {
     let isMounted = true;
@@ -252,20 +263,32 @@ export default function FarmerProfilePage() {
         {/* Farmer Header Hero Card */}
         <div className="bg-white dark:bg-[#11221C] rounded-3xl border border-[#E2EAE5] dark:border-[#1E3A2F] p-6 sm:p-8 mb-10 shadow-xs">
           <div className="flex flex-col sm:flex-row items-start sm:items-center gap-6">
-            <img
+            <UserAvatar
               src={farmerData.avatarUrl}
-              alt={farmerData.name}
-              className="w-24 h-24 sm:w-28 sm:h-28 rounded-3xl object-cover border-2 border-[#E5EDE4] dark:border-[#1E3A2F] shadow-sm shrink-0"
+              name={farmerData.name}
+              size="xl"
+              className="w-24 h-24 sm:w-28 sm:h-28 rounded-3xl shrink-0"
             />
             <div className="flex-1 space-y-2">
-              <div className="flex flex-wrap items-center gap-2.5">
-                <h1 className="text-2xl sm:text-3xl font-extrabold text-[#11382B] dark:text-[#EDF7F1] tracking-tight">
-                  {farmerData.farmName}
-                </h1>
-                <span className="inline-flex items-center gap-1 text-xs font-semibold text-[#2E7D32] dark:text-[#34D399] bg-[#E8F5E9] dark:bg-[#163327] px-2.5 py-1 rounded-full border border-emerald-200/50">
-                  <ShieldCheck className="w-3.5 h-3.5" />
-                  Verified Ethiopian Grower
-                </span>
+              <div className="flex flex-wrap items-center justify-between gap-3">
+                <div className="flex flex-wrap items-center gap-2.5">
+                  <h1 className="text-2xl sm:text-3xl font-extrabold text-[#11382B] dark:text-[#EDF7F1] tracking-tight">
+                    {farmerData.farmName}
+                  </h1>
+                  <span className="inline-flex items-center gap-1 text-xs font-semibold text-[#2E7D32] dark:text-[#34D399] bg-[#E8F5E9] dark:bg-[#163327] px-2.5 py-1 rounded-full border border-emerald-200/50">
+                    <ShieldCheck className="w-3.5 h-3.5" />
+                    Verified Ethiopian Grower
+                  </span>
+                </div>
+
+                <button
+                  type="button"
+                  onClick={handleTalkWithFarmer}
+                  className="inline-flex items-center gap-2 px-4 py-2.5 rounded-2xl bg-[#059669] hover:bg-[#047857] text-white font-bold text-xs shadow-sm transition-all cursor-pointer shrink-0"
+                >
+                  <MessageSquare className="w-4 h-4" />
+                  <span>Talk with Farmer</span>
+                </button>
               </div>
 
               <p className="text-xs sm:text-sm text-[#4A675B] dark:text-[#88A89A]">

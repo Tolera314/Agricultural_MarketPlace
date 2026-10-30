@@ -3,6 +3,8 @@ import { requireAuth, requireRole } from '../middleware/requireAuth.js';
 import {
   getDashboardOverview,
   getUsers,
+  verifyFarmer,
+  verifyWorker,
   provisionAdministrator,
   updateUserRole,
   updateUserStatus,
@@ -38,6 +40,8 @@ router.get('/dashboard', getDashboardOverview);
 
 // 2. Users & Roles Governance
 router.get('/users', getUsers);
+router.patch('/farmers/:id/verify', verifyFarmer);
+router.patch('/workers/:id/verify', verifyWorker);
 router.post('/users/provision', provisionAdministrator);
 router.patch('/users/:id/role', updateUserRole);
 router.patch('/users/:id/status', updateUserStatus);

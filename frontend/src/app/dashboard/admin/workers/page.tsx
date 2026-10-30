@@ -82,7 +82,10 @@ export default function AdminWorkersPage() {
     }
   };
 
-  const getApiUrl = () => API_BASE_URL;
+  const resolveDocUrl = (url?: string | null) => {
+    if (!url) return '';
+    return url.startsWith('http://') || url.startsWith('https://') ? url : `${API_BASE_URL}${url}`;
+  };
 
   return (
     <div className="space-y-6 max-w-7xl mx-auto pb-12">
@@ -340,7 +343,7 @@ export default function AdminWorkersPage() {
                     </div>
                     {inspectWorker.verificationDocuments.identityDocUrl ? (
                       <a
-                        href={`${getApiUrl()}${inspectWorker.verificationDocuments.identityDocUrl}`}
+                        href={resolveDocUrl(inspectWorker.verificationDocuments.identityDocUrl)}
                         target="_blank"
                         rel="noreferrer"
                         className="px-3 py-1.5 rounded-lg text-xs font-semibold bg-teal-50 dark:bg-teal-950/40 text-teal-700 dark:text-teal-300 border border-teal-200 dark:border-teal-800 flex items-center gap-1.5"
@@ -365,7 +368,7 @@ export default function AdminWorkersPage() {
                         </div>
                       </div>
                       <a
-                        href={`${getApiUrl()}${inspectWorker.verificationDocuments.driverLicenseDocUrl}`}
+                        href={resolveDocUrl(inspectWorker.verificationDocuments.driverLicenseDocUrl)}
                         target="_blank"
                         rel="noreferrer"
                         className="px-3 py-1.5 rounded-lg text-xs font-semibold bg-teal-50 dark:bg-teal-950/40 text-teal-700 dark:text-teal-300 border border-teal-200 dark:border-teal-800 flex items-center gap-1.5"

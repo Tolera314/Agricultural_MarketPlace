@@ -10,6 +10,7 @@ import superadminRouter from './routes/superadmin.routes.js';
 import buyerRouter from './routes/buyer.routes.js';
 import onboardingRouter from './routes/onboarding.routes.js';
 import farmerRouter from './routes/farmer.routes.js';
+import messageRouter from './routes/message.routes.js';
 
 import cookieParser from 'cookie-parser';
 import { errorHandler } from './middleware/errorHandler.js';
@@ -140,6 +141,7 @@ app.use('/api/superadmin', superadminRouter);
 app.use('/api/buyer', buyerRouter);
 app.use('/api/farmer', farmerRouter);
 app.use('/api/onboarding', onboardingRouter);
+app.use('/api/messages', messageRouter);
 
 // Catch-all 404 JSON handler (prevents default HTML 404 with default-src 'none')
 app.use((req: Request, res: Response) => {

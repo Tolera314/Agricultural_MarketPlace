@@ -13,9 +13,12 @@ import {
   Sparkles,
   ShoppingBag,
   ExternalLink,
+  MessageSquare,
 } from 'lucide-react';
 import { Header, Footer } from '@/components/layout';
 import { CartDrawer } from '@/components/cart/CartDrawer';
+import { AuthRequiredModal } from '@/components/auth/AuthRequiredModal';
+import { UserAvatar } from '@/components/ui/UserAvatar';
 import { useAuth } from '@/context/AuthContext';
 import { useCart } from '@/context/CartContext';
 import { buyerApi } from '@/lib/buyerApi';
@@ -94,10 +97,25 @@ export default function FarmersDirectoryPage() {
   const router = useRouter();
   const { isCartDrawerOpen, setIsCartDrawerOpen, cart, updateQuantity, removeItem, clearCart } = useCart();
 
+  const { user, isAuthenticated } = useAuth();
   const [currentLocation] = useState(SUPPORTED_LOCATIONS[0]);
   const [farmers, setFarmers] = useState<DisplayFarmer[]>(FALLBACK_FARMERS);
   const [searchQuery, setSearchQuery] = useState('');
   const [isLoading, setIsLoading] = useState(true);
+
+  // Authentication required modal for guests initiating chats
+  const [showAuthModal, setShowAuthModal] = useState(false);
+  const [authRedirectUrl, setAuthRedirectUrl] = useState<string>('/farmers');
+
+  const handleTalkWithFarmer = (farmer: DisplayFarmer, e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (!isAuthenticated || !user) {
+      setAuthRedirectUrl(`/dashboard/buyer?tab=messages&farmerId=${farmer.id}`);
+      setShowAuthModal(true);
+      return;
+    }
+    router.push(`/dashboard/buyer?tab=messages&farmerId=${farmer.id}`);
+  };
 
   useEffect(() => {
     let isMounted = true;
@@ -216,10 +234,11 @@ export default function FarmersDirectoryPage() {
               <div>
                 {/* Farmer Info Header */}
                 <div className="flex items-start gap-4">
-                  <img
+                  <UserAvatar
                     src={farmer.avatarUrl}
-                    alt={farmer.name}
-                    className="w-16 h-16 rounded-2xl object-cover border border-[#E5EDE4] dark:border-[#1E3A2F] shrink-0"
+                    name={farmer.name}
+                    size="lg"
+                    className="w-16 h-16 rounded-2xl shrink-0"
                   />
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center justify-between gap-2">
@@ -267,10 +286,20 @@ export default function FarmersDirectoryPage() {
                 </div>
               </div>
 
-              {/* Action Button */}
-              <div className="mt-5 pt-3 border-t border-[#F0F5F2] dark:border-[#1E3A2F] flex items-center justify-between text-xs font-semibold text-[#2E7D32] dark:text-[#34D399]">
-                <span>Explore Farm &amp; Harvests</span>
-                <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
+              {/* Action Button Bar */}
+              <div className="mt-5 pt-3 border-t border-[#F0F5F2] dark:border-[#1E3A2F] flex items-center justify-between gap-2">
+                <button
+                  type="button"
+                  onClick={(e) => handleTalkWithFarmer(farmer, e)}
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-emerald-50 dark:bg-emerald-950/40 text-[#2E7D32] dark:text-[#34D399] hover:bg-emerald-100 dark:hover:bg-emerald-900/50 border border-emerald-200/60 dark:border-emerald-800/60 text-xs font-bold transition-all cursor-pointer shadow-2xs"
+                >
+                  <MessageSquare className="w-3.5 h-3.5" />
+                  <span>Talk with Farmer</span>
+                </button>
+                <div className="flex items-center gap-1 text-xs font-semibold text-[#2E7D32] dark:text-[#34D399]">
+                  <span>Explore Harvests</span>
+                  <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
+                </div>
               </div>
             </div>
           ))}
@@ -280,7 +309,16 @@ export default function FarmersDirectoryPage() {
       {/* 2. Global Footer */}
       <Footer />
 
-      {/* 3. Global Cart Drawer */}
+      {/* 3. Auth Modal for Guests */}
+      <AuthRequiredModal
+        isOpen={showAuthModal}
+        onClose={() => setShowAuthModal(false)}
+        redirectUrl={authRedirectUrl}
+        title="Sign In to Message Farmers"
+        message="Connect directly with verified growers to discuss produce reservations, bulk orders, and harvest dates."
+      />
+
+      {/* 4. Global Cart Drawer */}
       <CartDrawer
         isOpen={isCartDrawerOpen}
         onClose={() => setIsCartDrawerOpen(false)}

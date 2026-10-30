@@ -13,7 +13,7 @@ export const metadata: Metadata = {
   manifest: '/manifest.webmanifest',
   appleWebApp: {
     capable: true,
-    statusBarStyle: 'default',
+    statusBarStyle: 'black-translucent',
     title: 'AgriMarket',
   },
   icons: {
@@ -41,9 +41,10 @@ export const metadata: Metadata = {
 export const viewport: Viewport = {
   width: 'device-width',
   initialScale: 1,
+  viewportFit: 'cover',
   themeColor: [
-    { media: '(prefers-color-scheme: light)', color: '#075C3B' },
-    { media: '(prefers-color-scheme: dark)', color: '#07130D' },
+    { media: '(prefers-color-scheme: light)', color: '#071912' },
+    { media: '(prefers-color-scheme: dark)', color: '#071912' },
   ],
 };
 

@@ -100,11 +100,31 @@ export interface AdminUser {
   role: 'SUPERADMIN' | 'ADMIN' | 'FARMER' | 'BUYER' | 'DELIVERY_WORKER';
   isActive: boolean;
   isVerified: boolean;
+  onboardingStatus?: string;
   tokenVersion: number;
   createdAt: string;
   updatedAt: string;
-  farmerProfile?: { verificationStatus: string; farmName: string } | null;
-  deliveryProfile?: { verificationStatus: string; vehicleType: string } | null;
+  farmerProfile?: {
+    id: string;
+    farmName: string;
+    farmDescription?: string | null;
+    verificationStatus: 'PENDING' | 'VERIFIED' | 'REJECTED' | 'SUSPENDED';
+    verificationNote?: string | null;
+    verificationDocuments?: any;
+    farmLatitude?: number | null;
+    farmLongitude?: number | null;
+    isOrganic?: boolean;
+  } | null;
+  deliveryProfile?: {
+    id: string;
+    vehicleType: string;
+    vehiclePlate?: string | null;
+    vehicleCapacityKg?: number | null;
+    verificationStatus: 'PENDING' | 'VERIFIED' | 'REJECTED' | 'SUSPENDED';
+    verificationNote?: string | null;
+    verificationDocuments?: any;
+    availability?: string;
+  } | null;
 }
 
 export interface SystemSettings {
@@ -241,18 +261,31 @@ export const superadminApi = {
   getDashboard: (period = '30d') =>
     fetchSuperadmin<SuperadminDashboardData>(`/api/superadmin/dashboard?period=${period}`),
 
-  // 2. Users
-  getUsers: (params?: { search?: string; role?: string; status?: string; page?: number; limit?: number }) => {
+  // 2. Users & Verifications
+  getUsers: (params?: { search?: string; role?: string; status?: string; verificationStatus?: string; page?: number; limit?: number }) => {
     const q = new URLSearchParams();
     if (params?.search) q.set('search', params.search);
     if (params?.role) q.set('role', params.role);
     if (params?.status) q.set('status', params.status);
+    if (params?.verificationStatus) q.set('verificationStatus', params.verificationStatus);
     if (params?.page) q.set('page', String(params.page));
     if (params?.limit) q.set('limit', String(params.limit));
     return fetchSuperadmin<{ users: AdminUser[]; pagination: { total: number; page: number; limit: number; totalPages: number } }>(
       `/api/superadmin/users?${q.toString()}`
     );
   },
+
+  verifyFarmer: (id: string, status: string, note?: string) =>
+    fetchSuperadmin<any>(`/api/superadmin/farmers/${encodeURIComponent(id)}/verify`, {
+      method: 'PATCH',
+      body: JSON.stringify({ status, note }),
+    }),
+
+  verifyWorker: (id: string, status: string, reason?: string) =>
+    fetchSuperadmin<any>(`/api/superadmin/workers/${encodeURIComponent(id)}/verify`, {
+      method: 'PATCH',
+      body: JSON.stringify({ status, reason }),
+    }),
 
   provisionAdmin: (data: { fullName: string; phone: string; email?: string; role: 'ADMIN' | 'SUPERADMIN'; password?: string }) =>
     fetchSuperadmin<AdminUser>('/api/superadmin/users/provision', {
