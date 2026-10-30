@@ -29,6 +29,8 @@ import {
 import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
 import { onboardingApi } from '@/lib/onboardingApi';
+import { useAuth } from '@/context/AuthContext';
+import { getCachedUserProfile } from '@/lib/auth';
 
 // ────────────────────────────────────────────────────────────
 // Global search data — products, orders, buyers, categories
@@ -591,6 +593,8 @@ export default function FarmerDashboardContent({
   const [searchQuery] = useState('');
   void searchQuery; // reserved for future server-side search
 
+  const { user } = useAuth();
+  const cachedUser = getCachedUserProfile();
   const searchParams = useSearchParams();
   const isJustSubmitted = searchParams?.get('onboardingSuccess') === 'true';
   const [dismissSubmitted, setDismissSubmitted] = useState(false);
@@ -600,29 +604,39 @@ export default function FarmerDashboardContent({
     farmName?: string;
     verificationStatus: 'PENDING' | 'VERIFIED' | 'REJECTED' | 'SUSPENDED';
     verificationNote?: string;
-  } | null>(null);
+  } | null>(() => {
+    const initialName = user?.fullName || cachedUser?.fullName || 'Farmer';
+    return {
+      fullName: initialName,
+      farmName: 'My Farm',
+      verificationStatus: 'PENDING',
+    };
+  });
 
   useEffect(() => {
     async function checkFarmerVerification() {
       try {
         const res = await onboardingApi.getStatus();
         setFarmerAccount({
-          fullName: res.fullName,
-          farmName: res.farmerProfile?.farmName,
+          fullName: res.fullName || user?.fullName || cachedUser?.fullName || 'Farmer',
+          farmName: res.farmerProfile?.farmName || 'My Farm',
           verificationStatus:
             res.farmerProfile?.verificationStatus || (res.role === 'FARMER' ? 'PENDING' : 'VERIFIED'),
           verificationNote: res.farmerProfile?.verificationNote || undefined,
         });
       } catch (e) {
         setFarmerAccount({
-          fullName: 'Tesfaye Abebe',
-          farmName: 'Bishoftu Valley Farm',
-          verificationStatus: 'VERIFIED',
+          fullName: user?.fullName || cachedUser?.fullName || 'Farmer',
+          farmName: 'My Farm',
+          verificationStatus: 'PENDING',
         });
       }
     }
     checkFarmerVerification();
-  }, []);
+  }, [user]);
+
+  const farmerDisplayName = farmerAccount?.fullName || user?.fullName || cachedUser?.fullName || 'Farmer';
+  const farmerFirstName = farmerDisplayName.trim().split(' ')[0] || farmerDisplayName;
 
   if (activePage !== 'dashboard') {
     return (
@@ -650,9 +664,9 @@ export default function FarmerDashboardContent({
             </button>
             <button className="flex items-center gap-2 px-2 py-1 rounded-xl hover:bg-gray-50 dark:hover:bg-white/5 transition-colors cursor-pointer">
               <div className="w-8 h-8 rounded-full bg-emerald-100 dark:bg-emerald-900/40 border-2 border-emerald-400 overflow-hidden">
-                <Image src="/images/avatar_abebe_hd.jpg" alt="Tesfaye Abebe" width={32} height={32} className="w-full h-full object-cover" />
+                <Image src="/images/avatar_abebe_hd.jpg" alt={farmerDisplayName} width={32} height={32} className="w-full h-full object-cover" />
               </div>
-              <span className="hidden sm:block text-sm font-semibold text-gray-700 dark:text-gray-200">Tesfaye Abebe</span>
+              <span className="hidden sm:block text-sm font-semibold text-gray-700 dark:text-gray-200">{farmerDisplayName}</span>
               <ChevronDown className="w-3.5 h-3.5 text-gray-400" />
             </button>
           </div>
@@ -700,14 +714,14 @@ export default function FarmerDashboardContent({
             <div className="w-8 h-8 rounded-full bg-emerald-100 dark:bg-emerald-900/40 border-2 border-emerald-400 overflow-hidden shrink-0">
               <Image
                 src="/images/avatar_abebe_hd.jpg"
-                alt="Tesfaye Abebe"
+                alt={farmerDisplayName}
                 width={32}
                 height={32}
                 className="w-full h-full object-cover"
               />
             </div>
             <div className="hidden sm:flex flex-col items-start">
-              <span className="text-xs font-bold text-gray-800 dark:text-gray-100 leading-tight">Tesfaye Abebe</span>
+              <span className="text-xs font-bold text-gray-800 dark:text-gray-100 leading-tight">{farmerDisplayName}</span>
               <span className="text-[10px] text-gray-400 dark:text-gray-500 leading-tight">Farmer</span>
             </div>
             <ChevronDown className="w-3.5 h-3.5 text-gray-400" />
@@ -750,7 +764,7 @@ export default function FarmerDashboardContent({
             {/* Text on the left — high contrast, opacity as it is */}
             <div className="relative z-10 max-w-xl px-6 sm:px-10 py-6">
               <h1 className="flex items-center gap-2 text-[24px] sm:text-[28px] font-extrabold text-[#1B4332] dark:text-white leading-tight tracking-tight">
-                Welcome, Tesfaye!
+                Welcome, {farmerFirstName}!
                 <svg width="26" height="26" viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg">
                   <path d="M18 4C18 4 23 11 23 18C23 21 21 24 18 25C15 24 13 21 13 18C13 11 18 4 18 4Z" fill="#10B981" />
                   <path d="M16 26C16 26 9 24 7 18C5 12 11 9 11 9C11 9 13 16 17 21C17.5 21.6 18 22.2 18 22.2" fill="#059669" />

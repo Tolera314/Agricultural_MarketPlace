@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState } from 'react';
+import { useAuth } from '@/context/AuthContext';
 import {
   DollarSign,
   TrendingUp,
@@ -16,6 +17,7 @@ import {
 
 export default function (props: any) {
   const onOpenSidebar = props?.onOpenSidebar;
+  const { user } = useAuth();
   const [withdrawModal, setWithdrawModal] = useState(false);
   const [withdrawSuccess, setWithdrawSuccess] = useState(false);
 
@@ -164,7 +166,7 @@ export default function (props: any) {
                     <Smartphone className="w-5 h-5 text-emerald-600" />
                     <div className="text-xs">
                       <div className="font-bold text-emerald-900 dark:text-emerald-200">Telebirr Wallet</div>
-                      <div className="text-gray-500">+251 911 234 567 (Tesfaye Abebe)</div>
+                      <div className="text-gray-500">{user?.phone || '+251 911 234 567'} ({user?.fullName || 'Verified Farmer'})</div>
                     </div>
                   </div>
                   <div className="p-3 rounded-xl border border-gray-200 dark:border-white/10 flex items-center gap-3 opacity-70">

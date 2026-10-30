@@ -3,30 +3,37 @@
 import React, { useState, useEffect } from 'react';
 import Image from 'next/image';
 import { useRouter } from 'next/navigation';
-import { Search, Bell, LogOut, Shield } from 'lucide-react';
+import { Search, Bell, LogOut, Shield, Menu } from 'lucide-react';
 import { ThemeToggle } from '@/components/layout/ThemeToggle';
 import { getCachedUserProfile, logout } from '@/lib/auth';
+import { useAuth } from '@/context/AuthContext';
 
 interface AdminHeaderProps {
   onSearch?: (query: string) => void;
+  onOpenMobileMenu?: () => void;
 }
 
-export function AdminHeader({ onSearch }: AdminHeaderProps) {
+export function AdminHeader({ onSearch, onOpenMobileMenu }: AdminHeaderProps) {
   const router = useRouter();
-  const [adminName, setAdminName] = useState('Selamawit Assefa');
-  const [adminRole, setAdminRole] = useState('Administrator');
+  const { user } = useAuth();
+  const cached = getCachedUserProfile();
+  const [adminName, setAdminName] = useState(() => user?.fullName || cached?.fullName || 'Administrator');
+  const [adminRole, setAdminRole] = useState(() => {
+    const r = user?.role || cached?.role;
+    return r === 'SUPERADMIN' ? 'Super Administrator' : 'Administrator';
+  });
   const [avatarUrl, setAvatarUrl] = useState('/images/avatar_selamawit_hd.jpg');
   const [searchVal, setSearchVal] = useState('');
   const [showDropdown, setShowDropdown] = useState(false);
 
   useEffect(() => {
-    const cached = getCachedUserProfile();
-    if (cached) {
-      if (cached.fullName) setAdminName(cached.fullName);
-      if (cached.role === 'SUPERADMIN') setAdminRole('Super Administrator');
-      else if (cached.role === 'ADMIN') setAdminRole('Administrator');
+    const current = user || getCachedUserProfile();
+    if (current) {
+      if (current.fullName) setAdminName(current.fullName);
+      if (current.role === 'SUPERADMIN') setAdminRole('Super Administrator');
+      else if (current.role === 'ADMIN') setAdminRole('Administrator');
     }
-  }, []);
+  }, [user]);
 
   const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setSearchVal(e.target.value);
@@ -38,17 +45,28 @@ export function AdminHeader({ onSearch }: AdminHeaderProps) {
   };
 
   return (
-    <header className="h-18 px-8 bg-white/80 dark:bg-[#071912]/80 backdrop-blur-md border-b border-[#E5EAE7] dark:border-[#143226] flex items-center justify-between sticky top-0 z-10 transition-colors">
-      {/* Search Input */}
-      <div className="w-full max-w-md relative">
-        <Search className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400 dark:text-gray-500" />
-        <input
-          type="text"
-          placeholder="Search anything..."
-          value={searchVal}
-          onChange={handleSearchChange}
-          className="w-full pl-10 pr-4 py-2 text-sm bg-[#F4F7F5] dark:bg-[#0E261D] text-[#1E3028] dark:text-[#E2EBE6] rounded-xl border border-transparent focus:border-[#10B981] focus:bg-white dark:focus:bg-[#071912] focus:outline-none transition-all placeholder:text-gray-400"
-        />
+    <header className="h-18 px-4 sm:px-8 bg-white/80 dark:bg-[#071912]/80 backdrop-blur-md border-b border-[#E5EAE7] dark:border-[#143226] flex items-center justify-between sticky top-0 z-10 transition-colors">
+      {/* Mobile Menu & Search Input */}
+      <div className="flex items-center gap-3 w-full max-w-md">
+        {onOpenMobileMenu && (
+          <button
+            onClick={onOpenMobileMenu}
+            className="lg:hidden p-2 text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-[#0E261D] rounded-xl cursor-pointer"
+            aria-label="Open sidebar menu"
+          >
+            <Menu className="w-5 h-5" />
+          </button>
+        )}
+        <div className="w-full relative">
+          <Search className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400 dark:text-gray-500" />
+          <input
+            type="text"
+            placeholder="Search anything..."
+            value={searchVal}
+            onChange={handleSearchChange}
+            className="w-full pl-10 pr-4 py-2 text-sm bg-[#F4F7F5] dark:bg-[#0E261D] text-[#1E3028] dark:text-[#E2EBE6] rounded-xl border border-transparent focus:border-[#10B981] focus:bg-white dark:focus:bg-[#071912] focus:outline-none transition-all placeholder:text-gray-400"
+          />
+        </div>
       </div>
 
       {/* Right Controls: Notification, Theme, Profile */}
