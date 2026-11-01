@@ -10,6 +10,7 @@ import {
   ArrowUpDown, LayoutGrid, List, Sparkles, Lock, ShieldAlert,
 } from 'lucide-react';
 import { onboardingApi } from '@/lib/onboardingApi';
+import { farmerApi } from '@/lib/farmerApi';
 import { useAuth } from '@/context/AuthContext';
 
 // ─────────────────────────────────────────────
@@ -393,7 +394,7 @@ export default function MyProductsContent({ onOpenSidebar }: { onOpenSidebar: ()
   const [verificationNotice, setVerificationNotice] = useState(false);
 
   useEffect(() => {
-    async function checkStatus() {
+    async function loadFarmerData() {
       try {
         const res = await onboardingApi.getStatus();
         const status = res.farmerProfile?.verificationStatus || (res.role === 'FARMER' ? 'PENDING' : 'VERIFIED');
@@ -405,8 +406,29 @@ export default function MyProductsContent({ onOpenSidebar }: { onOpenSidebar: ()
           setVerificationStatus('VERIFIED');
         }
       }
+
+      try {
+        const prodRes = await farmerApi.getMyProducts();
+        if (prodRes && prodRes.data && Array.isArray(prodRes.data) && prodRes.data.length > 0) {
+          const mapped: Product[] = prodRes.data.map((l: any) => ({
+            id: l.id,
+            name: l.name,
+            category: (l.category?.name || 'Vegetables') as Category,
+            price: Number(l.pricePerUnit),
+            unit: (l.unit || 'kg') as Unit,
+            stock: Number(l.stockQuantity),
+            grade: l.qualityGrade === 'A' ? 'Grade A' : l.qualityGrade === 'B' ? 'Grade B' : l.qualityGrade === 'C' ? 'Grade C' : 'Grade A',
+            status: l.status === 'ACTIVE' ? 'Active' : l.status === 'OUT_OF_STOCK' ? 'Out of Stock' : 'Draft',
+            image: l.images?.[0]?.url || '/images/prod_tomatoes.jpg',
+            description: l.description || '',
+          }));
+          setProducts(mapped);
+        }
+      } catch (err) {
+        console.warn('Failed to load live farmer products, using initial fallback:', err);
+      }
     }
-    checkStatus();
+    loadFarmerData();
   }, [user]);
 
   const isVerified = verificationStatus === 'VERIFIED';
@@ -452,29 +474,76 @@ export default function MyProductsContent({ onOpenSidebar }: { onOpenSidebar: ()
   };
 
   // ── CRUD ───────────────────────────────────
-  const saveProduct = (data: Omit<Product, 'id'> & { id?: string }, draft: boolean = false) => {
+  const saveProduct = async (data: Omit<Product, 'id'> & { id?: string }, draft: boolean = false) => {
     if (!draft && !isVerified) {
       setVerificationNotice(true);
       return;
     }
-    if (data.id) {
+    if (data.id && !data.id.startsWith('local-')) {
       setProducts(prev => prev.map(p => p.id === data.id ? { ...p, ...data, id: p.id } : p));
+      try {
+        await farmerApi.updateProduct(data.id, {
+          name: data.name,
+          description: data.description,
+          pricePerUnit: data.price,
+          stockQuantity: data.stock,
+          unit: data.unit,
+          status: draft ? 'DRAFT' : 'ACTIVE',
+          qualityGrade: data.grade.includes('A') ? 'A' : data.grade.includes('B') ? 'B' : 'C',
+        });
+      } catch (err) {
+        console.warn('Product update error:', err);
+      }
     } else {
-      setProducts(prev => [{ ...data, id: String(Date.now()) }, ...prev]);
+      const tempId = `local-${Date.now()}`;
+      setProducts(prev => [{ ...data, id: tempId }, ...prev]);
+      try {
+        const created = await farmerApi.createProduct({
+          name: data.name,
+          description: data.description,
+          pricePerUnit: data.price,
+          stockQuantity: data.stock,
+          unit: data.unit,
+          qualityGrade: data.grade.includes('A') ? 'A' : data.grade.includes('B') ? 'B' : 'C',
+        });
+        if (created?.data?.id) {
+          setProducts(prev => prev.map(p => p.id === tempId ? { ...p, id: created.data.id } : p));
+        }
+      } catch (err: any) {
+        console.warn('Product create error:', err);
+      }
     }
     setModal(null);
   };
 
-  const doDelete = (ids: string[]) => {
+  const doDelete = async (ids: string[]) => {
     setProducts(prev => prev.filter(p => !ids.includes(p.id)));
     setSelected(prev => { const n = new Set(prev); ids.forEach(id => n.delete(id)); return n; });
     setDeleteTarget(null);
+    for (const id of ids) {
+      if (!id.startsWith('local-') && !['1', '2', '3', '4', '5', '6', '7', '8'].includes(id)) {
+        try {
+          await farmerApi.deleteProduct(id);
+        } catch (err) {
+          console.warn('Failed to delete product from backend:', err);
+        }
+      }
+    }
   };
 
-  const toggleStatus = (id: string) => {
+  const toggleStatus = async (id: string) => {
+    const target = products.find(p => p.id === id);
+    const newStatus = target?.status === 'Active' ? 'Draft' : 'Active';
     setProducts(prev => prev.map(p =>
-      p.id === id ? { ...p, status: p.status === 'Active' ? 'Draft' : 'Active' } : p
+      p.id === id ? { ...p, status: newStatus } : p
     ));
+    if (!id.startsWith('local-') && !['1', '2', '3', '4', '5', '6', '7', '8'].includes(id)) {
+      try {
+        await farmerApi.updateProduct(id, { status: newStatus === 'Active' ? 'ACTIVE' : 'DRAFT' });
+      } catch (err) {
+        console.warn('Failed to update product status on backend:', err);
+      }
+    }
   };
 
   return (

@@ -82,5 +82,58 @@ export const farmerApi = {
   getMyProducts(): Promise<any> {
     return apiFetch('/api/farmer/products');
   },
+
+  createProduct(data: {
+    name: string;
+    description?: string;
+    categoryId?: string;
+    pricePerUnit: number;
+    unit?: string;
+    stockQuantity: number;
+    minOrderQty?: number;
+    maxOrderQty?: number;
+    qualityGrade?: string;
+    intercityEligible?: boolean;
+    pickupLatitude?: number;
+    pickupLongitude?: number;
+  }): Promise<any> {
+    return apiFetch('/api/farmer/products', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+  },
+
+  updateProduct(id: string, data: Partial<{
+    name: string;
+    description: string;
+    pricePerUnit: number;
+    stockQuantity: number;
+    unit: string;
+    status: string;
+    qualityGrade: string;
+    intercityEligible: boolean;
+  }>): Promise<any> {
+    return apiFetch(`/api/farmer/products/${id}`, {
+      method: 'PATCH',
+      body: JSON.stringify(data),
+    });
+  },
+
+  deleteProduct(id: string): Promise<any> {
+    return apiFetch(`/api/farmer/products/${id}`, {
+      method: 'DELETE',
+    });
+  },
+
+  getOrders(): Promise<any> {
+    return apiFetch('/api/farmer/orders');
+  },
+
+  updateOrderStatus(orderId: string, status: string): Promise<any> {
+    return apiFetch(`/api/farmer/orders/${orderId}/status`, {
+      method: 'PATCH',
+      body: JSON.stringify({ status }),
+    });
+  },
 };
 

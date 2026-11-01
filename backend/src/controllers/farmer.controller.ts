@@ -323,3 +323,122 @@ export async function deleteProduct(req: Request, res: Response, next: NextFunct
     next(error);
   }
 }
+
+/**
+ * GET /api/farmer/orders
+ * Retrieves all order items and orders that contain products from the authenticated farmer.
+ */
+export async function getFarmerOrders(req: Request, res: Response, next: NextFunction) {
+  try {
+    const farmerId = req.auth!.sub;
+
+    const orderItems = await prisma.orderItem.findMany({
+      where: {
+        listing: {
+          farmerId,
+        },
+      },
+      include: {
+        listing: {
+          include: {
+            images: true,
+          },
+        },
+        order: {
+          include: {
+            buyer: {
+              select: {
+                id: true,
+                fullName: true,
+                phone: true,
+                email: true,
+              },
+            },
+            deliveryJob: true,
+          },
+        },
+      },
+      orderBy: {
+        createdAt: 'desc',
+      },
+    });
+
+    const formatted = orderItems.map((item) => ({
+      id: item.order.id,
+      orderItemId: item.id,
+      orderNumber: `#AGRI-${item.order.id.slice(-6).toUpperCase()}`,
+      productName: item.listing.name,
+      quantity: Number(item.quantity),
+      unit: item.listing.unit,
+      pricePerUnit: Number(item.agreedUnitPrice),
+      totalPrice: Number(item.subtotal),
+      status: item.order.status,
+      buyerName: item.order.buyer.fullName,
+      buyerPhone: item.order.buyer.phone,
+      deliveryAddress: item.order.deliveryAddress,
+      createdAt: item.order.createdAt,
+      deliveryStatus: item.order.deliveryJob?.status || 'PENDING',
+    }));
+
+    return res.json({
+      success: true,
+      count: formatted.length,
+      data: formatted,
+    });
+  } catch (error) {
+    next(error);
+  }
+}
+
+/**
+ * PATCH /api/farmer/orders/:id/status
+ * Updates the order fulfillment status by the farmer (e.g. PREPARING -> READY_FOR_PICKUP).
+ */
+export async function updateFarmerOrderStatus(req: Request, res: Response, next: NextFunction) {
+  try {
+    const farmerId = req.auth!.sub;
+    const rawId = req.params.id;
+    const orderId = Array.isArray(rawId) ? rawId[0] : rawId;
+    const { status } = req.body;
+
+    if (!orderId) {
+      return res.status(400).json({ success: false, error: { message: 'Order ID is required.' } });
+    }
+
+    const validStatuses = ['PREPARING', 'READY_FOR_PICKUP'];
+    if (!validStatuses.includes(status)) {
+      return res.status(400).json({
+        success: false,
+        error: { message: `Invalid status transition. Permitted transitions by farmer: ${validStatuses.join(', ')}` },
+      });
+    }
+
+    // Verify order contains an item belonging to this farmer
+    const orderItem = await prisma.orderItem.findFirst({
+      where: {
+        orderId,
+        listing: { farmerId },
+      },
+    });
+
+    if (!orderItem) {
+      return res.status(404).json({
+        success: false,
+        error: { message: 'Order not found or unauthorized.' },
+      });
+    }
+
+    const updated = await prisma.order.update({
+      where: { id: orderId },
+      data: { status: status as any },
+    });
+
+    return res.json({
+      success: true,
+      message: `Order status updated to ${status}.`,
+      data: updated,
+    });
+  } catch (error) {
+    next(error);
+  }
+}

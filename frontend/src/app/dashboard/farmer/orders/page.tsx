@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
 import {
@@ -18,6 +18,7 @@ import {
   MapPin,
   RefreshCw,
 } from 'lucide-react';
+import { farmerApi } from '@/lib/farmerApi';
 
 interface FarmerOrder {
   id: string;
@@ -108,6 +109,33 @@ export default function (props: any) {
   const [search, setSearch] = useState('');
   const [selectedOrder, setSelectedOrder] = useState<FarmerOrder | null>(null);
 
+  useEffect(() => {
+    async function loadOrders() {
+      try {
+        const res = await farmerApi.getOrders();
+        if (res && res.data && Array.isArray(res.data) && res.data.length > 0) {
+          const mapped = res.data.map((o: any) => ({
+            id: o.id,
+            orderNumber: o.orderNumber,
+            product: o.productName,
+            buyer: o.buyerName,
+            buyerPhone: o.buyerPhone || '+251 911 000 000',
+            deliveryLocation: o.deliveryAddress,
+            quantity: `${o.quantity} ${o.unit}`,
+            totalPrice: `ETB ${Number(o.totalPrice).toLocaleString()}`,
+            status: o.status,
+            date: new Date(o.createdAt).toLocaleDateString(),
+            image: '/images/prod_tomatoes.jpg',
+          }));
+          setOrders(mapped);
+        }
+      } catch (err) {
+        console.warn('Failed to load live farmer orders, using initial view:', err);
+      }
+    }
+    loadOrders();
+  }, []);
+
   const filteredOrders = orders.filter((o) => {
     const matchesStatus = statusFilter === 'ALL' || o.status === statusFilter;
     const matchesSearch =
@@ -117,12 +145,17 @@ export default function (props: any) {
     return matchesStatus && matchesSearch;
   });
 
-  const updateOrderStatus = (id: string, newStatus: FarmerOrder['status']) => {
+  const updateOrderStatus = async (id: string, newStatus: FarmerOrder['status']) => {
     setOrders((prev) =>
       prev.map((o) => (o.id === id ? { ...o, status: newStatus } : o))
     );
     if (selectedOrder?.id === id) {
       setSelectedOrder((prev) => (prev ? { ...prev, status: newStatus } : null));
+    }
+    try {
+      await farmerApi.updateOrderStatus(id, newStatus);
+    } catch (err: any) {
+      console.warn('Status update sync error:', err?.message);
     }
   };
 

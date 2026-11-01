@@ -9,6 +9,8 @@ import {
   getCategories,
   calculateCheckout,
   createBuyerOrder,
+  getBuyerOrders,
+  getBuyerOrderDetails,
   cancelBuyerOrder,
   getBuyerAddresses,
   createBuyerAddress,
@@ -70,7 +72,7 @@ export async function handleGetNearbyFarmers(req: Request, res: Response, next: 
       });
     }
 
-    const data = getNearbyFarmers(lat, lng, radius);
+    const data = await getNearbyFarmers(lat, lng, radius);
     return res.json({ success: true, count: data.length, data });
   } catch (err: any) {
     return next(err);
@@ -104,7 +106,7 @@ export async function handleSearchProducts(req: Request, res: Response, next: Ne
     if (minPrice) options.minPrice = parseFloat(String(minPrice));
     if (maxPrice) options.maxPrice = parseFloat(String(maxPrice));
 
-    const data = searchProducts(options);
+    const data = await searchProducts(options);
 
     return res.json({ success: true, count: data.length, data });
   } catch (err: any) {
@@ -127,7 +129,7 @@ export async function handleGetProductDetails(req: Request, res: Response, next:
     const lat = req.query.lat ? parseFloat(req.query.lat as string) : undefined;
     const lng = req.query.lng ? parseFloat(req.query.lng as string) : undefined;
 
-    const data = getProductDetails(productId, lat, lng);
+    const data = await getProductDetails(productId, lat, lng);
     if (!data) {
       return res.status(404).json({
         success: false,
@@ -156,7 +158,7 @@ export async function handleGetFarmerProfile(req: Request, res: Response, next: 
     const lat = req.query.lat ? parseFloat(req.query.lat as string) : undefined;
     const lng = req.query.lng ? parseFloat(req.query.lng as string) : undefined;
 
-    const data = getFarmerProfile(farmerId, lat, lng);
+    const data = await getFarmerProfile(farmerId, lat, lng);
     if (!data) {
       return res.status(404).json({
         success: false,
@@ -191,7 +193,7 @@ export async function handleCalculateCheckout(req: Request, res: Response, next:
       });
     }
 
-    const calculation = calculateCheckout(items, deliveryAddressId);
+    const calculation = await calculateCheckout(items, deliveryAddressId);
     return res.json({ success: true, data: calculation });
   } catch (err: any) {
     return res.status(400).json({
@@ -221,7 +223,7 @@ export async function handleCreateOrder(req: Request, res: Response, next: NextF
       });
     }
 
-    const result = createBuyerOrder(ctx, {
+    const result = await createBuyerOrder(ctx, {
       items,
       deliveryAddress,
       deliveryLatitude: typeof deliveryLatitude === 'number' ? deliveryLatitude : 9.0125,
@@ -247,17 +249,7 @@ export async function handleGetOrders(req: Request, res: Response, next: NextFun
     const ctx = getBuyerContext(req);
     const { status } = req.query;
 
-    let orders = resilientStore.orders.filter(
-      (o) => o.buyerId === ctx.userId || o.buyerId === 'default-buyer'
-    );
-
-    if (status && typeof status === 'string' && status !== 'ALL') {
-      orders = orders.filter((o) => o.status.toUpperCase() === status.toUpperCase());
-    }
-
-    // Sort newest first
-    orders.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
-
+    const orders = await getBuyerOrders(ctx, { status: typeof status === 'string' ? status : undefined });
     return res.json({ success: true, count: orders.length, data: orders });
   } catch (err: any) {
     return next(err);
@@ -270,10 +262,7 @@ export async function handleGetOrderDetails(req: Request, res: Response, next: N
     const ctx = getBuyerContext(req);
     const orderId = String(req.params.orderId || '');
 
-    const order = resilientStore.orders.find(
-      (o) => (o.id === orderId || o.orderNumber === orderId) && (o.buyerId === ctx.userId || o.buyerId === 'default-buyer')
-    );
-
+    const order = await getBuyerOrderDetails(orderId, ctx);
     if (!order) {
       return res.status(404).json({
         success: false,
@@ -294,7 +283,7 @@ export async function handleCancelOrder(req: Request, res: Response, next: NextF
     const orderId = String(req.params.orderId || '');
     const { reason } = req.body;
 
-    const result = cancelBuyerOrder(ctx, orderId, reason);
+    const result = await cancelBuyerOrder(ctx, orderId, reason);
     return res.json({ success: true, message: 'Order cancelled successfully.', data: result.order });
   } catch (err: any) {
     return next(err);
@@ -307,10 +296,7 @@ export async function handleGetDeliveryTracking(req: Request, res: Response, nex
     const ctx = getBuyerContext(req);
     const orderId = String(req.params.orderId || '');
 
-    const order = resilientStore.orders.find(
-      (o) => (o.id === orderId || o.orderNumber === orderId) && (o.buyerId === ctx.userId || o.buyerId === 'default-buyer')
-    );
-
+    const order: any = await getBuyerOrderDetails(orderId, ctx);
     if (!order) {
       return res.status(404).json({
         success: false,
@@ -348,7 +334,7 @@ export async function handleGetDeliveryTracking(req: Request, res: Response, nex
 export async function handleGetAddresses(req: Request, res: Response, next: NextFunction) {
   try {
     const ctx = getBuyerContext(req);
-    const addresses = getBuyerAddresses(ctx);
+    const addresses = await getBuyerAddresses(ctx);
     return res.json({ success: true, count: addresses.length, data: addresses });
   } catch (err: any) {
     return next(err);
@@ -364,7 +350,7 @@ export async function handleCreateAddress(req: Request, res: Response, next: Nex
       return res.status(400).json({ success: false, error: { message: 'Street address is required.' } });
     }
 
-    const addr = createBuyerAddress(ctx, {
+    const addr = await createBuyerAddress(ctx, {
       label: label || 'Home',
       streetAddress,
       city: city || 'Addis Ababa',
@@ -385,7 +371,7 @@ export async function handleUpdateAddress(req: Request, res: Response, next: Nex
   try {
     const ctx = getBuyerContext(req);
     const addressId = String(req.params.addressId || '');
-    const addr = updateBuyerAddress(ctx, addressId, req.body);
+    const addr = await updateBuyerAddress(ctx, addressId, req.body);
     return res.json({ success: true, message: 'Address updated.', data: addr });
   } catch (err: any) {
     return next(err);
@@ -396,7 +382,7 @@ export async function handleDeleteAddress(req: Request, res: Response, next: Nex
   try {
     const ctx = getBuyerContext(req);
     const addressId = String(req.params.addressId || '');
-    deleteBuyerAddress(ctx, addressId);
+    await deleteBuyerAddress(ctx, addressId);
     return res.json({ success: true, message: 'Address removed.' });
   } catch (err: any) {
     return next(err);
@@ -408,7 +394,7 @@ export async function handleToggleSavedFarmer(req: Request, res: Response, next:
   try {
     const ctx = getBuyerContext(req);
     const farmerId = String(req.params.farmerId || '');
-    const result = toggleSavedFarmer(ctx, farmerId);
+    const result = await toggleSavedFarmer(ctx, farmerId);
     return res.json({ success: true, data: result });
   } catch (err: any) {
     return next(err);
@@ -418,7 +404,7 @@ export async function handleToggleSavedFarmer(req: Request, res: Response, next:
 export async function handleGetSavedFarmers(req: Request, res: Response, next: NextFunction) {
   try {
     const ctx = getBuyerContext(req);
-    const data = getSavedFarmers(ctx);
+    const data = await getSavedFarmers(ctx);
     return res.json({ success: true, count: data.length, data });
   } catch (err: any) {
     return next(err);
@@ -430,7 +416,7 @@ export async function handleToggleFavorite(req: Request, res: Response, next: Ne
   try {
     const ctx = getBuyerContext(req);
     const listingId = String(req.params.listingId || '');
-    const result = toggleProductFavorite(ctx, listingId);
+    const result = await toggleProductFavorite(ctx, listingId);
     return res.json({ success: true, data: result });
   } catch (err: any) {
     return next(err);
@@ -440,7 +426,7 @@ export async function handleToggleFavorite(req: Request, res: Response, next: Ne
 export async function handleGetFavorites(req: Request, res: Response, next: NextFunction) {
   try {
     const ctx = getBuyerContext(req);
-    const data = getProductFavorites(ctx);
+    const data = await getProductFavorites(ctx);
     return res.json({ success: true, count: data.length, data });
   } catch (err: any) {
     return next(err);
@@ -451,7 +437,7 @@ export async function handleGetFavorites(req: Request, res: Response, next: Next
 export async function handleGetNotifications(req: Request, res: Response, next: NextFunction) {
   try {
     const ctx = getBuyerContext(req);
-    const notifs = getBuyerNotifications(ctx);
+    const notifs = await getBuyerNotifications(ctx);
     return res.json({ success: true, count: notifs.length, data: notifs });
   } catch (err: any) {
     return next(err);
@@ -462,7 +448,7 @@ export async function handleMarkNotificationRead(req: Request, res: Response, ne
   try {
     const ctx = getBuyerContext(req);
     const notifId = String(req.params.notifId || '');
-    const result = markNotificationAsRead(ctx, notifId);
+    const result = await markNotificationAsRead(ctx, notifId);
     return res.json({ success: true, data: result.notif });
   } catch (err: any) {
     return next(err);
@@ -482,7 +468,7 @@ export async function handleCreateSupportTicket(req: Request, res: Response, nex
       });
     }
 
-    const ticket = createSupportTicket(ctx, { orderId, subject, message, category });
+    const ticket = await createSupportTicket(ctx, { orderId, subject, message, category });
     return res.status(201).json({
       success: true,
       message: 'Support request submitted. Our team will contact you shortly.',

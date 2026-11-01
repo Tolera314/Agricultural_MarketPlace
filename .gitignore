@@ -20,6 +20,7 @@ node_modules/
 
 # Next.js Build Outputs & Caches
 frontend/.next/
+.next/
 frontend/out/
 frontend/build/
 
