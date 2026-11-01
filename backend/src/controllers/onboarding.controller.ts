@@ -24,14 +24,19 @@ export async function getOnboardingStatus(req: Request, res: Response, next: Nex
       });
     }
 
-    const user = await prisma.user.findUnique({
-      where: { id: userId },
-      include: {
-        buyerProfile: true,
-        farmerProfile: true,
-        deliveryProfile: true,
-      },
-    });
+    let user: any = null;
+    try {
+      user = await prisma.user.findUnique({
+        where: { id: userId },
+        include: {
+          buyerProfile: true,
+          farmerProfile: true,
+          deliveryProfile: true,
+        },
+      });
+    } catch (dbErr: any) {
+      console.warn('[Prisma getOnboardingStatus fallback]:', dbErr?.message);
+    }
 
     if (!user) {
       return res.status(404).json({

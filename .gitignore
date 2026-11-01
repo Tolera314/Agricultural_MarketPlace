@@ -20,6 +20,7 @@ node_modules/
 
 # Next.js Build Outputs & Caches
 frontend/.next/
+.next/
 frontend/out/
 frontend/build/
 
@@ -53,3 +54,5 @@ Thumbs.db
 *.pem
 onboarding.md
 clean.md
+
+docs/

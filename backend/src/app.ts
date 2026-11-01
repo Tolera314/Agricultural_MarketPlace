@@ -11,6 +11,7 @@ import buyerRouter from './routes/buyer.routes.js';
 import onboardingRouter from './routes/onboarding.routes.js';
 import farmerRouter from './routes/farmer.routes.js';
 import messageRouter from './routes/message.routes.js';
+import paymentRouter from './routes/payment.routes.js';
 
 import cookieParser from 'cookie-parser';
 import { errorHandler } from './middleware/errorHandler.js';
@@ -117,6 +118,7 @@ app.get('/', (req: Request, res: Response) => {
       superadmin: '/api/superadmin',
       buyer: '/api/buyer',
       farmer: '/api/farmer',
+      payment: '/api/payment',
     },
   });
 });
@@ -142,6 +144,7 @@ app.use('/api/buyer', buyerRouter);
 app.use('/api/farmer', farmerRouter);
 app.use('/api/onboarding', onboardingRouter);
 app.use('/api/messages', messageRouter);
+app.use('/api/payment', paymentRouter);
 
 // Catch-all 404 JSON handler (prevents default HTML 404 with default-src 'none')
 app.use((req: Request, res: Response) => {

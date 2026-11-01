@@ -6,6 +6,8 @@ import {
   createProduct,
   updateProduct,
   deleteProduct,
+  getFarmerOrders,
+  updateFarmerOrderStatus,
 } from '../controllers/farmer.controller.js';
 
 const router = Router();
@@ -18,6 +20,8 @@ router.get('/products', getMyProducts);
 router.post('/products', createProduct);
 router.patch('/products/:id', updateProduct);
 router.delete('/products/:id', deleteProduct);
+router.get('/orders', getFarmerOrders);
+router.patch('/orders/:id/status', updateFarmerOrderStatus);
 
 export default router;
 
