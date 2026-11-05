@@ -43,6 +43,7 @@ import {
 } from 'lucide-react';
 import { ThemeToggle } from '@/components/layout/ThemeToggle';
 import { buyerApi } from '@/lib/buyerApi';
+import { paymentApi } from '@/lib/paymentApi';
 import { getAccessToken, getCachedUserProfile, logout } from '@/lib/auth';
 import { API_BASE_URL } from '@/lib/apiConfig';
 import { useAuth } from '@/context/AuthContext';
@@ -312,6 +313,25 @@ function BuyerDashboardContent(props: any) {
   useEffect(() => {
     fetchAllData();
   }, [fetchAllData]);
+
+  // Handle return redirect from Chapa Gateway payment
+  useEffect(() => {
+    const txRef = searchParams.get('tx_ref');
+    const paymentParam = searchParams.get('payment');
+    if (txRef && paymentParam === 'success') {
+      paymentApi
+        .verifyChapaPayment(txRef)
+        .then(() => {
+          showNotification('Payment verified with Chapa! Your order is confirmed and dispatched.');
+          fetchAllData();
+          setActiveTab('orders');
+        })
+        .catch((err: any) => {
+          console.warn('[Chapa Verification Notice]:', err?.message);
+          fetchAllData();
+        });
+    }
+  }, [searchParams, fetchAllData]);
 
   // Refetch products when category, search, or sortBy change
   useEffect(() => {

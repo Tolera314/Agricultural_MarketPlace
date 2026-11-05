@@ -990,12 +990,21 @@ export async function createBuyerOrder(
         }
       }
 
+      // Determine initial order and payment statuses based on payment method
+      const isChapa = data.paymentMethod === 'CHAPA';
+      const isCod = data.paymentMethod === 'CASH_ON_DELIVERY';
+
+      const initialOrderStatus = isChapa ? 'PENDING_PAYMENT' : 'CONFIRMED';
+      const initialPaymentStatus = (isChapa || isCod) ? 'PENDING' : 'COMPLETED';
+      const initialConfirmedAt = isChapa ? null : new Date();
+      const initialPaidAt = (isChapa || isCod) ? null : new Date();
+
       // 2. Create Order
       const newDbOrder = await tx.order.create({
         data: {
           buyerId: ctx.userId,
           tradeType: 'LOCAL',
-          status: 'CONFIRMED',
+          status: initialOrderStatus as any,
           deliveryAddress: data.deliveryAddress,
           deliveryLatitude: data.deliveryLatitude,
           deliveryLongitude: data.deliveryLongitude,
@@ -1005,10 +1014,10 @@ export async function createBuyerOrder(
           taxAmount: calc.taxAmount,
           totalAmount: calc.totalAmount,
           paymentMethod: data.paymentMethod as any,
-          paymentStatus: 'COMPLETED',
+          paymentStatus: initialPaymentStatus as any,
           idempotencyKey: data.idempotencyKey || null,
           buyerNotes: data.buyerNotes || null,
-          confirmedAt: new Date(),
+          confirmedAt: initialConfirmedAt,
           items: {
             create: calc.items.map((i) => ({
               listingId: i.listingId,
@@ -1021,10 +1030,10 @@ export async function createBuyerOrder(
           payment: {
             create: {
               amount: calc.totalAmount,
-              status: 'COMPLETED',
+              status: initialPaymentStatus as any,
               paymentMethod: data.paymentMethod as any,
               idempotencyKey: data.idempotencyKey || null,
-              paidAt: new Date(),
+              paidAt: initialPaidAt,
             },
           },
         },
@@ -1037,10 +1046,12 @@ export async function createBuyerOrder(
       return newDbOrder;
     });
 
-    // 3. Trigger Courier Dispatch Broadcasting asynchronously
-    dispatchOrder(createdOrder.id).catch((err) => {
-      console.warn('[Dispatch broadcast non-blocking error]:', err?.message);
-    });
+    // 3. Trigger Courier Dispatch Broadcasting asynchronously ONLY if order is already confirmed (not waiting for online payment)
+    if (createdOrder.status === 'CONFIRMED') {
+      dispatchOrder(createdOrder.id).catch((err) => {
+        console.warn('[Dispatch broadcast non-blocking error]:', err?.message);
+      });
+    }
 
     // Keep resilientStore synchronized
     resilientStore.orders.unshift({

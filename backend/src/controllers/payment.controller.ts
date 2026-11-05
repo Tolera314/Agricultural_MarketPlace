@@ -2,7 +2,10 @@ import type { Request, Response, NextFunction } from 'express';
 import {
   initializeChapaPayment,
   verifyChapaWebhookSignature,
+  verifyTransactionWithChapaApi,
   finalizePaymentSuccess,
+  getPaymentDetails,
+  getChapaWebhookUrl,
 } from '../services/payment.service.js';
 
 /**
@@ -23,7 +26,10 @@ export async function handleInitializeChapa(req: Request, res: Response, next: N
     return res.json({
       success: true,
       message: 'Payment session initialized.',
-      data: result,
+      data: {
+        ...result,
+        webhookUrl: getChapaWebhookUrl(),
+      },
     });
   } catch (error) {
     next(error);
@@ -32,31 +38,69 @@ export async function handleInitializeChapa(req: Request, res: Response, next: N
 
 /**
  * POST /api/payment/chapa/webhook
- * Receives Chapa payment completion webhooks with HMAC-SHA256 signature verification.
+ * Receives Chapa payment completion webhooks with timing-safe HMAC-SHA256 signature verification.
+ * Supports direct and aliased routes.
  */
 export async function handleChapaWebhook(req: Request, res: Response, next: NextFunction) {
   try {
-    const signature = req.headers['x-chapa-signature'] as string | undefined;
-    const rawPayload = JSON.stringify(req.body);
+    // 1. Extract signature from supported Chapa headers
+    const signature = (
+      req.headers['x-chapa-signature'] ||
+      req.headers['chapa-signature']
+    ) as string | undefined;
 
-    // If production or if secret configured, verify HMAC signature
-    if (process.env.NODE_ENV === 'production' && process.env.CHAPA_WEBHOOK_SECRET) {
-      const isValid = verifyChapaWebhookSignature(rawPayload, signature);
-      if (!isValid) {
-        return res.status(401).json({
+    // 2. Extract raw unparsed body buffer to prevent JSON re-serialization discrepancy
+    const rawBuffer = (req as any).rawBody || Buffer.from(JSON.stringify(req.body));
+
+    // 3. Security: Cryptographic HMAC-SHA256 signature verification
+    const isValid = verifyChapaWebhookSignature(rawBuffer, signature);
+    if (!isValid) {
+      console.warn('[Chapa Webhook Security Alert] Signature verification failed.', {
+        hasSignature: Boolean(signature),
+        hasSecretConfigured: Boolean(process.env.CHAPA_WEBHOOK_SECRET || process.env.CHAPA_SECRET_KEY),
+        remoteIp: req.ip,
+      });
+      return res.status(401).json({
+        success: false,
+        error: { message: 'Invalid or unverified Chapa webhook signature.' },
+      });
+    }
+
+    const payload = req.body || {};
+    const txRef = payload.tx_ref || payload.trx_ref || payload.reference;
+    const status = (payload.status || '').toLowerCase();
+    const event = (payload.event || '').toLowerCase();
+
+    if (!txRef) {
+      return res.status(400).json({
+        success: false,
+        error: { message: 'Missing transaction reference in webhook payload.' },
+      });
+    }
+
+    // 4. Verify transaction with Chapa Gateway before final state transition
+    if (status === 'success' || event === 'charge.success') {
+      const gatewayCheck = await verifyTransactionWithChapaApi(txRef);
+      if (!gatewayCheck.isVerified) {
+        console.warn(`[Chapa Webhook] Gateway check rejected txRef ${txRef}:`, gatewayCheck.error);
+        return res.status(400).json({
           success: false,
-          error: { message: 'Invalid webhook signature.' },
+          error: { message: gatewayCheck.error || 'Gateway verification failed.' },
         });
       }
+
+      // 5. Finalize payment, update order status to CONFIRMED, and dispatch couriers
+      await finalizePaymentSuccess(txRef, payload);
+    } else {
+      console.log(`[Chapa Webhook] Received non-success event for ${txRef}: ${status || event}`);
     }
 
-    const { tx_ref, status } = req.body;
-
-    if (status === 'success' && tx_ref) {
-      await finalizePaymentSuccess(tx_ref, req.body);
-    }
-
-    return res.json({ success: true, message: 'Webhook received.' });
+    // 6. Performance: Respond 200 OK immediately to satisfy Chapa delivery timeout
+    return res.status(200).json({
+      success: true,
+      message: 'Chapa webhook received and processed successfully.',
+      txRef,
+    });
   } catch (error) {
     next(error);
   }
@@ -64,7 +108,7 @@ export async function handleChapaWebhook(req: Request, res: Response, next: Next
 
 /**
  * GET /api/payment/chapa/verify/:txRef
- * Manually confirms payment verification from client return.
+ * Client return verification endpoint: Confirms payment with Chapa Gateway upon buyer return.
  */
 export async function handleVerifyChapa(req: Request, res: Response, next: NextFunction) {
   try {
@@ -75,10 +119,62 @@ export async function handleVerifyChapa(req: Request, res: Response, next: NextF
       return res.status(400).json({ success: false, error: { message: 'Transaction reference is required.' } });
     }
 
-    const result = await finalizePaymentSuccess(txRef);
+    // 1. Verify with Chapa API server-to-server
+    const verification = await verifyTransactionWithChapaApi(txRef);
+    if (!verification.isVerified) {
+      return res.status(400).json({
+        success: false,
+        error: { message: verification.error || 'Payment not verified by gateway.' },
+      });
+    }
+
+    // 2. Finalize payment in database
+    const result = await finalizePaymentSuccess(txRef, verification.gatewayData);
+
     return res.json({
       success: true,
       message: 'Payment verified and order confirmed.',
+      data: result,
+    });
+  } catch (error) {
+    next(error);
+  }
+}
+
+/**
+ * GET /api/payment/status/:orderId
+ * Returns the current payment and order status for an order
+ */
+export async function handleGetPaymentStatus(req: Request, res: Response, next: NextFunction) {
+  try {
+    const orderId = String(req.params.orderId);
+    const payment = await getPaymentDetails(orderId);
+
+    if (!payment) {
+      return res.status(404).json({ success: false, error: { message: 'Payment record not found.' } });
+    }
+
+    return res.json({ success: true, data: payment });
+  } catch (error) {
+    next(error);
+  }
+}
+
+/**
+ * POST /api/payment/simulate-success
+ * Sandbox utility for local development and demo testing when outside live gateway
+ */
+export async function handleSimulatePayment(req: Request, res: Response, next: NextFunction) {
+  try {
+    const { txRef } = req.body;
+    if (!txRef) {
+      return res.status(400).json({ success: false, error: { message: 'txRef is required.' } });
+    }
+
+    const result = await finalizePaymentSuccess(txRef, { mode: 'simulated_success', timestamp: new Date() });
+    return res.json({
+      success: true,
+      message: 'Simulation successful. Order marked as paid and dispatched.',
       data: result,
     });
   } catch (error) {

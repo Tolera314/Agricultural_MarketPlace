@@ -6,6 +6,7 @@ import { CartItem, MarketLocation } from '@/types';
 import { useAuth } from '@/context/AuthContext';
 import { AuthRequiredModal } from '@/components/auth/AuthRequiredModal';
 import { buyerApi } from '@/lib/buyerApi';
+import { paymentApi } from '@/lib/paymentApi';
 import { getHumanReadableErrorMessage } from '@/lib/errorHandler';
 
 interface CartDrawerProps {
@@ -32,6 +33,7 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({
   const [buyerName, setBuyerName] = useState('');
   const [deliveryAddress, setDeliveryAddress] = useState('');
   const [deliveryNotes, setDeliveryNotes] = useState('');
+  const [paymentMethod, setPaymentMethod] = useState<'CHAPA' | 'CASH_ON_DELIVERY'>('CHAPA');
   const [orderRef, setOrderRef] = useState('');
   const [showAuthModal, setShowAuthModal] = useState(false);
   const [roleErrorMessage, setRoleErrorMessage] = useState<string | null>(null);
@@ -89,7 +91,7 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({
           quantity: i.quantity,
         })),
         deliveryAddress: deliveryAddress.trim(),
-        paymentMethod: 'TELEBIRR',
+        paymentMethod,
         buyerNotes: deliveryNotes.trim() || undefined,
         idempotencyKey: `order_${Date.now()}_${Math.random().toString(36).slice(2, 9)}`,
       };
@@ -97,6 +99,23 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({
       const res = await buyerApi.createOrder(orderPayload);
       const generatedRef = res.data?.orderNumber || `AGRI-${Math.floor(100000 + Math.random() * 900000)}`;
       setOrderRef(generatedRef);
+
+      // If Chapa payment is selected, initialize checkout session and redirect
+      if (paymentMethod === 'CHAPA' && res.data?.id) {
+        try {
+          const returnUrl = `${window.location.origin}/dashboard/buyer?tab=orders&tx_ref=${generatedRef}&orderId=${res.data.id}&payment=success`;
+          const chapaRes = await paymentApi.initializeChapa(res.data.id, returnUrl);
+          if (chapaRes.data?.checkoutUrl) {
+            onClearCart();
+            window.location.href = chapaRes.data.checkoutUrl;
+            return;
+          }
+        } catch (chapaErr: any) {
+          console.error('[Chapa Checkout Error]:', chapaErr);
+          // Fallback to confirmed status if simulation/redirect fails
+        }
+      }
+
       setCheckoutStep('confirmed');
       onClearCart();
     } catch (err: any) {
@@ -301,11 +320,63 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({
                 />
               </div>
 
-              <div className="p-3 bg-white dark:bg-[#11221C] rounded-xl border border-[#E5EDE4] dark:border-[#1E3A2F] space-y-1.5 text-xs">
-                <div className="font-semibold text-[#173F35] dark:text-[#EDF7F1] mb-1">Payment Method</div>
-                <div className="flex items-center justify-between text-[#68766C] dark:text-[#88A89A]">
-                  <span>Telebirr / CBE Birr Direct Escrow</span>
-                  <span className="text-[#39745A] dark:text-[#34D399] font-semibold">Verified Escrow</span>
+              <div className="space-y-2">
+                <label className="block text-xs font-bold text-[#173F35] dark:text-[#EDF7F1]">
+                  Payment Method
+                </label>
+                <div className="grid grid-cols-1 gap-2 text-xs">
+                  <label
+                    className={`flex items-start gap-2.5 p-3 rounded-xl border cursor-pointer transition-colors ${
+                      paymentMethod === 'CHAPA'
+                        ? 'border-[#075C3B] dark:border-[#34D399] bg-emerald-50/50 dark:bg-[#122E21]/60'
+                        : 'border-[#E5EDE4] dark:border-[#1E3A2F] bg-white dark:bg-[#11221C]'
+                    }`}
+                  >
+                    <input
+                      type="radio"
+                      name="drawerPaymentMethod"
+                      value="CHAPA"
+                      checked={paymentMethod === 'CHAPA'}
+                      onChange={() => setPaymentMethod('CHAPA')}
+                      className="mt-0.5 text-[#075C3B]"
+                    />
+                    <div className="flex-1">
+                      <div className="flex items-center justify-between">
+                        <span className="font-bold text-[#173F35] dark:text-[#EDF7F1]">Chapa Gateway</span>
+                        <span className="text-[10px] font-bold text-[#075C3B] dark:text-[#34D399] bg-emerald-100 dark:bg-[#163E2B] px-2 py-0.5 rounded-full">
+                          Recommended
+                        </span>
+                      </div>
+                      <p className="text-[11px] text-[#68766C] dark:text-[#88A89A] mt-0.5">
+                        Telebirr, CBE Birr, Awash, or Card via Chapa secure escrow.
+                      </p>
+                    </div>
+                  </label>
+
+                  <label
+                    className={`flex items-start gap-2.5 p-3 rounded-xl border cursor-pointer transition-colors ${
+                      paymentMethod === 'CASH_ON_DELIVERY'
+                        ? 'border-[#075C3B] dark:border-[#34D399] bg-emerald-50/50 dark:bg-[#122E21]/60'
+                        : 'border-[#E5EDE4] dark:border-[#1E3A2F] bg-white dark:bg-[#11221C]'
+                    }`}
+                  >
+                    <input
+                      type="radio"
+                      name="drawerPaymentMethod"
+                      value="CASH_ON_DELIVERY"
+                      checked={paymentMethod === 'CASH_ON_DELIVERY'}
+                      onChange={() => setPaymentMethod('CASH_ON_DELIVERY')}
+                      className="mt-0.5 text-[#075C3B]"
+                    />
+                    <div className="flex-1">
+                      <div className="flex items-center justify-between">
+                        <span className="font-bold text-[#173F35] dark:text-[#EDF7F1]">Cash on Delivery (COD)</span>
+                      </div>
+                      <p className="text-[11px] text-[#68766C] dark:text-[#88A89A] mt-0.5">
+                        Pay cash directly to the verified courier upon produce arrival.
+                      </p>
+                    </div>
+                  </label>
                 </div>
               </div>
             </form>
