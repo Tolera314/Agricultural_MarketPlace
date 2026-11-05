@@ -38,6 +38,14 @@ function calculateDateRange(options?: DateFilterOptions): { gte: Date; lte: Date
   return null; // 'all'
 }
 
+function normalizeVerificationStatus(status: any): VerificationStatus {
+  const upper = String(status || '').trim().toUpperCase();
+  if (upper === 'APPROVED' || upper === 'VERIFIED') return VerificationStatus.VERIFIED;
+  if (upper === 'REJECTED' || upper === 'REJECT') return VerificationStatus.REJECTED;
+  if (upper === 'SUSPENDED' || upper === 'SUSPEND') return VerificationStatus.SUSPENDED;
+  return VerificationStatus.PENDING;
+}
+
 export class AdminService {
   /**
    * Helper to write an immutable audit log entry
@@ -54,9 +62,18 @@ export class AdminService {
     userAgent?: string | undefined;
   }) {
     try {
+      let validActorId: string | null = null;
+      if (data.actorId && !data.actorId.startsWith('dev-')) {
+        const userExists = await prisma.user.findUnique({
+          where: { id: data.actorId },
+          select: { id: true },
+        });
+        if (userExists) validActorId = userExists.id;
+      }
+
       await prisma.auditLog.create({
         data: {
-          actorId: data.actorId || null,
+          actorId: validActorId,
           action: data.action,
           entityType: data.entityType,
           entityId: data.entityId,
@@ -444,15 +461,39 @@ export class AdminService {
     }));
   }
 
-  static async verifyFarmer(farmerProfileId: string, status: VerificationStatus, note: string, adminId: string) {
-    const prev = await prisma.farmerProfile.findUnique({ where: { id: farmerProfileId } });
-    if (!prev) throw new Error('Farmer profile not found.');
+  static async verifyFarmer(farmerIdentifier: string, statusInput: any, note: string, adminId: string) {
+    const status = normalizeVerificationStatus(statusInput);
+    let prev = await prisma.farmerProfile.findFirst({
+      where: {
+        OR: [
+          { id: farmerIdentifier },
+          { userId: farmerIdentifier },
+        ],
+      },
+    });
+
+    if (!prev) {
+      const user = await prisma.user.findUnique({ where: { id: farmerIdentifier } });
+      if (user && user.role === 'FARMER') {
+        prev = await prisma.farmerProfile.create({
+          data: {
+            userId: user.id,
+            farmName: `${user.fullName}'s Farm`,
+            farmLatitude: 9.0320,
+            farmLongitude: 38.7482,
+            verificationStatus: 'PENDING',
+          },
+        });
+      }
+    }
+
+    if (!prev) throw Object.assign(new Error(`Farmer profile not found for identifier: ${farmerIdentifier}`), { status: 404 });
 
     const isVerified = status === VerificationStatus.VERIFIED;
 
     const [updated] = await prisma.$transaction([
       prisma.farmerProfile.update({
-        where: { id: farmerProfileId },
+        where: { id: prev.id },
         data: { verificationStatus: status, verificationNote: note },
       }),
       prisma.user.update({
@@ -462,13 +503,28 @@ export class AdminService {
           onboardingStatus: isVerified ? 'COMPLETED' : status === VerificationStatus.REJECTED ? 'REJECTED' : 'PENDING_VERIFICATION',
         },
       }),
+      ...(status === VerificationStatus.SUSPENDED || status === VerificationStatus.REJECTED
+        ? [
+            prisma.productListing.updateMany({
+              where: { farmerId: prev.userId, status: 'ACTIVE' },
+              data: { status: 'PAUSED' },
+            }),
+          ]
+        : isVerified
+        ? [
+            prisma.productListing.updateMany({
+              where: { farmerId: prev.userId, status: 'PAUSED' },
+              data: { status: 'ACTIVE' },
+            }),
+          ]
+        : []),
     ]);
 
     await this.logAction({
       actorId: adminId,
       action: status === VerificationStatus.VERIFIED ? AuditAction.APPROVE : AuditAction.REJECT,
       entityType: 'FarmerProfile',
-      entityId: farmerProfileId,
+      entityId: prev.id,
       previousValue: { verificationStatus: prev.verificationStatus },
       newValue: { verificationStatus: status },
       reason: note,
@@ -610,15 +666,37 @@ export class AdminService {
     });
   }
 
-  static async verifyWorker(workerProfileId: string, status: VerificationStatus, reason: string, adminId: string) {
-    const prev = await prisma.deliveryWorkerProfile.findUnique({ where: { id: workerProfileId } });
-    if (!prev) throw new Error('Worker profile not found.');
+  static async verifyWorker(workerIdentifier: string, statusInput: any, reason: string, adminId: string) {
+    const status = normalizeVerificationStatus(statusInput);
+    let prev = await prisma.deliveryWorkerProfile.findFirst({
+      where: {
+        OR: [
+          { id: workerIdentifier },
+          { userId: workerIdentifier },
+        ],
+      },
+    });
+
+    if (!prev) {
+      const user = await prisma.user.findUnique({ where: { id: workerIdentifier } });
+      if (user && user.role === 'DELIVERY_WORKER') {
+        prev = await prisma.deliveryWorkerProfile.create({
+          data: {
+            userId: user.id,
+            verificationStatus: 'PENDING',
+            vehicleType: 'MOTORCYCLE',
+          },
+        });
+      }
+    }
+
+    if (!prev) throw Object.assign(new Error(`Worker profile not found for identifier: ${workerIdentifier}`), { status: 404 });
 
     const isVerified = status === VerificationStatus.VERIFIED;
 
     const [updated] = await prisma.$transaction([
       prisma.deliveryWorkerProfile.update({
-        where: { id: workerProfileId },
+        where: { id: prev.id },
         data: { verificationStatus: status, verificationNote: reason },
       }),
       prisma.user.update({
@@ -634,7 +712,7 @@ export class AdminService {
       actorId: adminId,
       action: status === VerificationStatus.VERIFIED ? AuditAction.APPROVE : AuditAction.REJECT,
       entityType: 'DeliveryWorkerProfile',
-      entityId: workerProfileId,
+      entityId: prev.id,
       previousValue: { verificationStatus: prev.verificationStatus },
       newValue: { verificationStatus: status },
       reason,

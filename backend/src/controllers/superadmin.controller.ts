@@ -42,14 +42,14 @@ export async function getUsers(req: Request, res: Response, next: NextFunction) 
 export async function verifyFarmer(req: Request, res: Response, next: NextFunction) {
   try {
     const id = paramId(req);
-    const { status, note } = req.body;
+    const { status, note, reason } = req.body;
     const actorId = req.auth?.sub!;
 
     if (!id || !status) {
       return res.status(400).json({ success: false, error: { message: 'Farmer ID and verification status are required.' } });
     }
 
-    const updated = await AdminService.verifyFarmer(id, status, note || 'Superadmin verification review', actorId);
+    const updated = await AdminService.verifyFarmer(id, status, note || reason || 'Superadmin verification review', actorId);
     return res.json({ success: true, data: updated, message: `Farmer verification updated to ${status}.` });
   } catch (err) {
     next(err);
@@ -59,14 +59,14 @@ export async function verifyFarmer(req: Request, res: Response, next: NextFuncti
 export async function verifyWorker(req: Request, res: Response, next: NextFunction) {
   try {
     const id = paramId(req);
-    const { status, reason } = req.body;
+    const { status, reason, note } = req.body;
     const actorId = req.auth?.sub!;
 
     if (!id || !status) {
       return res.status(400).json({ success: false, error: { message: 'Worker ID and verification status are required.' } });
     }
 
-    const updated = await AdminService.verifyWorker(id, status, reason || 'Superadmin fleet compliance review', actorId);
+    const updated = await AdminService.verifyWorker(id, status, reason || note || 'Superadmin fleet compliance review', actorId);
     return res.json({ success: true, data: updated, message: `Worker status updated to ${status}.` });
   } catch (err) {
     next(err);
