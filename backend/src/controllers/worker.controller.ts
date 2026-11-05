@@ -131,6 +131,12 @@ export async function getDashboard(req: Request, res: Response, next: NextFuncti
       },
     });
 
+    const maxAgeSeconds = parseInt(process.env.WORKER_LOCATION_MAX_AGE_SECONDS || '300', 10);
+    const locationAgeSeconds = profile.lastLocationAt
+      ? Math.max(0, Math.floor((Date.now() - new Date(profile.lastLocationAt).getTime()) / 1000))
+      : null;
+    const isLocationRecent = locationAgeSeconds !== null ? locationAgeSeconds <= maxAgeSeconds : false;
+
     return res.json({
       success: true,
       data: {
@@ -148,6 +154,10 @@ export async function getDashboard(req: Request, res: Response, next: NextFuncti
           lastLatitude: profile.lastLatitude,
           lastLongitude: profile.lastLongitude,
           lastLocationAt: profile.lastLocationAt,
+          locationAgeSeconds,
+          isLocationRecent,
+          locationMaxAgeSeconds: maxAgeSeconds,
+          stalenessStatus: isLocationRecent ? 'RECENT' : 'OUTDATED',
           activeJobCount: profile.activeJobCount,
           verificationStatus: profile.verificationStatus,
         },
@@ -161,6 +171,12 @@ export async function getDashboard(req: Request, res: Response, next: NextFuncti
           pendingCodBalance: Number(pendingCod._sum.amount || 0),
           pendingCodCount: pendingCod._count.id,
           activeIncidents: incidentCount,
+          locationStatus: {
+            isRecent: isLocationRecent,
+            ageSeconds: locationAgeSeconds,
+            maxAgeSeconds,
+            status: isLocationRecent ? 'RECENT' : 'OUTDATED',
+          },
         },
         todayJobs: todayJobs.slice(0, 10).map(j => ({
           id: j.id,
@@ -959,6 +975,13 @@ export async function getWorkerProfile(req: Request, res: Response, next: NextFu
     });
     if (!user) return res.status(404).json({ success: false, error: { message: 'User not found.' } });
 
+    const maxAgeSeconds = parseInt(process.env.WORKER_LOCATION_MAX_AGE_SECONDS || '300', 10);
+    const prof = user.deliveryProfile;
+    const locationAgeSeconds = prof?.lastLocationAt
+      ? Math.max(0, Math.floor((Date.now() - new Date(prof.lastLocationAt).getTime()) / 1000))
+      : null;
+    const isLocationRecent = locationAgeSeconds !== null ? locationAgeSeconds <= maxAgeSeconds : false;
+
     return res.json({
       success: true,
       data: {
@@ -967,7 +990,15 @@ export async function getWorkerProfile(req: Request, res: Response, next: NextFu
         phone: user.phone,
         email: user.email,
         avatarUrl: user.userProfile?.avatarUrl ?? null,
-        profile: user.deliveryProfile,
+        profile: prof
+          ? {
+              ...prof,
+              locationAgeSeconds,
+              isLocationRecent,
+              locationMaxAgeSeconds: maxAgeSeconds,
+              stalenessStatus: isLocationRecent ? 'RECENT' : 'OUTDATED',
+            }
+          : null,
       },
     });
   } catch (err) {

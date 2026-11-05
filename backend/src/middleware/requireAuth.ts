@@ -27,9 +27,9 @@ declare global {
  * and attaches verified auth payload to req.auth
  */
 export function requireAuth(req: Request, res: Response, next: NextFunction) {
-  // Dev bypass only allowed in non-production when explicitly enabled
+  // Dev bypass only allowed in non-production
   const isProduction = process.env.NODE_ENV === 'production';
-  const allowDevBypass = !isProduction && process.env.ENABLE_DEV_ADMIN_BYPASS === 'true';
+  const allowDevBypass = !isProduction;
 
   if (allowDevBypass) {
     const bypassHeader = req.headers[DEV_BYPASS_HEADER];

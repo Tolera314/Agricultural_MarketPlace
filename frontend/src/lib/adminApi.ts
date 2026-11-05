@@ -93,11 +93,8 @@ function getAuthHeaders(): Record<string, string> {
   };
 
   const token = getAccessToken();
-  const user = getCurrentUser();
-  if (token && user) {
-    if (user.role === 'ADMIN' || user.role === 'SUPERADMIN') {
-      headers.Authorization = `Bearer ${token}`;
-    }
+  if (token) {
+    headers.Authorization = `Bearer ${token}`;
   }
 
   return headers;

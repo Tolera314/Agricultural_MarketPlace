@@ -60,14 +60,14 @@ export async function getFarmers(req: Request, res: Response, next: NextFunction
 export async function verifyFarmer(req: Request, res: Response, next: NextFunction) {
   try {
     const id = paramId(req);
-    const { status, note } = req.body;
+    const { status, note, reason } = req.body;
     const adminId = req.auth?.sub!;
 
     if (!id || !status) {
       return res.status(400).json({ success: false, error: { message: 'Farmer ID and verification status are required.' } });
     }
 
-    const updated = await AdminService.verifyFarmer(id, status, note || 'Administrative verification review', adminId);
+    const updated = await AdminService.verifyFarmer(id, status, note || reason || 'Administrative verification review', adminId);
     return res.json({ success: true, data: updated, message: `Farmer verification updated to ${status}.` });
   } catch (err) {
     next(err);
@@ -114,14 +114,14 @@ export async function getWorkers(req: Request, res: Response, next: NextFunction
 export async function verifyWorker(req: Request, res: Response, next: NextFunction) {
   try {
     const id = paramId(req);
-    const { status, reason } = req.body;
+    const { status, reason, note } = req.body;
     const adminId = req.auth?.sub!;
 
     if (!id || !status) {
       return res.status(400).json({ success: false, error: { message: 'Worker ID and verification status are required.' } });
     }
 
-    const updated = await AdminService.verifyWorker(id, status, reason || 'Fleet compliance review', adminId);
+    const updated = await AdminService.verifyWorker(id, status, reason || note || 'Fleet compliance review', adminId);
     return res.json({ success: true, data: updated, message: `Worker status updated to ${status}.` });
   } catch (err) {
     next(err);

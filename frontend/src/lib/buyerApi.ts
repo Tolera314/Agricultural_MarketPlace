@@ -85,6 +85,7 @@ export const buyerApi = {
     maxPrice?: number;
     lat?: number;
     lng?: number;
+    limit?: number;
   }) => {
     const q = new URLSearchParams();
     if (params?.search) q.set('search', params.search);
@@ -94,6 +95,7 @@ export const buyerApi = {
     if (params?.maxPrice !== undefined) q.set('maxPrice', String(params.maxPrice));
     if (params?.lat !== undefined) q.set('lat', String(params.lat));
     if (params?.lng !== undefined) q.set('lng', String(params.lng));
+    if (params?.limit !== undefined) q.set('limit', String(params.limit));
     const qs = q.toString() ? `?${q.toString()}` : '';
     return apiFetch<any>(`/api/buyer/products${qs}`);
   },

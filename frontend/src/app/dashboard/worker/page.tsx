@@ -404,24 +404,7 @@ function RecentActivityCard({
   activities?: { id: string; title: string; subtitle: string; fee?: string; time: string }[];
   onViewAll?: () => void;
 }) {
-  const defaultItems = [
-    {
-      id: 'act-1',
-      title: 'Delivery completed',
-      subtitle: 'Tomatoes • 2.1 km',
-      fee: 'ETB 120',
-      time: '2 hours ago',
-    },
-    {
-      id: 'act-2',
-      title: 'Order assigned',
-      subtitle: 'Green Beans • 3.4 km',
-      fee: '',
-      time: '1 hour ago',
-    },
-  ];
-
-  const items = activities && activities.length > 0 ? activities : defaultItems;
+  const items = activities || [];
 
   return (
     <div className="bg-white dark:bg-[#0D2118] rounded-2xl border border-[#E3EDE6] dark:border-[#1E4130] p-4 sm:p-5 shadow-[0_2px_8px_rgba(10,40,25,0.03)]">
@@ -435,29 +418,37 @@ function RecentActivityCard({
         </button>
       </div>
 
-      <div className="divide-y divide-[#EDF5F0] dark:divide-[#1A3326]">
-        {items.map(item => (
-          <div key={item.id} className="py-3 first:pt-1 last:pb-0 flex items-center justify-between gap-3">
-            <div className="flex items-center gap-3">
-              <div className="w-8 h-8 rounded-full bg-[#EBF5EE] dark:bg-[#163828] text-[#075C3B] dark:text-[#34D399] flex items-center justify-center shrink-0">
-                <Truck className="w-4 h-4" />
+      {items.length === 0 ? (
+        <div className="py-6 text-center text-xs text-gray-400 dark:text-gray-500">
+          <Truck className="w-6 h-6 mx-auto mb-1 text-gray-300 dark:text-gray-600" />
+          <p className="font-semibold text-gray-600 dark:text-gray-300">No delivery activity yet today</p>
+          <p className="text-[11px] text-gray-400 mt-0.5">Completed and en-route deliveries will be logged here.</p>
+        </div>
+      ) : (
+        <div className="divide-y divide-[#EDF5F0] dark:divide-[#1A3326]">
+          {items.map(item => (
+            <div key={item.id} className="py-3 first:pt-1 last:pb-0 flex items-center justify-between gap-3">
+              <div className="flex items-center gap-3">
+                <div className="w-8 h-8 rounded-full bg-[#EBF5EE] dark:bg-[#163828] text-[#075C3B] dark:text-[#34D399] flex items-center justify-center shrink-0">
+                  <Truck className="w-4 h-4" />
+                </div>
+                <div>
+                  <p className="text-xs font-bold text-[#0B3322] dark:text-[#EEFAF3]">{item.title}</p>
+                  <p className="text-[11px] text-[#6B8B7B] dark:text-[#88B8A0] mt-0.5">{item.subtitle}</p>
+                </div>
               </div>
-              <div>
-                <p className="text-xs font-bold text-[#0B3322] dark:text-[#EEFAF3]">{item.title}</p>
-                <p className="text-[11px] text-[#6B8B7B] dark:text-[#88B8A0] mt-0.5">{item.subtitle}</p>
-              </div>
-            </div>
 
-            <div className="flex items-center gap-3 text-right">
-              <div>
-                {item.fee && <p className="text-xs font-bold text-[#0B3322] dark:text-[#EEFAF3]">{item.fee}</p>}
-                <p className="text-[11px] text-[#8EA89B] dark:text-[#6E9581]">{item.time}</p>
+              <div className="flex items-center gap-3 text-right">
+                <div>
+                  {item.fee && <p className="text-xs font-bold text-[#0B3322] dark:text-[#EEFAF3]">{item.fee}</p>}
+                  <p className="text-[11px] text-[#8EA89B] dark:text-[#6E9581]">{item.time}</p>
+                </div>
+                <ChevronRight className="w-4 h-4 text-[#A0BAAC] dark:text-[#4A705E]" />
               </div>
-              <ChevronRight className="w-4 h-4 text-[#A0BAAC] dark:text-[#4A705E]" />
             </div>
-          </div>
-        ))}
-      </div>
+          ))}
+        </div>
+      )}
     </div>
   );
 }
@@ -562,13 +553,13 @@ function FullRouteModal({
           </button>
           <button
             onClick={() => {
-              alert('GPS Navigation launched! Heading to Stop 1 (Lideta Farm Cooperative).');
+              window.open('https://www.google.com/maps/dir/?api=1&destination=Addis+Ababa+Ethiopia', '_blank');
               onClose();
             }}
             className="flex-1 py-2.5 rounded-xl bg-[#075C3B] hover:bg-[#05462D] text-white text-xs font-bold flex items-center justify-center gap-1.5 transition-colors cursor-pointer shadow-sm"
           >
             <Navigation className="w-4 h-4" />
-            Start GPS Navigation
+            <span>Launch Navigation</span>
           </button>
         </div>
       </div>
@@ -776,6 +767,32 @@ function DashboardSection({
   const metrics = data?.metrics;
   const activeJob = data?.activeJob;
 
+  const mappedActivities = useMemo(() => {
+    if (data?.todayJobs && data.todayJobs.length > 0) {
+      return data.todayJobs.map(j => ({
+        id: j.id,
+        title: j.status === 'DELIVERED' ? 'Delivery completed' : `Delivery ${STATUS_LABELS[j.status] || j.status}`,
+        subtitle: `${j.product || 'Produce Batch'} • ${j.dropoffAddress || 'Addis Ababa'}`,
+        fee: j.deliveryFee ? `ETB ${j.deliveryFee}` : '',
+        time: j.deliveredAt || j.acceptedAt
+          ? new Date(j.deliveredAt || j.acceptedAt!).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+          : 'Today',
+      }));
+    }
+    if (data?.recentActivity && data.recentActivity.length > 0) {
+      return data.recentActivity.map(a => ({
+        id: a.id,
+        title: a.status === 'DELIVERED' ? 'Delivery completed' : `Delivery ${STATUS_LABELS[a.status] || a.status}`,
+        subtitle: `${a.product || 'Produce Batch'} • ${a.dropoffAddress || 'Addis Ababa'}`,
+        fee: a.deliveryFee ? `ETB ${a.deliveryFee}` : '',
+        time: a.occurredAt
+          ? new Date(a.occurredAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+          : 'Today',
+      }));
+    }
+    return [];
+  }, [data?.todayJobs, data?.recentActivity]);
+
   return (
     <div className="space-y-5">
       {/* ─── Hero Greeting Banner with Background Van Graphic ─── */}
@@ -908,7 +925,7 @@ function DashboardSection({
             onAccept={onAcceptNearbyRequest}
             onViewAll={() => onNavigateSection('offers')}
           />
-          <RecentActivityCard onViewAll={() => onNavigateSection('deliveries')} />
+          <RecentActivityCard activities={mappedActivities} onViewAll={() => onNavigateSection('deliveries')} />
         </div>
 
         <div className="lg:col-span-5 space-y-5">
@@ -1857,12 +1874,16 @@ function WorkerDashboardContent(props: any) {
       return;
     }
     try {
+      if (item.id && !item.id.startsWith('req-')) {
+        await workerApi.acceptOffer(item.id);
+      }
       setNearbyRequests(prev =>
         prev.map(r => (r.id === item.id ? { ...r, accepted: true } : r))
       );
-      showToast(`Accepted "${item.title}"! Added to Today's Route.`);
-    } catch {
-      showToast(`Error accepting order.`);
+      showToast(`Accepted "${item.title}"! Added to active delivery queue.`);
+      loadDashboard();
+    } catch (err: any) {
+      showToast(err?.message || 'Error accepting order offer.');
     }
   };
 

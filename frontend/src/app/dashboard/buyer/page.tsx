@@ -43,7 +43,9 @@ import {
 } from 'lucide-react';
 import { ThemeToggle } from '@/components/layout/ThemeToggle';
 import { buyerApi } from '@/lib/buyerApi';
-import { getCachedUserProfile, logout } from '@/lib/auth';
+import { paymentApi } from '@/lib/paymentApi';
+import { getAccessToken, getCachedUserProfile, logout } from '@/lib/auth';
+import { API_BASE_URL } from '@/lib/apiConfig';
 import { useAuth } from '@/context/AuthContext';
 import { BuyerBottomNav } from '@/components/layout/MobileBottomNav';
 import { UserAvatar } from '@/components/ui/UserAvatar';
@@ -190,6 +192,12 @@ function BuyerDashboardContent(props: any) {
   const [checkoutNotes, setCheckoutNotes] = useState<string>('');
   const [confirmedOrderRef, setConfirmedOrderRef] = useState<string>('');
   const [isCheckingOut, setIsCheckingOut] = useState(false);
+  const [buyerLanguage, setBuyerLanguage] = useState<string>(() =>
+    typeof window !== 'undefined' ? localStorage.getItem('agri_buyer_lang') || 'en' : 'en'
+  );
+  const [smsUpdates, setSmsUpdates] = useState<boolean>(() =>
+    typeof window !== 'undefined' ? localStorage.getItem('agri_buyer_sms') !== 'false' : true
+  );
 
   // Modals & Drawers
   const [isNotificationsOpen, setIsNotificationsOpen] = useState(false);
@@ -305,6 +313,25 @@ function BuyerDashboardContent(props: any) {
   useEffect(() => {
     fetchAllData();
   }, [fetchAllData]);
+
+  // Handle return redirect from Chapa Gateway payment
+  useEffect(() => {
+    const txRef = searchParams.get('tx_ref');
+    const paymentParam = searchParams.get('payment');
+    if (txRef && paymentParam === 'success') {
+      paymentApi
+        .verifyChapaPayment(txRef)
+        .then(() => {
+          showNotification('Payment verified with Chapa! Your order is confirmed and dispatched.');
+          fetchAllData();
+          setActiveTab('orders');
+        })
+        .catch((err: any) => {
+          console.warn('[Chapa Verification Notice]:', err?.message);
+          fetchAllData();
+        });
+    }
+  }, [searchParams, fetchAllData]);
 
   // Refetch products when category, search, or sortBy change
   useEffect(() => {
@@ -424,6 +451,30 @@ function BuyerDashboardContent(props: any) {
         // Refresh dashboard overview & orders
         fetchAllData();
         showNotification('Order confirmed successfully!');
+
+        // If Chapa payment chosen, initiate gateway checkout
+        if (paymentMethod === 'CHAPA' && res.data.id) {
+          try {
+            const chapaRes = await fetch(`${API_BASE_URL}/api/payment/chapa/initialize`, {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+                Authorization: `Bearer ${getAccessToken()}`,
+              },
+              body: JSON.stringify({
+                orderId: res.data.id,
+                returnUrl: `${window.location.origin}/dashboard/buyer?tab=orders`,
+              }),
+            });
+            const chapaData = await chapaRes.json();
+            if (chapaData.success && chapaData.data?.checkoutUrl) {
+              window.location.href = chapaData.data.checkoutUrl;
+              return;
+            }
+          } catch (chapaErr) {
+            console.error('Chapa checkout session error:', chapaErr);
+          }
+        }
       }
     } catch (err: any) {
       showNotification(err.message || 'Failed to place order.', 'error');
@@ -1600,10 +1651,20 @@ function BuyerDashboardContent(props: any) {
                     <div className="font-bold text-[#1E2923] dark:text-white">Language</div>
                     <div className="text-[11px] text-[#7A9988]">Select platform language</div>
                   </div>
-                  <select className="p-1.5 rounded-lg border border-[#E5EDE7] dark:border-[#132A20] bg-white dark:bg-[#07130D]">
-                    <option>English (US)</option>
-                    <option>Amharic (አማርኛ)</option>
-                    <option>Oromo (Afaan Oromoo)</option>
+                  <select
+                    value={buyerLanguage}
+                    onChange={(e) => {
+                      setBuyerLanguage(e.target.value);
+                      if (typeof window !== 'undefined') {
+                        localStorage.setItem('agri_buyer_lang', e.target.value);
+                      }
+                      showNotification('Language preference updated.');
+                    }}
+                    className="p-1.5 rounded-lg border border-[#E5EDE7] dark:border-[#132A20] bg-white dark:bg-[#07130D]"
+                  >
+                    <option value="en">English (US)</option>
+                    <option value="am">Amharic (አማርኛ)</option>
+                    <option value="om">Oromo (Afaan Oromoo)</option>
                   </select>
                 </div>
 
@@ -1612,7 +1673,18 @@ function BuyerDashboardContent(props: any) {
                     <div className="font-bold text-[#1E2923] dark:text-white">Order SMS Updates</div>
                     <div className="text-[11px] text-[#7A9988]">Receive courier tracking via SMS</div>
                   </div>
-                  <input type="checkbox" defaultChecked className="w-4 h-4 accent-[#075C3B]" />
+                  <input
+                    type="checkbox"
+                    checked={smsUpdates}
+                    onChange={(e) => {
+                      setSmsUpdates(e.target.checked);
+                      if (typeof window !== 'undefined') {
+                        localStorage.setItem('agri_buyer_sms', String(e.target.checked));
+                      }
+                      showNotification(`SMS notifications ${e.target.checked ? 'enabled' : 'disabled'}.`);
+                    }}
+                    className="w-4 h-4 accent-[#075C3B] cursor-pointer"
+                  />
                 </div>
 
                 <div className="flex items-center justify-between">
@@ -1767,6 +1839,26 @@ function BuyerDashboardContent(props: any) {
                           }`}
                       >
                         CBE Birr
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setPaymentMethod('CHAPA')}
+                        className={`p-2.5 rounded-xl border text-center font-bold transition-colors cursor-pointer ${paymentMethod === 'CHAPA'
+                          ? 'border-[#075C3B] bg-emerald-50 text-[#075C3B] dark:bg-emerald-950/60 dark:text-[#34D399]'
+                          : 'border-[#E5EDE7] dark:border-[#132A20]'
+                          }`}
+                      >
+                        Chapa Gateway
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setPaymentMethod('CASH_ON_DELIVERY')}
+                        className={`p-2.5 rounded-xl border text-center font-bold transition-colors cursor-pointer ${paymentMethod === 'CASH_ON_DELIVERY'
+                          ? 'border-[#075C3B] bg-emerald-50 text-[#075C3B] dark:bg-emerald-950/60 dark:text-[#34D399]'
+                          : 'border-[#E5EDE7] dark:border-[#132A20]'
+                          }`}
+                      >
+                        Cash on Delivery
                       </button>
                     </div>
                   </div>

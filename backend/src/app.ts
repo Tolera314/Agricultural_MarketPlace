@@ -12,6 +12,7 @@ import onboardingRouter from './routes/onboarding.routes.js';
 import farmerRouter from './routes/farmer.routes.js';
 import messageRouter from './routes/message.routes.js';
 import paymentRouter from './routes/payment.routes.js';
+import { handleChapaWebhook } from './controllers/payment.controller.js';
 
 import cookieParser from 'cookie-parser';
 import { errorHandler } from './middleware/errorHandler.js';
@@ -101,7 +102,15 @@ app.use((req: Request, res: Response, next: NextFunction) => {
   next();
 });
 
-app.use(express.json());
+// Parse JSON and preserve raw byte buffer for cryptographically secure HMAC webhook signature checks
+app.use(
+  express.json({
+    verify: (req: Request, _res: Response, buf: Buffer) => {
+      (req as any).rawBody = buf;
+    },
+  })
+);
+app.use(express.urlencoded({ extended: true }));
 
 // Root endpoint: Prevents "Cannot GET /" 404
 app.get('/', (req: Request, res: Response) => {
@@ -145,6 +154,10 @@ app.use('/api/farmer', farmerRouter);
 app.use('/api/onboarding', onboardingRouter);
 app.use('/api/messages', messageRouter);
 app.use('/api/payment', paymentRouter);
+
+// Public Chapa Webhook Direct Aliases (supports both legacy and custom webhook configurations)
+app.post('/api/v1/subscriptions/webhook', handleChapaWebhook);
+app.post('/api/v1/payment/chapa/webhook', handleChapaWebhook);
 
 // Catch-all 404 JSON handler (prevents default HTML 404 with default-src 'none')
 app.use((req: Request, res: Response) => {

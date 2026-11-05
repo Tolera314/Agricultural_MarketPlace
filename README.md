@@ -1,13 +1,14 @@
 # AgriMarket — Location-Based Ethiopian Agricultural Marketplace
 
-> **An enterprise-grade, full-stack digital marketplace connecting Farmers, Buyers, Couriers, and Wholesalers across Ethiopia.**
+> **An enterprise-grade, full-stack digital marketplace connecting Farmers, Buyers, Logistics Couriers, and Market Administrators across Ethiopia with localized digital payments (Chapa), real-time geolocation dispatching, and cryptographic session security.**
 
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.0%2B-blue.svg)](https://www.typescriptlang.org/)
 [![Next.js](https://img.shields.io/badge/Next.js-16%2B-black.svg)](https://nextjs.org/)
 [![React](https://img.shields.io/badge/React-19-61dafb.svg)](https://react.dev/)
 [![Express](https://img.shields.io/badge/Express-5.x-lightgrey.svg)](https://expressjs.com/)
 [![Prisma](https://img.shields.io/badge/Prisma-7.8-2d3748.svg)](https://www.prisma.io/)
-[![PostgreSQL](https://img.shields.io/badge/PostgreSQL-16-336791.svg)](https://www.postgresql.org/)
+[![PostgreSQL](https://img.shields.io/badge/PostgreSQL-16%20(Neon)-336791.svg)](https://neon.tech/)
+[![Chapa Payments](https://img.shields.io/badge/Payments-Chapa%20(ETB)-green.svg)](https://chapa.co/)
 [![PWA Ready](https://img.shields.io/badge/PWA-Ready-emerald.svg)](https://web.dev/progressive-web-apps/)
 [![Tests Passing](https://img.shields.io/badge/Tests-184%2F184%20Passing-brightgreen.svg)]()
 
@@ -17,86 +18,253 @@
 
 - [1. Executive Summary](#1-executive-summary)
 - [2. System Architecture](#2-system-architecture)
-- [3. Enterprise Security & Session Management](#3-enterprise-security--session-management)
-- [4. Native Autofill & Credential Standards](#4-native-autofill--credential-standards)
-- [5. Progressive Web App (PWA) & Cache Isolation](#5-progressive-web-app-pwa--cache-isolation)
-- [6. Input Validation & Boundary Enforcement](#6-input-validation--boundary-enforcement)
-- [7. User Roles & Onboarding Lifecycles](#7-user-roles--onboarding-lifecycles)
-- [8. Logistics, Geolocation & Escrow](#8-logistics-geolocation--escrow)
-- [9. API Specifications & Endpoints](#9-api-specifications--endpoints)
+- [3. Five Canonical Platform Roles (RBAC)](#3-five-canonical-platform-roles-rbac)
+- [4. Chapa Payment Gateway & Webhook Architecture](#4-chapa-payment-gateway--webhook-architecture)
+  - [4.1 Architecture & Flow](#41-architecture--flow)
+  - [4.2 Security Safeguards (HMAC-SHA256 & Verification)](#42-security-safeguards-hmac-sha256--verification)
+  - [4.3 Chapa Merchant Dashboard Configuration Manual](#43-chapa-merchant-dashboard-configuration-manual)
+- [5. Geolocation Dispatching & Location Staleness Matrix](#5-geolocation-dispatching--location-staleness-matrix)
+- [6. Administrative Verification & Seller Governance](#6-administrative-verification--seller-governance)
+- [7. Enterprise Security & Session Management](#7-enterprise-security--session-management)
+- [8. Native Form Standards & Autofill Compliance](#8-native-form-standards--autofill-compliance)
+- [9. Progressive Web App (PWA) & Cache Isolation](#9-progressive-web-app-pwa--cache-isolation)
 - [10. Project Directory Structure](#10-project-directory-structure)
-- [11. Environment Variables & Setup](#11-environment-variables--setup)
-- [12. Local Development & Production Build](#12-local-development--production-build)
-- [13. Automated Test Suites](#13-automated-test-suites)
-- [14. License & Credits](#14-license--credits)
+- [11. Complete API Endpoint Reference](#11-complete-api-endpoint-reference)
+- [12. Environment Variables Specification](#12-environment-variables-specification)
+- [13. Installation, Local Setup & Production Deployment](#13-installation-local-setup--production-deployment)
+- [14. Automated Test Suites](#14-automated-test-suites)
+- [15. License & Project Governance](#15-license--project-governance)
 
 ---
 
 ## 1. Executive Summary
 
-AgriMarket is an agricultural digital marketplace specifically engineered for the Ethiopian agricultural economy. The platform bridges the gap between rural smallholder farmers, urban consumers, commercial buyers, and independent logistics couriers.
+AgriMarket is a production-grade, highly localized digital commerce and logistics platform engineered to modernize Ethiopia's agricultural supply chain. By eliminating intermediaries and manual coordination barriers, the platform directly connects rural smallholder farmers with urban household buyers, bulk purchasers, and independent delivery couriers across Addis Ababa and regional distribution centers.
 
 ### Key Value Propositions
 
-- **Direct Farm-to-Consumer:** Eliminates arbitrary middleman margins, providing farmers fair market pricing in Ethiopian Birr (ETB).
-- **Dual Telecommunications Localization:** Fully compliant with Ethiopian mobile networks, natively validating and routing via Ethio Telecom (`+251 9...`) and Safaricom Ethiopia (`+251 7...`).
-- **Flexible Verification:** Dual-channel OTP verification using Ethio Telecom / Geez SMS gateway for mobile users, with automatic fallback to Brevo transactional email when an optional email address is provided.
-- **Rural Connectivity Optimization:** Features client-side HTML5 Canvas document compression for Kebele IDs and land deeds (reducing 15 MB mobile camera photos down to < 500 KB), and SMS-based draft application resumption.
-- **Strict Privacy & Security:** Built with military-grade session isolation, cryptographic refresh token rotation, zero client-side credential storage, and an auth-aware service worker preventing private data leaks on shared devices.
+- **Direct Farm-to-Consumer Market:** Direct listing and pricing in Ethiopian Birr (ETB), maximizing farmer profit margins while lowering consumer grocery costs.
+- **Localized Ethiopian Digital Payments (Chapa):** Full integration with Chapa supporting Telebirr, CBE Birr, Awash Birr, and debit cards with automated digital escrow and courier payout splits.
+- **Proximity-Based Courier Dispatching:** Haversine geofencing with real-time location tracking and staleness protection (`WORKER_LOCATION_MAX_AGE_SECONDS=300`) to guarantee fast, reliable last-mile delivery.
+- **Dual Telecommunications Gateway:** Native validation and delivery for both Ethio Telecom (`+251 9...`) and Safaricom Ethiopia (`+251 7...`) networks via Geez SMS, backed by Brevo transactional SMTP for dual-channel OTP delivery.
+- **Low-Bandwidth Mobile Optimization:** Client-side HTML5 Canvas document compression reduces 15 MB smartphone photos of Kebele IDs and land certificates to < 500 KB before upload over rural cellular connections.
+- **Zero-Trust Administrative Governance:** Rigorous KYC verification pipeline for farmers and couriers with automatic product listing state cascading and immutable audit logging.
 
 ---
 
 ## 2. System Architecture
 
-AgriMarket follows a decoupled, resilient client-server architecture:
+AgriMarket is organized as a decoupled, resilient client-server architecture:
 
 ```
-┌─────────────────────────────────────────────────────────────────────────┐
-│                        Client Layer (Next.js 16)                        │
-│  - React 19 Client Components & Context Providers                       │
-│  - In-Memory Auth Manager (No JWTs in Web Storage)                      │
-│  - Service Worker v1.1.0 with Auth-Aware Cache Isolation                │
-│  - Responsive Mobile-First Tailwind v4 Theming (Dark/Light)             │
-└────────────────────────────────────┬────────────────────────────────────┘
-                                     │ HTTPS / Secure HttpOnly Cookies
-                                     ▼
-┌─────────────────────────────────────────────────────────────────────────┐
-│                       Express 5 API Gateway Engine                      │
-│  - Sliding Window In-Memory Rate Limiters (Auth, Recovery, OTP)         │
-│  - Input Validation & Canonical E.164 Phone Normalization               │
-│  - Token Family Rotation & Reuse Detection (SHA-256 Hashing)            │
-│  - Role-Based Access Control (RBAC: BUYER, FARMER, WORKER, ADMIN,SUPER-ADMIN)       │
-└──────────────────┬─────────────────┬─────────────────┬──────────────────┘
-                   │                 │                 │
-                   ▼                 ▼                 ▼
-          ┌────────────────┐ ┌───────────────┐ ┌────────────────┐
-          │  PostgreSQL /  │ │ Geez SMS /    │ │  Brevo Email   │
-          │  Neon Serverless│ │ Ethio Telecom │ │  SMTP Gateway  │
-          │  Prisma 7.8    │ │ Notification  │ │  (Verification)│
-          └────────────────┘ └───────────────┘ └────────────────┘
+┌──────────────────────────────────────────────────────────────────────────────┐
+│                          Next.js 16 Client Layer                             │
+│  - React 19 Client Components & Context Providers                            │
+│  - In-Memory Auth Manager (Zero JWTs in Web Storage)                         │
+│  - Service Worker v1.1.0 with Strict Auth-Aware Cache Isolation              │
+│  - Responsive Mobile-First Tailwind CSS v4 Design (Dark / Light Theme)       │
+└──────────────────────────────────────┬───────────────────────────────────────┘
+                                       │ HTTPS / Secure HttpOnly Cookies
+                                       ▼
+┌──────────────────────────────────────────────────────────────────────────────┐
+│                         Express 5 API Gateway Engine                         │
+│  - Sliding Window In-Memory Rate Limiters (Auth, Recovery, OTP)              │
+│  - E.164 Canonical Phone Normalization (+251 9... / +251 7...)               │
+│  - Cryptographic Token Family Rotation & Reuse Detection (SHA-256)           │
+│  - 5-Tier Role-Based Access Control (RBAC) Enforcement                       │
+│  - Raw Body Buffer Preservation for Webhook Signature Verification           │
+└──────────────┬───────────────────┬───────────────────┬───────────────────────┘
+               │                   │                   │
+               ▼                   ▼                   ▼
+      ┌─────────────────┐ ┌─────────────────┐ ┌─────────────────┐
+      │  PostgreSQL 16  │ │  Chapa Payment  │ │   Geez SMS &    │
+      │ (Neon Serverless│ │     Gateway     │ │   Brevo Email   │
+      │   Prisma 7.8)   │ │  (ETB Webhooks) │ │ (Notifications) │
+      └─────────────────┘ └─────────────────┘ └─────────────────┘
 ```
 
 ### Technology Matrix
 
-| Layer | Primary Technology | Version / Tooling |
-| :--- | :--- | :--- |
-| **Frontend Framework** | Next.js App Router | `16.1.6` |
-| **UI Library** | React | `19.0.0` |
-| **Language** | TypeScript | `5.0+` (Strict Type Safety) |
-| **CSS & Design** | Tailwind CSS & Lucide React | `Tailwind v4`, `Lucide Icons` |
-| **Backend Runtime** | Node.js | `20.x+` (ESM Native) |
-| **API Framework** | Express | `5.2.1` |
-| **ORM & Database** | Prisma Client & PostgreSQL | `Prisma 7.8.0`, `PostgreSQL 16` |
-| **Authentication** | Cryptographic Session Management | JWT Access (15m) + HttpOnly Cookie (7d) |
-| **SMS Gateway** | Geez SMS / Ethio Telecom | HTTP REST SMS Delivery |
-| **Email Gateway** | Brevo (Sendinblue) | Transactional SMTP |
-| **PWA Engine** | Custom Service Worker | Cache-First Public / Network-Only Private |
+| Layer | Technology | Version | Purpose |
+| :--- | :--- | :--- | :--- |
+| **Frontend Framework** | Next.js App Router | `16.1.6` | Server & Client Components, Dynamic Routing |
+| **UI Library** | React | `19.0.0` | Declarative UI, Concurrent Rendering |
+| **Styling & Icons** | Tailwind CSS / Lucide React | `Tailwind v4`, `Lucide` | Mobile-First UI, Responsive Design |
+| **Backend Runtime** | Node.js | `20.x` / `22.x` | High-throughput async event loop |
+| **API Framework** | Express | `5.2.1` | REST API, Middleware pipeline, Webhook engine |
+| **ORM & Database** | Prisma Client & PostgreSQL | `Prisma 7.8.0`, `PostgreSQL 16` | Type-safe queries, connection pooling via Neon |
+| **Payment Gateway** | Chapa | `v1 REST API` | Telebirr, CBE Birr, Awash Birr, Cards (ETB) |
+| **SMS Gateway** | Geez SMS | REST HTTP API | OTP delivery across Ethio Telecom & Safaricom |
+| **Email Gateway** | Brevo (Sendinblue) | SMTP / REST | Transactional email verification and password reset |
+| **Document Storage** | Local Storage / Cloudinary | Multi-strategy | Compressed KYC verification documents |
 
 ---
 
-## 3. Enterprise Security & Session Management
+## 3. Five Canonical Platform Roles (RBAC)
 
-> **Security Rule:** A JSON Web Token (JWT) alone does not make an application secure. Session revocation, token lifecycle management, secure cookie flags, and database-level versioning are mandatory.
+The AgriMarket platform enforces **5 official, strictly isolated roles**. There are no unofficial user tiers or external third-party company roles (e.g. *Agricultural Input Company* is strictly not supported).
+
+```text
+BUYER  ──►  FARMER  ──►  DELIVERY_WORKER  ──►  ADMIN  ──►  SUPERADMIN
+```
+
+### Detailed Role Responsibilities & Capabilities
+
+| Role | Primary Functions | Capabilities & Permissions |
+| :--- | :--- | :--- |
+| **`BUYER`** | Consumers, Restaurants, Wholesalers | - Browse active farm product catalog with Haversine distance calculations.<br>- Manage shopping cart and saved delivery addresses.<br>- Checkout with Chapa digital payments (Telebirr, CBE Birr, cards).<br>- Track live order delivery status and provide confirmation PIN upon arrival. |
+| **`FARMER`** | Smallholder Farmers, Agricultural Co-ops | - Manage farm profile, location coordinates, and cooperative credentials.<br>- Create, edit, pause, and delete product listings with image uploads.<br>- Manage inventory, pricing per unit (kg, quintal, crate), and batch dates.<br>- View received orders, update fulfillment states, and track earnings. |
+| **`DELIVERY_WORKER`** | Motorcycle, Van & Truck Couriers | - Complete driver licensing and vehicle verification onboarding.<br>- Grant location tracking consent and stream GPS telemetry.<br>- Accept proximity-matched delivery jobs based on location freshness.<br>- Navigate pickup and dropoff points; verify delivery with buyer OTP. |
+| **`ADMIN`** | Regional Market Overseers & Operations | - Inspect and verify/reject/suspend Farmer KYC credentials and Kebele IDs.<br>- Inspect and verify/reject/suspend Delivery Couriers and vehicle papers.<br>- Moderate product listings (Flag, approve, or pause non-compliant goods).<br>- Inspect regional order disputes, delivery logs, and audit logs. |
+| **`SUPERADMIN`** | Platform Executives & System Operators | - Provision new Administrator accounts and govern user status across the system.<br>- Configure platform commission fees, marketplace tariffs, and delivery pricing.<br>- Define intercity logistics corridors, checkpoints, and market boundaries.<br>- View system-wide financial analytics, security posture, and database backup snapshots. |
+
+---
+
+## 4. Chapa Payment Gateway & Webhook Architecture
+
+AgriMarket integrates with [Chapa](https://chapa.co/), Ethiopia's leading payment processing infrastructure for digital commerce. The platform supports seamless checkout in Ethiopian Birr (ETB) through Telebirr, Commercial Bank of Ethiopia (CBE Birr), Awash Birr, and domestic/international debit and credit cards.
+
+### 4.1 Architecture & Flow
+
+```
+[Buyer Orders Produce]
+         │
+         ▼
+[POST /api/payment/chapa/checkout]
+         │  - Validates active stock & creates pending Order
+         │  - Generates unique tx_ref: TX-ORDER-<id>-<timestamp>
+         │  - Calls Chapa API: POST https://api.chapa.co/v1/transaction/initialize
+         ▼
+[Chapa Checkout URL Returned] ──► [Buyer Completes Payment (Telebirr / CBE / Card)]
+                                                  │
+                                                  ▼
+                        [Chapa Dispatches Webhook to AgriMarket Server]
+                                                  │
+                                                  ▼
+                                [POST /api/payment/chapa/webhook]
+                                                  │
+         ┌────────────────────────────────────────┴────────────────────────────────────────┐
+         ▼                                                                                 ▼
+[1. Verify Raw Body HMAC-SHA256 Signature]                        [2. Query Chapa API Directly for txRef]
+Matches x-chapa-signature using secret?                           Status confirmed === 'success'?
+         │                                                                                 │
+         └────────────────────────────────────────┬────────────────────────────────────────┘
+                                                  ▼
+                             [3. Atomic Database Transaction (Prisma)]
+                                - Update Order status: PAID
+                                - Record Chapa reference & payment details
+                                - Deduct product listing inventory
+                                - Hold funds in digital Escrow
+                                                  │
+                                                  ▼
+                             [4. Trigger Courier Dispatch System]
+                                - Haversine proximity match to nearby couriers
+                                - Broadcast push notification / job offer
+```
+
+### 4.2 Security Safeguards (HMAC-SHA256 & Verification)
+
+To ensure enterprise-grade financial security, the payment pipeline implements multiple defensive layers:
+
+1. **Preserved Raw Body Buffer:** In `backend/src/app.ts`, `express.json({ verify: ... })` captures the exact incoming raw request buffer into `(req as any).rawBody`. This guarantees that HMAC-SHA256 hash generation operates on the exact byte sequence sent by Chapa, preventing signature mismatches caused by JSON re-serialization or key ordering differences.
+2. **Constant-Time Signature Verification:** The incoming signature header (`x-chapa-signature` or `Chapa-Signature`) is validated against `crypto.createHmac('sha256', CHAPA_WEBHOOK_SECRET)` using `crypto.timingSafeEqual` to eliminate timing attack vectors.
+3. **Out-of-Band Verification Fallback:** As an additional safeguard against spoofing, the webhook handler executes an independent server-to-server verification request to `GET https://api.chapa.co/v1/transaction/verify/:txRef` using the secret API key before crediting any order.
+4. **Idempotent Order State Transitions:** Webhook invocations are idempotent. If Chapa retries a webhook for an already-settled order, the backend safely acknowledges `200 OK` without duplicating inventory deductions or escrow transactions.
+
+### 4.3 Chapa Merchant Dashboard Configuration Manual
+
+To connect your Chapa merchant account with your AgriMarket deployment, configure the following settings in your [Chapa Dashboard](https://dashboard.chapa.co):
+
+#### Step 1: Obtain API Keys
+1. Log into your **Chapa Merchant Dashboard**.
+2. Navigate to **Settings** $\rightarrow$ **API & Webhook**.
+3. Copy your **Public Key** and **Secret Key**:
+   - For Sandbox / Development: Use test keys (`CHAPUBK_TEST-...` and `CHASECK_TEST-...`).
+   - For Production: Use live keys (`CHAPUBK_LIVE-...` and `CHASECK_LIVE-...`).
+4. Set these keys in your `.env` file:
+   ```ini
+   CHAPA_SECRET_KEY=CHASECK_TEST-wM02mvy33VndTz3DuhhLzFjFhyS7Jp1G
+   CHAPA_PUBLIC_KEY=CHAPUBK_TEST-e1X9uW1V6n9w8uF2wY7p3M1zX9uW1V6n
+   CHAPA_BASE_URL=https://api.chapa.co/v1
+   ```
+
+#### Step 2: Configure Webhook Endpoint & Secret Hash
+1. In the Chapa Dashboard under **Settings** $\rightarrow$ **API & Webhook**, scroll to the **Webhook** section.
+2. Enter the **Webhook URL**:
+   - **Production Deployment:**
+     ```text
+     https://agricultural-marketplace-hthx.onrender.com/api/payment/chapa/webhook
+     ```
+   - **Local Testing (via ngrok tunnel):**
+     ```text
+     https://<your-subdomain>.ngrok-free.app/api/payment/chapa/webhook
+     ```
+3. Set the **Secret Hash / Webhook Secret**:
+   - Enter a secure secret string (e.g. `Asdftyf21zXe1HJk08pqwDGe`).
+   - Set the identical value in your `.env` file:
+     ```ini
+     CHAPA_WEBHOOK_SECRET=Asdftyf21zXe1HJk08pqwDGe
+     ```
+4. Click **Save Webhook Settings**.
+
+#### Step 3: Verify Webhook Connectivity
+- Test transactions can be simulated directly through the AgriMarket checkout flow or via the built-in simulator at `/checkout/simulate-chapa`.
+- Successful payments will immediately transition order status from `PENDING` to `PAID` and notify nearby couriers.
+
+---
+
+## 5. Geolocation Dispatching & Location Staleness Matrix
+
+AgriMarket includes an automated logistics engine that dispatches couriers based on proximity to the farmer's produce pickup coordinates.
+
+### Location Staleness Matrix (`WORKER_LOCATION_MAX_AGE_SECONDS=300`)
+
+To prevent assigning orders to couriers who are no longer active or whose GPS signal has degraded, the system validates the age of the courier's last recorded location:
+
+| Last Location Update Timestamp | Elapsed Time | Staleness Classification | Dispatch Eligibility |
+| :--- | :--- | :--- | :--- |
+| $\le \mathbf{30\text{ seconds ago}}$ | 30s | **Fresh / High Accuracy** | **Eligible** (Immediate priority assignment) |
+| $\le \mathbf{2\text{ minutes ago}}$ | 120s | **Recent** | **Eligible** (Standard proximity match) |
+| $\le \mathbf{4\text{ minutes ago}}$ | 240s | **Recent** | **Eligible** (Secondary match candidate) |
+| $\ge \mathbf{5\text{ minutes ago}}$ | $> 300\text{s}$ | **STALE / Outdated** | **INELIGIBLE** (Excluded from automatic dispatch) |
+| **No GPS timestamp recorded** | $\infty$ | **Unknown / Offline** | **INELIGIBLE** (Excluded from dispatch pool) |
+
+### Proximity Calculation (Haversine Formula)
+
+The backend calculates spherical distance over Earth's curvature between the farmer's pickup coordinates $(lat_1, lon_1)$ and the courier's consented coordinates $(lat_2, lon_2)$:
+
+$$d = 2R \arcsin \left( \sqrt{\sin^2\left(\frac{\Delta \phi}{2}\right) + \cos(\phi_1)\cos(\phi_2)\sin^2\left(\frac{\Delta \lambda}{2}\right)} \right)$$
+
+Where $R = 6371\text{ km}$. Couriers within the service radius ($< 15\text{ km}$) with verified credentials and fresh locations receive instant dispatch broadcasts.
+
+---
+
+## 6. Administrative Verification & Seller Governance
+
+Trust and produce safety require strict administrative verification before sellers and couriers can transact on the open market.
+
+```
+[Applicant Submits KYC] ──► [Pending Review] ──► [Admin Inspects Credentials]
+                                                              │
+                    ┌─────────────────────────────────────────┴─────────────────────────────────────────┐
+                    ▼                                                                                   ▼
+            [VERIFIED / APPROVED]                                                               [REJECTED / SUSPENDED]
+  - User status: VERIFIED                                                             - User status: SUSPENDED/REJECTED
+  - Farmer listings activated                                                         - Active product listings automatically PAUSED
+  - SMS notification sent via Geez SMS                                                - Courier excluded from dispatch queue
+  - Immutable AuditLog entry recorded                                                 - Justification note logged in AuditLog
+```
+
+### Automatic Product Listing State Cascading
+
+When an administrator reviews a farmer's account:
+- **Verification (`VERIFIED`):** Farmer's onboarding status updates to `COMPLETED`, and any previously paused product listings are automatically reactivated to `ACTIVE`.
+- **Suspension / Rejection (`SUSPENDED` / `REJECTED`):** All active product listings belonging to the farmer are instantly and automatically set to `PAUSED`, removing them from buyer search results and preventing new orders.
+- **Audit Logging:** Every status modification records the reviewing administrator's ID, previous state, new state, timestamp, and verification note in the database audit log.
+
+---
+
+## 7. Enterprise Security & Session Management
 
 AgriMarket implements defense-in-depth session security:
 
@@ -112,54 +280,21 @@ AgriMarket implements defense-in-depth session security:
 
 ### Key Security Safeguards
 
-1. **Zero Credential Web Storage:**
-   - Access tokens, refresh tokens, and passwords are **never** stored in `localStorage`, `sessionStorage`, or `IndexedDB`.
-   - Protects completely against Cross-Site Scripting (XSS) credential theft.
-
-2. **Cryptographic Token Family Rotation:**
-   - Every refresh request invalidates the prior refresh token and issues a new token linked to the same session `family`.
-   - **Reuse Detection:** If an invalidated or stolen token is ever presented again, the system identifies the breach, invalidates the **entire token family**, and revokes all active sessions for that user.
-
-3. **Atomic Revocation & Token Versioning:**
-   - The `User` database record contains an integer `tokenVersion` (`@default(1)`).
-   - Any sensitive operation (Password Reset, "Sign Out All Devices", Admin Suspend) atomically increments `user.tokenVersion`.
-   - The `requireAuth` middleware verifies `jwt.tokenVersion === dbUser.tokenVersion`, immediately rejecting previously issued tokens without waiting for their expiration.
-
-4. **HttpOnly Cookie Configuration:**
-   ```typescript
-   {
-     httpOnly: true,
-     secure: process.env.NODE_ENV === 'production',
-     sameSite: 'lax',
-     path: '/',
-     maxAge: 7 * 24 * 60 * 60 * 1000
-   }
-   ```
-
-5. **Anti-User Enumeration:**
-   - The Forgot Password endpoint (`POST /api/auth/forgot-password`) always returns a standardized generic message:
-     `"If an account exists with that identifier, a verification code has been sent."`
-   - Prevents attackers from harvesting registered phone numbers and emails.
-
-6. **Sliding-Window Rate Limiting:**
-   - `authRateLimiter`: 20 requests / 15 minutes for registration and login.
+1. **Zero Credential Web Storage:** Access tokens, refresh tokens, and passwords are **never** stored in `localStorage`, `sessionStorage`, or `IndexedDB`, neutralizing Cross-Site Scripting (XSS) credential theft.
+2. **Cryptographic Token Family Rotation:** Every refresh request invalidates the prior refresh token and issues a new token linked to the same session `family`.
+   - **Reuse Detection:** If an invalidated or stolen token is ever presented again, the system detects token theft, immediately invalidates the **entire token family**, and revokes all active sessions for that user.
+3. **Atomic Revocation & Token Versioning:** The `User` database record contains an integer `tokenVersion` (`@default(1)`). Sensitive operations (Password Reset, "Sign Out All Devices", Admin Suspend) atomically increment `user.tokenVersion`, instantly invalidating existing tokens.
+4. **Anti-User Enumeration:** Forgot Password endpoints return standardized generic messages to prevent harvesting registered phone numbers and emails.
+5. **Sliding-Window Rate Limiting:**
+   - `authRateLimiter`: 20 requests / 15 minutes.
    - `passwordRecoveryLimiter`: 5 recovery attempts / 15 minutes.
    - `otpVerificationLimiter`: 6 verification attempts / 15 minutes.
 
-7. **Google OAuth 2.0 & Identity Linking Architecture:**
-   - **Google Identity Verification:** Verified on the trusted server using official `google-auth-library` (`verifyIdToken` with signature, expiration, issuer, and audience validation against `GOOGLE_CLIENT_ID`).
-   - **Stable Identity Identifier:** Accounts link to Google's immutable `sub` claim in the `LinkedIdentity` model (`@@unique([provider, providerSub])`), never relying solely on display names.
-   - **Account Takeover Defense:** When a Google account email matches an existing local account that has not yet been linked, the server **strictly refuses silent merging**. It returns `409 Conflict` with `requiresLinkVerification: true`. The client prompts the user for their existing account password to confirm ownership via `POST /api/auth/google/link`.
-   - **Safe Customer Role Defaults:** All new users registered via Google automatically receive the `BUYER` role and `PENDING_ROLE` onboarding status. Public OAuth can never self-grant elevated permissions (`ADMIN` or `SUPERADMIN`).
-   - **Safe Password-less Handling:** Google-first accounts store `passwordHash: null` rather than dummy strings. Standard password login attempts return an intuitive message instructing the user to sign in with Google or reset their password.
-
 ---
 
-## 4. Native Autofill & Credential Standards
+## 8. Native Form Standards & Autofill Compliance
 
-> **Autofill Rule:** Native browser autofill is not application-managed storage. Applications must configure the correct HTML autocomplete attributes and let the browser or password manager save and suggest credentials securely.
-
-AgriMarket strictly follows W3C and HTML Living Standard form specifications:
+AgriMarket forms strictly adhere to W3C and HTML Living Standard specifications:
 
 | Form Field | Standard HTML Attribute | Accessibility & Form Context |
 | :--- | :--- | :--- |
@@ -169,174 +304,29 @@ AgriMarket strictly follows W3C and HTML Living Standard form specifications:
 | **Registration Password** | `autoComplete="new-password"` | `<input id="password" name="password" type="password">` |
 | **Login Identifier** | `autoComplete="username"` | Dual input supporting phone or email |
 | **Login Password** | `autoComplete="current-password"` | `<input id="password" name="password" type="password">` |
-| **Password Reset** | `autoComplete="new-password"` | `<input id="newPassword" name="newPassword">` |
-| **6-Digit OTP / Code** | `autoComplete="one-time-code"` | Supports mobile SMS autofill detection |
-
-### Design Standards Enforced
-
-- **Explicit `<label>` association:** All inputs possess matching `id` and `htmlFor` attributes.
-- **Semantic `<form>` elements:** Forms submit through standard submit events with `noValidate` allowing rich custom tooltips while retaining native password manager save prompts.
-- **Zero dynamic field renaming:** Input names and DOM elements remain stable across re-renders to prevent breaking autofill heuristics.
-- **No JS credential interception:** The application never stores user credentials in custom client-side key-value stores.
+| **6-Digit OTP Code** | `autoComplete="one-time-code"` | Mobile SMS autofill detection |
 
 ---
 
-## 5. Progressive Web App (PWA) & Cache Isolation
+## 9. Progressive Web App (PWA) & Cache Isolation
 
-> **PWA Privacy Rule:** Service workers must strictly respect authentication. Never cache private dashboards, orders, or delivery data where another user on a shared mobile phone or device could view them.
-
-AgriMarket features a Progressive Web App (PWA) engine with **Strict Auth-Aware Cache Isolation** in `public/sw.js` (v1.1.0):
+AgriMarket includes an auth-aware Service Worker (`public/sw.js`, v1.1.0) with strict cache boundaries:
 
 ```
-                                  [Service Worker Fetch Event]
-                                                │
-                 ┌──────────────────────────────┴──────────────────────────────┐
-                 ▼                                                             ▼
-     [Is Private Route / API?]                                     [Is Public Static Asset?]
-  - /dashboard/*, /onboarding/*                                  - /, /login, /signup
-  - /admin/*, /orders/*, /api/*                                  - /offline, CSS, JS, Images
-                 │                                                             │
-                 ▼                                                             ▼
-       [STRICT NETWORK ONLY]                                         [STALE-WHILE-REVALIDATE]
-   Fetch with { cache: 'no-store' }                               Serve from cache instantly;
-   If network fails:                                              update from network in background.
-   Serve /offline fallback page.
-   NEVER WRITE TO LOCAL CACHE!
+                              [Service Worker Fetch Event]
+                                            │
+             ┌──────────────────────────────┴──────────────────────────────┐
+             ▼                                                             ▼
+ [Is Private Route / API?]                                     [Is Public Static Asset?]
+  - /dashboard/*, /onboarding/*                                 - /, /login, /signup
+  - /admin/*, /orders/*, /api/*                                 - /offline, CSS, JS, Images
+             │                                                             │
+             ▼                                                             ▼
+   [STRICT NETWORK ONLY]                                         [STALE-WHILE-REVALIDATE]
+Fetch with { cache: 'no-store' }                              Serve from cache instantly;
+If network fails: serve /offline.                             update from network in background.
+NEVER WRITE TO LOCAL CACHE!
 ```
-
-### PWA Capabilities
-
-- **Offline Shell & Fallback:** Users receive a branded, responsive `/offline` page when disconnected from cellular networks.
-- **Zero Cross-User Leakage:** A farmer or delivery courier signing out of a shared phone will never leave cached orders, addresses, or profile data visible to the next user.
-- **Modern Web Manifest:** Configured with emerald green theme color (`#075C3B`), standalone launch display, and direct marketplace shortcuts.
-
----
-
-## 6. Input Validation & Boundary Enforcement
-
-Every input in the system is validated and sanitized at both the frontend boundary and the backend service layer:
-
-### 1. Full Name Validation
-- **Boundary:** Minimum 2 characters, maximum 100 characters.
-- **International Character Support:** Native acceptance of Ethiopian Ge'ez / Amharic script (e.g. `አበበ ቢቂላ`, `ኃይሌ ገብረሥላሴ`) and Oromo / Tigrinya orthographies.
-- **Sanitization:** Surrounding whitespace is automatically trimmed.
-
-### 2. Ethiopian Phone Number Normalization
-- **Canonical Representation:** Stored strictly as E.164 (`+251XXXXXXXXX`).
-- **Input Flexibility:** Accepts local formats (`0911223344`, `0711223344`), raw numbers without plus (`251911...`), and symbols (`+251 (91) 122-3344`).
-- **Carrier Validation:**
-  - Ethio Telecom: `+251 9...`
-  - Safaricom Ethiopia: `+251 7...`
-  - Rejects invalid prefixes (`08...`, foreign numbers) with descriptive error messages.
-
-### 3. Email Address Validation
-- **Optionality:** Email is optional during registration to accommodate farmers who only possess a mobile phone.
-- **Syntax & Normalization:** Validated against RFC 5322 regex and stored strictly lowercase and trimmed.
-
-### 4. Password Policy
-- **Boundary:** Minimum 8 characters, maximum 128 characters.
-- **Complexity Requirements:** At least 1 uppercase letter (`[A-Z]`), at least 1 digit (`[0-9]`), and at least 1 special symbol (`[^A-Za-z0-9]`).
-- **Integrity:** Passwords are never trimmed, truncated, or logged.
-
-### 5. Geographic Coordinate Boundaries
-- **Latitude:** Strictly `[-90.0, 90.0]`.
-- **Longitude:** Strictly `[-180.0, 180.0]`.
-- **Accuracy:** Non-negative float representing meters (`accuracy >= 0`).
-- **Heading:** Compass degrees `[0.0, 360.0]`.
-
----
-
-## 7. User Roles & Onboarding Lifecycles
-
-AgriMarket implements a 5-tier Role-Based Access Control (RBAC) hierarchy:
-
-```text
-BUYER  ──►  FARMER  ──►  DELIVERY_WORKER  ──►  ADMIN  ──►  SUPERADMIN
-```
-
-## Super Admin Responsibilities
-
-The **Super Admin (SUPERADMIN)** has the highest level of administrative access within AgriMarket. This role provides centralized oversight of the platform, including managing administrator accounts and permissions, monitoring overall marketplace activity, overseeing platform security, and supporting system-wide accountability. Super Admin access is protected through strict role-based access control (RBAC) to ensure that only authorized users can perform privileged administrative operations.
-
-### Onboarding Lifecycles
-
-```
-[New User Registration]
-       │
-       ▼
-[Dual-Channel OTP Verification]
-       │
-       ▼
-[Role Selection: /onboarding/select-role]
-       │
-       ├─► BUYER ──────────► Profile Created ──► Immediate COMPLETED Status ──► Marketplace
-       │
-       ├─► FARMER ─────────► Farm Details ──► Kebele/Land Deed Upload (Compressed) ──► PENDING_VERIFICATION
-       │                                                                                      │
-       └─► DELIVERY_WORKER ─► Vehicle & License ──► GPS Consent ──────────────────────► Admin Approval
-```
-
-### Rural Connectivity Optimizations
-
-1. **Client-Side Document Compression:**
-   - Farmers uploading Kebele IDs or land certificates frequently capture 8–15 MB photos on mobile cameras.
-   - Browser-side HTML5 canvas dynamically resizes and converts images to JPEG (`quality: 0.82`, max dimension 1600px), reducing payload size by ~95% (< 500 KB) before upload.
-2. **Automated SMS Draft Resumption:**
-   - When a farmer pauses onboarding to locate cooperative letters or land deeds, saving a draft automatically triggers an SMS via Geez SMS containing a session link to resume in 1-click.
-3. **Real-Time Verification Webhooks:**
-   - Admin verification or rejection in `/dashboard/admin` sends immediate automated SMS notifications to the applicant's phone number.
-
----
-
-## 8. Logistics, Geolocation & Escrow
-
-- **Consent-First Tracking:** Couriers must explicitly grant location permissions. Coordinates are logged with timestamp, accuracy, heading, and speed under strict user ownership.
-- **Disaster Dispatching:** Haversine geofencing matches orders with couriers operating in the matching woreda or municipal delivery zone.
-- **ETB Escrow Mechanism:** Payments remain safely in escrow until the customer inspects fresh produce and confirms delivery via secure PIN or signature.
-
----
-
-## 9. API Specifications & Endpoints
-
-All endpoints return standardized JSON structures:
-- Success: `{ "success": true, "message"?: string, "data": { ... } }`
-- Error: `{ "success": false, "error": { "field"?: string, "message": string } }`
-
-### Authentication Endpoints (`/api/auth`)
-
-| Method | Endpoint | Description | Auth Required |
-| :--- | :--- | :--- | :--- |
-| `POST` | `/api/auth/register` | Register new user with phone & password | No |
-| `POST` | `/api/auth/login` | Dual identifier login (phone or email) | No |
-| `POST` | `/api/auth/verify-otp` | Verify 6-digit registration OTP | No |
-| `POST` | `/api/auth/resend-otp` | Resend verification code via SMS/Email | No |
-| `POST` | `/api/auth/refresh` | Rotate session & receive new access token | Cookie |
-| `POST` | `/api/auth/logout` | Revoke current refresh token and clear cookie | No |
-| `POST` | `/api/auth/logout-all` | Revoke all active sessions (increments version)| Yes (JWT) |
-| `POST` | `/api/auth/forgot-password` | Request password reset recovery code | No |
-| `POST` | `/api/auth/verify-reset-code` | Validate 6-digit password recovery code | No |
-| `POST` | `/api/auth/reset-password` | Set new password with verified code | No |
-| `GET` | `/api/auth/me` | Fetch authenticated user profile & role | Yes (JWT) |
-
-### Onboarding & Verification (`/api/onboarding`)
-
-| Method | Endpoint | Description | Auth Required |
-| :--- | :--- | :--- | :--- |
-| `GET` | `/api/onboarding/status` | Current onboarding and verification status | Yes (JWT) |
-| `POST` | `/api/onboarding/select-role` | Select BUYER, FARMER, or DELIVERY_WORKER | Yes (JWT) |
-| `POST` | `/api/onboarding/draft` | Save draft onboarding application (Sends SMS)| Yes (JWT) |
-| `GET` | `/api/onboarding/draft` | Retrieve saved draft application data | Yes (JWT) |
-| `POST` | `/api/onboarding/upload` | Upload compressed verification document | Yes (JWT) |
-| `GET` | `/api/onboarding/documents/:filename`| Secure document download (Ownership check)| Yes (JWT) |
-| `POST` | `/api/onboarding/submit-farmer`| Submit farmer verification application | Yes (JWT) |
-| `POST` | `/api/onboarding/submit-worker`| Submit courier verification application | Yes (JWT) |
-
-### Geolocation & Couriers (`/api/location`)
-
-| Method | Endpoint | Description | Auth Required |
-| :--- | :--- | :--- | :--- |
-| `POST` | `/api/location/share` | Submit real-time consented GPS coordinate | Yes (Worker) |
-| `GET` | `/api/location/admin/records` | Audit trail of courier locations | Yes (Admin) |
 
 ---
 
@@ -350,53 +340,115 @@ Agriculture_marketplace/
 │
 ├── backend/                            # Express 5 + Prisma Backend
 │   ├── prisma/
-│   │   └── schema.prisma               # Models: User, RefreshToken, OTPVerification, etc.
+│   │   ├── schema.prisma               # Models: User, ProductListing, Order, DeliveryJob, etc.
+│   │   └── migrations/                 # PostgreSQL Migration History
 │   ├── src/
-│   │   ├── config/                     # Prisma & Database Connections
-│   │   ├── controllers/                # Request Handlers (Auth, Onboarding, Location, etc.)
+│   │   ├── config/                     # Prisma Client & Database Connections
+│   │   ├── controllers/                # Request Handlers (Auth, Buyer, Farmer, Worker, Admin, Chapa)
 │   │   ├── middleware/                 # Rate Limiting, RBAC & requireAuth Guards
 │   │   ├── routes/                     # Mounted Express Route Modules
-│   │   ├── services/                   # Business Logic, Tokens & Notifications
+│   │   ├── services/                   # Business Logic, Payment, Dispatch, Geolocation
 │   │   ├── tests/                      # Automated Integration & Boundary Test Suites
-│   │   │   ├── boundary.test.ts        # 79 Input Boundary & Normalization Assertions
-│   │   │   ├── auth.test.ts            # 32 Session Security & Token Rotation Assertions
-│   │   │   ├── location.test.ts        # 8 Geolocation Range Assertions
-│   │   │   ├── delivery.test.ts        # 18 Logistics & Courier Assertions
-│   │   │   └── onboarding.test.ts      # 8 Onboarding & State Machine Assertions
-│   │   ├── app.ts                      # Express App Definition & CSP Configuration
+│   │   ├── app.ts                      # Express App Definition & Raw Body Webhook Buffering
 │   │   └── index.ts                    # Server Bootstrap (Port 5000)
 │   └── package.json
 │
 └── frontend/                           # Next.js 16 + React 19 Frontend
     ├── public/
     │   ├── icons/                      # PWA High-Resolution Icons (192, 512, Maskable)
-    │   ├── images/                     # Curated Agricultural Photography
     │   ├── manifest.webmanifest        # Progressive Web App Manifest
     │   └── sw.js                       # Auth-Aware Service Worker v1.1.0
     ├── src/
     │   ├── app/
-    │   │   ├── login/                  # Standards-Compliant Login Page
+    │   │   ├── checkout/               # Checkout & Chapa Simulation
+    │   │   ├── dashboard/              # Buyer, Farmer, Delivery Worker, Admin & Superadmin Portals
+    │   │   ├── login/                  # Standards-Compliant Login
     │   │   ├── signup/                 # Multi-Step Signup & OTP Verification
-    │   │   ├── forgot-password/        # Password Recovery Request
-    │   │   ├── reset-password/         # Secure Password Reset with 6-Digit Code
-    │   │   ├── verify-otp/             # Standalone OTP Verification View
-    │   │   ├── offline/                # Branded PWA Offline Fallback
-    │   │   ├── onboarding/             # Role Selection & Verification Wizards
-    │   │   └── dashboard/              # Buyer, Farmer, Worker & Admin Dashboards
-    │   ├── components/                 # Reusable UI & Layout Components
+    │   │   └── onboarding/             # Role Selection & Document Upload
+    │   ├── components/                 # Modals, Tables, Navigation, Cart Drawer
     │   ├── context/                    # AuthContext & ThemeContext
-    │   └── lib/                        # In-Memory Auth Manager & API Bridges
+    │   └── lib/                        # API Bridges (adminApi, buyerApi, farmerApi, paymentApi)
     └── package.json
 ```
 
 ---
 
-## 11. Environment Variables & Setup
+## 11. Complete API Endpoint Reference
+
+All endpoints return standardized JSON structures:
+- Success: `{ "success": true, "message"?: string, "data": { ... } }`
+- Error: `{ "success": false, "error": { "field"?: string, "message": string } }`
+
+### Authentication (`/api/auth`)
+| Method | Endpoint | Description | Auth Required |
+| :--- | :--- | :--- | :--- |
+| `POST` | `/api/auth/register` | Register new user with phone & password | No |
+| `POST` | `/api/auth/login` | Dual identifier login (phone or email) | No |
+| `POST` | `/api/auth/verify-otp` | Verify 6-digit registration OTP | No |
+| `POST` | `/api/auth/resend-otp` | Resend verification code via SMS/Email | No |
+| `POST` | `/api/auth/refresh` | Rotate session & receive new access token | Cookie |
+| `POST` | `/api/auth/logout` | Revoke current refresh token and clear cookie | No |
+| `POST` | `/api/auth/logout-all` | Revoke all active sessions (increments tokenVersion) | Yes (JWT) |
+| `POST` | `/api/auth/forgot-password` | Request password reset recovery code | No |
+| `POST` | `/api/auth/verify-reset-code`| Validate 6-digit password recovery code | No |
+| `POST` | `/api/auth/reset-password` | Set new password with verified code | No |
+| `GET` | `/api/auth/me` | Fetch authenticated user profile & role | Yes (JWT) |
+
+### Payments & Chapa Gateway (`/api/payment`)
+| Method | Endpoint | Description | Auth Required |
+| :--- | :--- | :--- | :--- |
+| `POST` | `/api/payment/chapa/checkout` | Initialize Chapa checkout session for order | Yes (Buyer) |
+| `POST` | `/api/payment/chapa/webhook` | Canonical Chapa payment webhook (HMAC signature verified) | Webhook Secret |
+| `GET` | `/api/payment/chapa/verify/:txRef` | Out-of-band server transaction verification query | Yes (Auth) |
+| `POST` | `/api/payment/chapa/simulate` | Sandbox payment simulation for testing | Yes (Auth) |
+
+### Buyer Operations (`/api/buyer`)
+| Method | Endpoint | Description | Auth Required |
+| :--- | :--- | :--- | :--- |
+| `GET` | `/api/buyer/products` | Search product catalog with Haversine distance filtering | Optional (JWT) |
+| `GET` | `/api/buyer/products/:id` | Detailed product profile and farm location | Optional (JWT) |
+| `POST` | `/api/buyer/orders` | Create buyer order & reserve inventory | Yes (Buyer) |
+| `GET` | `/api/buyer/orders` | Order history and live tracking states | Yes (Buyer) |
+| `GET` | `/api/buyer/addresses` | List saved delivery addresses | Yes (Buyer) |
+| `POST` | `/api/buyer/addresses` | Save new delivery address with coordinates | Yes (Buyer) |
+
+### Farmer Operations (`/api/farmer`)
+| Method | Endpoint | Description | Auth Required |
+| :--- | :--- | :--- | :--- |
+| `GET` | `/api/farmer/dashboard` | Farmer revenue, pending orders, and inventory metrics | Yes (Farmer) |
+| `GET` | `/api/farmer/products` | List farmer's active and paused listings | Yes (Farmer) |
+| `POST` | `/api/farmer/products` | Create new produce listing with batch dates | Yes (Farmer) |
+| `PATCH`| `/api/farmer/products/:id` | Update pricing, stock quantity, or listing status | Yes (Farmer) |
+| `DELETE`| `/api/farmer/products/:id`| Delete product listing | Yes (Farmer) |
+| `GET` | `/api/farmer/orders` | Orders requiring farmer packing and fulfillment | Yes (Farmer) |
+
+### Logistics & Geolocation (`/api/location` & `/api/workers`)
+| Method | Endpoint | Description | Auth Required |
+| :--- | :--- | :--- | :--- |
+| `POST` | `/api/location/share` | Consented courier GPS telemetry broadcast | Yes (Worker) |
+| `GET` | `/api/workers/jobs` | Proximity-matched delivery job offers | Yes (Worker) |
+| `POST` | `/api/workers/jobs/:id/accept` | Accept delivery assignment | Yes (Worker) |
+| `POST` | `/api/workers/jobs/:id/status` | Advance delivery milestone (PICKED_UP, DELIVERED) | Yes (Worker) |
+
+### Administration & Superadmin (`/api/admin` & `/api/superadmin`)
+| Method | Endpoint | Description | Auth Required |
+| :--- | :--- | :--- | :--- |
+| `GET` | `/api/admin/farmers` | List farmer onboarding applications | Yes (Admin) |
+| `PATCH`| `/api/admin/farmers/:id/verify`| Approve, reject, or suspend farmer account | Yes (Admin) |
+| `GET` | `/api/admin/workers` | List courier applications and vehicle profiles | Yes (Admin) |
+| `PATCH`| `/api/admin/workers/:id/verify`| Approve, reject, or suspend courier account | Yes (Admin) |
+| `GET` | `/api/admin/audit-logs` | Immutable audit trail of administrative actions | Yes (Admin) |
+| `POST` | `/api/superadmin/users/provision`| Provision new Administrator or Superadmin | Yes (Superadmin) |
+| `GET` | `/api/superadmin/reports` | Platform gross trade volume & commission reports | Yes (Superadmin) |
+
+---
+
+## 12. Environment Variables Specification
 
 All environment variables are centralized in the single `.env` file at the root of the project:
 
 ```ini
-# Application Ports & URLs
+# Application Mode & Ports
 NODE_ENV=development
 PORT=5000
 FRONTEND_URL=http://localhost:3000
@@ -405,12 +457,21 @@ NEXT_PUBLIC_API_URL=http://localhost:5000
 # Database (PostgreSQL / Neon Serverless)
 DATABASE_URL=postgresql://neondb_owner:npg_gL9hUqF4vNyd@ep-tiny-paper-a859vbt4-pooler.eastus2.azure.neon.tech/neondb?sslmode=require&connect_timeout=15
 
-# Cryptographic Authentication Secrets
+# Session Security & Tokens
 JWT_SECRET=super_secret_jwt_agrimarket_ethiopia_2026_enterprise_grade_key
 JWT_EXPIRES_IN=15m
 REFRESH_TOKEN_EXPIRES_IN=7d
 
-# SMS Provider (Geez SMS / Ethio Telecom)
+# Chapa Payment Gateway (Ethiopian Birr - ETB)
+CHAPA_SECRET_KEY=CHASECK_TEST-wM02mvy33VndTz3DuhhLzFjFhyS7Jp1G
+CHAPA_PUBLIC_KEY=CHAPUBK_TEST-e1X9uW1V6n9w8uF2wY7p3M1zX9uW1V6n
+CHAPA_WEBHOOK_SECRET=Asdftyf21zXe1HJk08pqwDGe
+CHAPA_BASE_URL=https://api.chapa.co/v1
+
+# Logistics & Courier Location Freshness
+WORKER_LOCATION_MAX_AGE_SECONDS=300
+
+# SMS Provider (Geez SMS / Ethio Telecom & Safaricom)
 GEEZ_SMS_TOKEN=your_geez_sms_api_token
 GEEZ_SMS_SENDER_ID=AgriMarket
 
@@ -419,19 +480,27 @@ BREVO_SMTP_KEY=your_brevo_smtp_key
 BREVO_SMTP_USER=your_brevo_verified_sender@domain.com
 BREVO_SMTP_HOST=smtp-relay.brevo.com
 BREVO_SMTP_PORT=587
+
+# Cloudinary Storage (Optional - Falls back to local disk)
+CLOUDINARY_CLOUD_NAME=your_cloud_name
+CLOUDINARY_API_KEY=your_api_key
+CLOUDINARY_API_SECRET=your_api_secret
 ```
 
 ---
 
-## 12. Local Development & Production Build
+## 13. Installation, Local Setup & Production Deployment
 
-### 1. Prerequisites
+### Prerequisites
 - **Node.js:** `v20.x` or `v22.x`
 - **npm:** `v10.x+`
-- **PostgreSQL:** Local instance or cloud database (Neon)
+- **PostgreSQL:** Local database or Neon Serverless instance
 
-### 2. Install Dependencies
+### 1. Clone & Install Dependencies
 ```bash
+git clone https://github.com/your-org/Agriculture_marketplace.git
+cd Agriculture_marketplace
+
 # Install backend dependencies
 cd backend
 npm install
@@ -441,29 +510,29 @@ cd ../frontend
 npm install
 ```
 
-### 3. Initialize Database
+### 2. Database Migration & Prisma Generation
 ```bash
 cd backend
-npx prisma db push
 npx prisma generate
+npx prisma db push
 ```
 
-### 4. Run Development Servers
+### 3. Run Development Servers
 Open two terminal windows:
 
 ```bash
-# Terminal 1: Start Backend (Port 5000)
+# Terminal 1: Backend Gateway (Port 5000)
 cd backend
 npm run dev
 
-# Terminal 2: Start Frontend (Port 3000)
+# Terminal 2: Frontend App (Port 3000)
 cd frontend
 npm run dev
 ```
 
-Visit `http://localhost:3000` in your browser.
+Visit `http://localhost:3000` to access the application.
 
-### 5. Production Compilation
+### 4. Production Build & Deployment
 ```bash
 # Build Backend
 cd backend
@@ -476,32 +545,31 @@ npm run build
 
 ---
 
-## 13. Automated Test Suites
+## 14. Automated Test Suites
 
-AgriMarket includes an automated test harness covering security, boundaries, authentication, location, and logistics.
+AgriMarket includes 184 automated tests validating security, boundaries, authentication, geolocation, and logistics:
 
-To run all test suites simultaneously:
 ```bash
 cd backend
 npm test
 ```
 
-### Breakdown of Test Suites
+### Test Suite Coverage
 
-| Suite Name | Command | Test File | Assertions | Focus |
-| :--- | :--- | :--- | :--- | :--- |
-| **Boundary Suite** | `npm run test:boundary` | `boundary.test.ts` | **79 Passed** | Full name length & Unicode, Ethiopian phone E.164, email syntax, password policy, OTP length, GPS range `[-90, 90]`. |
-| **Auth & Security**| `npm run test:auth` | `auth.test.ts` | **32 Passed** | Dual identifier login, token family rotation, reuse theft detection, anti-enumeration, single-use reset OTP, atomic versioning. |
-| **Google OAuth**   | `npm run test:google` | `google-auth.test.ts` | **39 Passed** | Google credential verification, stable `sub` identity linking, account takeover protection (409 conflict), password verification, safe default customer role (`BUYER`), suspended account rejection. |
-| **Location Suite** | `npm run test:location` | `location.test.ts` | **8 Passed** | Explicit user consent, numeric coordinate verification, accuracy bounds, role-based location access. |
-| **Delivery Suite** | `npm run test:delivery` | `delivery.test.ts` | **18 Passed** | Courier assignment, status transitions, vehicle capacity, live tracking updates. |
-| **Onboarding Suite**| `npm run test:onboarding`| `onboarding.test.ts` | **8 Passed** | Multi-step role transition, draft persistence, document upload validation, admin approval/rejection. |
-| **Total** | — | — | **184 Passed, 0 Failed** | **100% Passing Test Rate** |
+| Suite | File | Assertions | Focus |
+| :--- | :--- | :--- | :--- |
+| **Boundary Suite** | `boundary.test.ts` | **79 Passed** | Ge'ez Unicode, E.164 phone formats, coordinate ranges $[-90, 90]$, email syntax. |
+| **Auth & Security** | `auth.test.ts` | **32 Passed** | Token rotation, reuse theft detection, anti-enumeration, atomic token versioning. |
+| **Google OAuth** | `google-auth.test.ts` | **39 Passed** | Server ID token verification, immutable `sub` claims, account takeover prevention. |
+| **Location & Dispatch**| `location.test.ts` | **8 Passed** | Consented tracking, accuracy boundaries, staleness verification ($> 300\text{s}$). |
+| **Delivery & Fleet** | `delivery.test.ts` | **18 Passed** | Proximity courier matching, job lifecycle, proof-of-delivery OTP verification. |
+| **Onboarding & KYC** | `onboarding.test.ts` | **8 Passed** | Document upload compression, multi-step role transitions, administrative review. |
+| **Total** | — | **184 Passed, 0 Failed** | **100% Test Pass Rate** |
 
 ---
 
-## 14. License & Credits
+## 15. License & Project Governance
 
 - **License:** Proprietary — All Rights Reserved. Built for Ethiopian Agricultural Commerce.
 - **Architected By:** Senior Full-Stack Engineering & Application Security Team.
-- **Special Thanks:** Built with support from Ethiopian agricultural cooperatives, local transport providers, and rural market communities.
+- **Support & Inquiries:** Contact operations team through platform administrative portal.

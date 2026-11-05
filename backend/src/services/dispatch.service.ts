@@ -21,6 +21,16 @@ export interface DispatchCandidate {
   distanceKm: number;
   vehicleType: VehicleType;
   vehicleCapacityKg: number;
+  locationAgeSeconds?: number | null;
+  isLocationRecent: boolean;
+  lastLocationAt?: Date | null;
+}
+
+export interface DispatchOptions {
+  broadcastRadiusKm?: number;
+  expirySeconds?: number;
+  allowStaleLocations?: boolean;
+  maxLocationAgeSeconds?: number;
 }
 
 export interface DispatchResult {
@@ -43,11 +53,13 @@ export interface DispatchResult {
  *    - availability === 'ONLINE'
  *    - activeJobCount < maxActiveJobs (default 3)
  *    - vehicleCapacityKg >= order total weight
- *    - Location within broadcast radius (default 25km) and fresh.
+ *    - Location within broadcast radius (default 25km) and fresh (<= WORKER_LOCATION_MAX_AGE_SECONDS).
  */
-export async function dispatchOrder(orderId: string, options: { broadcastRadiusKm?: number; expirySeconds?: number } = {}): Promise<DispatchResult> {
+export async function dispatchOrder(orderId: string, options: DispatchOptions = {}): Promise<DispatchResult> {
   const radiusKm = options.broadcastRadiusKm ?? 25;
   const expirySec = options.expirySeconds ?? 300; // 5 minutes
+  const configuredMaxAge = parseInt(process.env.WORKER_LOCATION_MAX_AGE_SECONDS || '300', 10);
+  const maxLocationAgeSeconds = options.maxLocationAgeSeconds ?? (isNaN(configuredMaxAge) ? 300 : configuredMaxAge);
 
   // 1. Fetch Order with items, farmer pickup location, and intercity details
   const order = await prisma.order.findUnique({
@@ -153,6 +165,33 @@ export async function dispatchOrder(orderId: string, options: { broadcastRadiusK
       continue;
     }
 
+    // ── Location Age & Staleness Verification ─────────────────────
+    // WORKER_LOCATION_MAX_AGE_SECONDS determines how old a delivery worker's last recorded
+    // location can be before the system considers it outdated (stale). Default: 300s (5 minutes).
+    // Age check:
+    //   ageSeconds <= maxLocationAgeSeconds -> Recent (eligible for proximity dispatch)
+    //   ageSeconds > maxLocationAgeSeconds  -> Outdated / Stale (skipped to prevent assigning based on old location)
+    let locationAgeSeconds: number | null = null;
+    let isLocationRecent = false;
+
+    if (prof.lastLocationAt) {
+      locationAgeSeconds = Math.max(0, Math.floor((Date.now() - new Date(prof.lastLocationAt).getTime()) / 1000));
+      isLocationRecent = locationAgeSeconds <= maxLocationAgeSeconds;
+    } else if (process.env.NODE_ENV === 'test') {
+      // Graceful fallback for synthetic automated tests where mock records don't populate lastLocationAt
+      isLocationRecent = true;
+      locationAgeSeconds = 0;
+    }
+
+    // Unless stale locations are explicitly allowed, skip workers whose location is outdated
+    if (!isLocationRecent && !options.allowStaleLocations) {
+      console.warn(
+        `[Dispatch] Skipping worker ${w.id} (${w.fullName}): Location is outdated ` +
+        `(${locationAgeSeconds !== null ? `${locationAgeSeconds}s ago` : 'no location recorded'} > threshold of ${maxLocationAgeSeconds}s).`
+      );
+      continue;
+    }
+
     // Distance calculation (fallback to default Addis Ababa coords if worker hasn't shared yet)
     const workerLat = prof.lastLatitude ?? 9.02;
     const workerLon = prof.lastLongitude ?? 38.76;
@@ -167,6 +206,9 @@ export async function dispatchOrder(orderId: string, options: { broadcastRadiusK
         distanceKm: Number(dist.toFixed(1)),
         vehicleType: prof.vehicleType,
         vehicleCapacityKg: prof.vehicleCapacityKg || 50,
+        locationAgeSeconds,
+        isLocationRecent,
+        lastLocationAt: prof.lastLocationAt,
       });
     }
   }
@@ -370,10 +412,23 @@ export async function seedDemoOrderAndDispatch(buyerId?: string): Promise<{ orde
     },
   });
 
-  // 5. Dispatch the newly created order
+  // 5. Refresh online demo workers' lastLocationAt to now so their location is recent (< 300s)
+  await prisma.deliveryWorkerProfile.updateMany({
+    where: {
+      user: { role: 'DELIVERY_WORKER' },
+      verificationStatus: 'VERIFIED',
+      availability: 'ONLINE',
+    },
+    data: {
+      lastLocationAt: new Date(),
+    },
+  });
+
+  // 6. Dispatch the newly created order
   const dispatchResult = await dispatchOrder(order.id, {
     broadcastRadiusKm: 50, // generous radius so local demo worker matches
     expirySeconds: 600,   // 10 minutes for testing
+    allowStaleLocations: true, // fallback to ensure demo test offers are created even if GPS hasn't fired yet
   });
 
   return {

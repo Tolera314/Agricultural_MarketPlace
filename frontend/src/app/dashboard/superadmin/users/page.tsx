@@ -54,13 +54,13 @@ export default function SuperadminUsersPage() {
     const isFarmer = inspectUser.role === 'FARMER' || !!inspectUser.farmerProfile;
     const isWorker = inspectUser.role === 'DELIVERY_WORKER' || !!inspectUser.deliveryProfile;
     const profileId = isFarmer
-      ? inspectUser.farmerProfile?.id
+      ? inspectUser.farmerProfile?.id || inspectUser.id
       : isWorker
-      ? inspectUser.deliveryProfile?.id
-      : null;
+      ? inspectUser.deliveryProfile?.id || inspectUser.id
+      : inspectUser.id;
 
     if (!profileId) {
-      alert('Profile record identifier could not be resolved for this account.');
+      alert('Account identifier could not be resolved.');
       return;
     }
 

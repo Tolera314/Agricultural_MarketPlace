@@ -166,8 +166,14 @@ export async function shareLocation(req: Request, res: Response, next: NextFunct
           ? {
               availability: updatedWorkerProfile.availability,
               lastLocationAt: updatedWorkerProfile.lastLocationAt,
+              locationAgeSeconds: 0,
+              isLocationRecent: true,
+              stalenessStatus: 'RECENT',
             }
           : undefined,
+        locationAgeSeconds: 0,
+        isLocationRecent: true,
+        stalenessStatus: 'RECENT',
       },
     });
   } catch (err) {
@@ -216,12 +222,37 @@ export async function getMyLatestLocation(req: Request, res: Response, next: Nex
       },
     });
 
+    // ── Location Staleness Verification (WORKER_LOCATION_MAX_AGE_SECONDS) ──
+    const maxAgeSeconds = parseInt(process.env.WORKER_LOCATION_MAX_AGE_SECONDS || '300', 10);
+    const workerProfile = user?.deliveryProfile;
+    const refTimestamp = workerProfile?.lastLocationAt || latest?.capturedAt;
+
+    let locationAgeSeconds: number | null = null;
+    let isLocationRecent = false;
+
+    if (refTimestamp) {
+      locationAgeSeconds = Math.max(0, Math.floor((Date.now() - new Date(refTimestamp).getTime()) / 1000));
+      isLocationRecent = locationAgeSeconds <= maxAgeSeconds;
+    }
+
     return res.json({
       success: true,
       data: {
         latestRecord: latest,
-        deliveryProfileLocation: user?.deliveryProfile || null,
-        hasConsented: Boolean(latest || user?.deliveryProfile?.locationConsentGranted),
+        deliveryProfileLocation: workerProfile
+          ? {
+              ...workerProfile,
+              locationAgeSeconds,
+              isLocationRecent,
+              maxAgeSecondsThreshold: maxAgeSeconds,
+              stalenessStatus: isLocationRecent ? 'RECENT' : 'OUTDATED',
+            }
+          : null,
+        locationAgeSeconds,
+        isLocationRecent,
+        maxAgeSecondsThreshold: maxAgeSeconds,
+        stalenessStatus: isLocationRecent ? 'RECENT' : 'OUTDATED',
+        hasConsented: Boolean(latest || workerProfile?.locationConsentGranted),
       },
     });
   } catch (err) {

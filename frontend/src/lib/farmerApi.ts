@@ -135,5 +135,62 @@ export const farmerApi = {
       body: JSON.stringify({ status }),
     });
   },
+
+  getEarnings(): Promise<any> {
+    return apiFetch('/api/farmer/earnings');
+  },
+
+  requestWithdrawal(amount: number, destination: string): Promise<any> {
+    return apiFetch('/api/farmer/withdraw', {
+      method: 'POST',
+      body: JSON.stringify({ amount, destination }),
+    });
+  },
+
+  getDeliveries(): Promise<any> {
+    return apiFetch('/api/farmer/deliveries');
+  },
+
+  getReviews(): Promise<any> {
+    return apiFetch('/api/farmer/reviews');
+  },
+
+  replyReview(reviewId: string, reply: string): Promise<any> {
+    return apiFetch(`/api/farmer/reviews/${reviewId}/reply`, {
+      method: 'POST',
+      body: JSON.stringify({ reply }),
+    });
+  },
+
+  updateProfile(data: {
+    farmName?: string;
+    farmDescription?: string;
+    fullName?: string;
+    phone?: string;
+    region?: string;
+    woreda?: string;
+    specialties?: string[];
+  }): Promise<any> {
+    return apiFetch('/api/farmer/profile', {
+      method: 'PUT',
+      body: JSON.stringify(data),
+    });
+  },
+
+  getSettings(): Promise<any> {
+    return apiFetch('/api/farmer/settings');
+  },
+
+  updateSettings(data: {
+    smsOnNewOrder?: boolean;
+    courierArrivalNotice?: boolean;
+    marketIntelligenceUpdates?: boolean;
+    defaultPayout?: any;
+  }): Promise<any> {
+    return apiFetch('/api/farmer/settings', {
+      method: 'PUT',
+      body: JSON.stringify(data),
+    });
+  },
 };
 
