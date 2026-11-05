@@ -20,48 +20,6 @@ interface RecentOrdersCardProps {
 }
 
 export function RecentOrdersCard({ orders = [] }: RecentOrdersCardProps) {
-  const displayOrders =
-    orders.length > 0
-      ? orders
-      : [
-          {
-            id: 'ord-1',
-            title: 'Tomatoes (10 kg)',
-            route: 'Addis Ababa -> Sebeta',
-            priceFormatted: 'ETB 600',
-            status: 'Processing',
-            date: 'Oct 10, 2025',
-            image: '/images/prod_tomatoes.jpg',
-          },
-          {
-            id: 'ord-2',
-            title: 'Potatoes (50 kg)',
-            route: 'Bahir Dar -> Addis Ababa',
-            priceFormatted: 'ETB 2,800',
-            status: 'Approved',
-            date: 'Oct 10, 2025',
-            image: '/images/prod_potatoes.jpg',
-          },
-          {
-            id: 'ord-3',
-            title: 'Coffee (20 kg)',
-            route: 'Jimma -> Addis Ababa',
-            priceFormatted: 'ETB 4,200',
-            status: 'Shipped',
-            date: 'Oct 9, 2025',
-            image: '/images/prod_coffee.jpg',
-          },
-          {
-            id: 'ord-4',
-            title: 'Onions (30 kg)',
-            route: 'Adama -> Addis Ababa',
-            priceFormatted: 'ETB 1,050',
-            status: 'Delivered',
-            date: 'Oct 9, 2025',
-            image: '/images/prod_tomatoes.jpg',
-          },
-        ];
-
   const getStatusBadge = (status: string) => {
     switch (status.toLowerCase()) {
       case 'delivered':
@@ -110,49 +68,56 @@ export function RecentOrdersCard({ orders = [] }: RecentOrdersCardProps) {
       </div>
 
       {/* Orders List */}
-      <div className="divide-y divide-gray-100 dark:divide-[#143427]">
-        {displayOrders.slice(0, 5).map((order) => (
-          <div
-            key={order.id}
-            className="py-3 first:pt-0 last:pb-0 flex items-center justify-between gap-3 group"
-          >
-            {/* Left: Thumbnail & Route Details */}
-            <div className="flex items-center gap-3 min-w-0">
-              <div className="w-10 h-10 rounded-xl overflow-hidden relative shrink-0 border border-gray-100 dark:border-gray-800 bg-gray-50">
-                <Image
-                  src={order.image || '/images/prod_tomatoes.jpg'}
-                  alt={order.title}
-                  fill
-                  className="object-cover"
-                  sizes="40px"
-                />
+      {orders.length === 0 ? (
+        <div className="py-8 text-center text-xs text-gray-400 dark:text-gray-500">
+          <p className="font-semibold text-gray-700 dark:text-gray-300">No recent orders recorded</p>
+          <p className="text-[11px] text-gray-400 mt-0.5">Customer transactions across all regions will appear here.</p>
+        </div>
+      ) : (
+        <div className="divide-y divide-gray-100 dark:divide-[#143427]">
+          {orders.slice(0, 5).map((order) => (
+            <div
+              key={order.id}
+              className="py-3 first:pt-0 last:pb-0 flex items-center justify-between gap-3 group"
+            >
+              {/* Left: Thumbnail & Route Details */}
+              <div className="flex items-center gap-3 min-w-0">
+                <div className="w-10 h-10 rounded-xl overflow-hidden relative shrink-0 border border-gray-100 dark:border-gray-800 bg-gray-50">
+                  <Image
+                    src={order.image || '/images/prod_tomatoes.jpg'}
+                    alt={order.title}
+                    fill
+                    className="object-cover"
+                    sizes="40px"
+                  />
+                </div>
+
+                <div className="min-w-0">
+                  <div className="text-xs font-bold text-[#1B362C] dark:text-[#E2EAE5] truncate">
+                    {order.title}
+                  </div>
+                  <div className="text-[11px] font-medium text-gray-400 dark:text-gray-500 truncate">
+                    {order.route}
+                  </div>
+                </div>
               </div>
 
-              <div className="min-w-0">
-                <div className="text-xs font-bold text-[#1B362C] dark:text-[#E2EAE5] truncate">
-                  {order.title}
-                </div>
-                <div className="text-[11px] font-medium text-gray-400 dark:text-gray-500 truncate">
-                  {order.route}
-                </div>
+              {/* Right: Price, Status, Date */}
+              <div className="flex items-center gap-3 shrink-0">
+                <span className="text-xs font-bold text-[#142E24] dark:text-[#E2EAE5]">
+                  {order.priceFormatted}
+                </span>
+
+                {getStatusBadge(order.status)}
+
+                <span className="text-[11px] font-medium text-gray-400 dark:text-gray-500 hidden sm:inline-block w-20 text-right">
+                  {order.date}
+                </span>
               </div>
             </div>
-
-            {/* Right: Price, Status, Date */}
-            <div className="flex items-center gap-3 shrink-0">
-              <span className="text-xs font-bold text-[#142E24] dark:text-[#E2EAE5]">
-                {order.priceFormatted}
-              </span>
-
-              {getStatusBadge(order.status)}
-
-              <span className="text-[11px] font-medium text-gray-400 dark:text-gray-500 hidden sm:inline-block w-20 text-right">
-                {order.date}
-              </span>
-            </div>
-          </div>
-        ))}
-      </div>
+          ))}
+        </div>
+      )}
     </div>
   );
 }

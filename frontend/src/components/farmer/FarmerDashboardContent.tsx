@@ -76,13 +76,31 @@ const TYPE_COLOR: Record<string, string> = {
 // ────────────────────────────────────────────────────────────
 // GlobalSearch component
 // ────────────────────────────────────────────────────────────
-function GlobalSearch() {
+function GlobalSearch({ products = [], orders = [] }: { products?: any[]; orders?: any[] }) {
   const [query, setQuery] = useState('');
   const [open, setOpen] = useState(false);
   const wrapperRef = useRef<HTMLDivElement>(null);
 
+  const searchItems = [
+    ...products.map((p) => ({
+      type: 'product',
+      label: p.name,
+      sub: `${p.category?.name || 'Produce'} · ETB ${p.pricePerUnit}/${p.unit || 'kg'} · ${p.stockQuantity} ${p.unit || 'kg'} available`,
+      image: p.images?.[0]?.imageUrl || '/images/prod_tomatoes.jpg',
+    })),
+    ...orders.map((o) => ({
+      type: 'order',
+      label: `${o.orderNumber} — ${o.productName}`,
+      sub: `Buyer: ${o.buyerName} · ETB ${o.totalPrice?.toLocaleString()} · ${o.status}`,
+      image: o.productImage || '/images/prod_tomatoes.jpg',
+    })),
+    ...SEARCH_DATA.filter((d) => d.type === 'category'),
+  ];
+
+  const dataSource = searchItems.length > 0 ? searchItems : SEARCH_DATA;
+
   const results = query.trim().length >= 1
-    ? SEARCH_DATA.filter((d) =>
+    ? dataSource.filter((d) =>
         d.label.toLowerCase().includes(query.toLowerCase()) ||
         d.sub.toLowerCase().includes(query.toLowerCase())
       ).slice(0, 8)
@@ -627,6 +645,9 @@ export default function FarmerDashboardContent({
     pendingOrders: 3,
   });
 
+  const [liveOrders, setLiveOrders] = useState<any[]>([]);
+  const [liveProducts, setLiveProducts] = useState<any[]>([]);
+
   useEffect(() => {
     async function checkFarmerVerification() {
       try {
@@ -647,9 +668,19 @@ export default function FarmerDashboardContent({
       }
 
       try {
-        const dashRes = await farmerApi.getDashboard();
+        const [dashRes, ordersRes, prodsRes] = await Promise.all([
+          farmerApi.getDashboard().catch(() => null),
+          farmerApi.getOrders().catch(() => null),
+          farmerApi.getMyProducts().catch(() => null),
+        ]);
         if (dashRes?.data?.metrics) {
           setMetrics(dashRes.data.metrics);
+        }
+        if (ordersRes?.orders && Array.isArray(ordersRes.orders)) {
+          setLiveOrders(ordersRes.orders);
+        }
+        if (prodsRes?.data && Array.isArray(prodsRes.data)) {
+          setLiveProducts(prodsRes.data);
         }
       } catch (err) {
         console.warn('Farmer dashboard metrics fallback:', err);
@@ -771,7 +802,7 @@ export default function FarmerDashboardContent({
 
         {/* Centered global search — takes remaining space */}
         <div className="flex-1 flex justify-center">
-          <GlobalSearch />
+          <GlobalSearch products={liveProducts} orders={liveOrders} />
         </div>
 
         <div className="flex items-center gap-2 sm:gap-3 shrink-0">
@@ -954,41 +985,63 @@ export default function FarmerDashboardContent({
 
               {/* Table rows */}
               <div className="divide-y divide-gray-50 dark:divide-white/[0.04]">
-                {ORDERS.map((order) => (
-                  <div
-                    key={order.id}
-                    className="sm:grid sm:grid-cols-[2fr_1fr_1fr_1fr_1.2fr] flex flex-wrap gap-2 items-center px-5 py-3 hover:bg-gray-50/70 dark:hover:bg-white/[0.02] transition-colors"
-                  >
-                    {/* Product + image */}
-                    <div className="flex items-center gap-3 min-w-0">
-                      <div className="w-9 h-9 rounded-xl overflow-hidden bg-gray-100 dark:bg-white/5 shrink-0 border border-gray-100 dark:border-white/5">
-                        <Image
-                          src={order.image}
-                          alt={order.product}
-                          width={36}
-                          height={36}
-                          className="w-full h-full object-cover"
-                          onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
-                        />
-                      </div>
-                      <p className="text-xs font-bold text-gray-800 dark:text-white truncate">{order.product}</p>
-                    </div>
-
-                    {/* Buyer */}
-                    <span className="text-xs text-gray-600 dark:text-gray-400 truncate">{order.buyer}</span>
-
-                    {/* Quantity */}
-                    <span className="text-xs text-gray-600 dark:text-gray-400">{order.qty}</span>
-
-                    {/* Amount */}
-                    <span className="text-xs font-semibold text-gray-800 dark:text-gray-200">{order.amount}</span>
-
-                    {/* Status badge */}
-                    <span className={`inline-flex items-center justify-center px-2.5 py-0.5 rounded-full text-[10px] font-bold ${order.statusColor} whitespace-nowrap`}>
-                      {order.status}
-                    </span>
+                {liveOrders.length === 0 ? (
+                  <div className="py-12 flex flex-col items-center justify-center text-center p-4">
+                    <ShoppingCart className="w-8 h-8 text-gray-300 dark:text-gray-600 mb-2" />
+                    <p className="text-xs font-bold text-gray-700 dark:text-gray-300">No customer orders yet</p>
+                    <p className="text-[11px] text-gray-400 max-w-xs mt-0.5">
+                      When buyers place orders for your produce, live incoming orders will be listed here.
+                    </p>
                   </div>
-                ))}
+                ) : (
+                  liveOrders.slice(0, 5).map((order) => {
+                    const statusColor =
+                      order.status === 'DELIVERED'
+                        ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300'
+                        : order.status === 'CONFIRMED' || order.status === 'READY_FOR_PICKUP'
+                        ? 'bg-sky-100 text-sky-700 dark:bg-sky-900/40 dark:text-sky-300'
+                        : order.status === 'IN_TRANSIT'
+                        ? 'bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300'
+                        : 'bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-300';
+
+                    return (
+                      <div
+                        key={order.orderItemId || order.id}
+                        className="sm:grid sm:grid-cols-[2fr_1fr_1fr_1fr_1.2fr] flex flex-wrap gap-2 items-center px-5 py-3 hover:bg-gray-50/70 dark:hover:bg-white/[0.02] transition-colors"
+                      >
+                        {/* Product */}
+                        <div className="flex items-center gap-3 min-w-0">
+                          <div className="w-9 h-9 rounded-xl overflow-hidden bg-gray-100 dark:bg-white/5 shrink-0 border border-gray-100 dark:border-white/5 flex items-center justify-center">
+                            <Wheat className="w-4 h-4 text-emerald-600" />
+                          </div>
+                          <p className="text-xs font-bold text-gray-800 dark:text-white truncate">
+                            {order.productName}
+                          </p>
+                        </div>
+
+                        {/* Buyer */}
+                        <span className="text-xs text-gray-600 dark:text-gray-400 truncate">
+                          {order.buyerName}
+                        </span>
+
+                        {/* Quantity */}
+                        <span className="text-xs text-gray-600 dark:text-gray-400">
+                          {order.quantity} {order.unit || 'kg'}
+                        </span>
+
+                        {/* Amount */}
+                        <span className="text-xs font-semibold text-gray-800 dark:text-gray-200">
+                          ETB {Number(order.totalPrice || 0).toLocaleString()}
+                        </span>
+
+                        {/* Status badge */}
+                        <span className={`inline-flex items-center justify-center px-2.5 py-0.5 rounded-full text-[10px] font-bold ${statusColor} whitespace-nowrap`}>
+                          {order.status}
+                        </span>
+                      </div>
+                    );
+                  })
+                )}
               </div>
             </div>
 
@@ -1009,27 +1062,38 @@ export default function FarmerDashboardContent({
                 </div>
 
                 <div className="p-4 space-y-3">
-                  {/* Featured product */}
-                  <div className="flex gap-3 items-start">
-                    <div className="w-[68px] h-[68px] rounded-xl overflow-hidden bg-gray-100 dark:bg-white/5 shrink-0 border border-gray-100 dark:border-white/5">
-                      <Image
-                        src="/images/prod_tomatoes.jpg"
-                        alt="Tomatoes"
-                        width={68}
-                        height={68}
-                        className="w-full h-full object-cover"
-                      />
+                  {liveProducts.length > 0 ? (
+                    <div className="flex gap-3 items-start">
+                      <div className="w-[68px] h-[68px] rounded-xl overflow-hidden bg-gray-100 dark:bg-white/5 shrink-0 border border-gray-100 dark:border-white/5 flex items-center justify-center">
+                        {liveProducts[0].images?.[0]?.imageUrl ? (
+                          <Image
+                            src={liveProducts[0].images[0].imageUrl}
+                            alt={liveProducts[0].name}
+                            width={68}
+                            height={68}
+                            className="w-full h-full object-cover"
+                          />
+                        ) : (
+                          <Wheat className="w-6 h-6 text-emerald-600" />
+                        )}
+                      </div>
+                      <div className="flex-1 min-w-0 space-y-0.5">
+                        <p className="font-bold text-sm text-gray-800 dark:text-white truncate">{liveProducts[0].name}</p>
+                        <p className="text-xs font-bold text-emerald-600 dark:text-emerald-400">
+                          ETB {liveProducts[0].pricePerUnit} / {liveProducts[0].unit || 'kg'}
+                        </p>
+                        <p className="text-[10px] text-gray-400 dark:text-gray-500">
+                          {liveProducts[0].qualityGrade || 'Grade A'} · {liveProducts[0].stockQuantity} {liveProducts[0].unit || 'kg'} available
+                        </p>
+                      </div>
                     </div>
-                    <div className="flex-1 min-w-0 space-y-0.5">
-                      <p className="font-bold text-sm text-gray-800 dark:text-white">Tomatoes</p>
-                      <p className="text-xs font-bold text-emerald-600 dark:text-emerald-400">
-                        ETB 40 / kg
-                      </p>
-                      <p className="text-[10px] text-gray-400 dark:text-gray-500">
-                        Fresh · Grade A · 30 kg available
-                      </p>
+                  ) : (
+                    <div className="py-4 text-center">
+                      <Package className="w-8 h-8 text-gray-300 dark:text-gray-600 mx-auto mb-2" />
+                      <p className="text-xs font-bold text-gray-700 dark:text-gray-300">No active listings</p>
+                      <p className="text-[11px] text-gray-400 mt-0.5">Add produce to start receiving buyer orders.</p>
                     </div>
-                  </div>
+                  )}
 
                   <button
                     onClick={() => onNavigate('products')}

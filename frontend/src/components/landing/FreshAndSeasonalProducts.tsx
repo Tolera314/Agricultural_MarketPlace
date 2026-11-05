@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { Sparkles, MapPin, Star, Heart, Check, ArrowRight, Zap, ShoppingBag } from 'lucide-react';
 import { EXACT_FEATURED_PRODUCTS, FeaturedProductItem } from '@/data/marketplaceData';
@@ -8,6 +8,7 @@ import { Product } from '@/types';
 import { useAuth } from '@/context/AuthContext';
 import { useCart } from '@/context/CartContext';
 import { AuthRequiredModal } from '@/components/auth/AuthRequiredModal';
+import { buyerApi } from '@/lib/buyerApi';
 
 interface FreshAndSeasonalProductsProps {
   onAddToCart?: (product: Product) => void;
@@ -20,10 +21,36 @@ export const FreshAndSeasonalProducts: React.FC<FreshAndSeasonalProductsProps> =
   const { user, isAuthenticated } = useAuth();
   const { addToCart, setIsCartDrawerOpen } = useCart();
 
+  const [productsList, setProductsList] = useState<FeaturedProductItem[]>(EXACT_FEATURED_PRODUCTS);
   const [favorites, setFavorites] = useState<Record<string, boolean>>({});
   const [addedNotice, setAddedNotice] = useState<string | null>(null);
   const [showAuthModal, setShowAuthModal] = useState(false);
   const [authRedirectUrl, setAuthRedirectUrl] = useState<string>('/products');
+
+  useEffect(() => {
+    async function loadLiveFeatured() {
+      try {
+        const res = await buyerApi.searchProducts({ limit: 8 });
+        if (res?.data && Array.isArray(res.data) && res.data.length > 0) {
+          const mapped: FeaturedProductItem[] = res.data.map((p: any) => ({
+            id: p.id,
+            name: p.name || p.title,
+            farmerName: p.farmer?.fullName || p.farmerProfile?.farmName || 'Verified Regional Producer',
+            distanceKm: p.distanceKm ? Math.round(p.distanceKm) : 12,
+            pricePerKg: Number(p.pricePerUnit || p.price || 40),
+            rating: 4.9,
+            reviewCount: 38,
+            image: p.images?.[0]?.imageUrl || '/images/prod_tomatoes.jpg',
+            description: p.description || 'Harvested fresh from verified local growers.',
+          }));
+          setProductsList(mapped);
+        }
+      } catch (err) {
+        // Fallback to EXACT_FEATURED_PRODUCTS silently
+      }
+    }
+    loadLiveFeatured();
+  }, []);
 
   const toggleFavorite = (id: string, e: React.MouseEvent) => {
     e.stopPropagation();
@@ -131,7 +158,7 @@ export const FreshAndSeasonalProducts: React.FC<FreshAndSeasonalProductsProps> =
 
       {/* 5 Product Cards Grid (5th card spans 2 columns on mobile for a balanced 2-column layout) */}
       <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-2.5 sm:gap-4 lg:gap-5">
-        {EXACT_FEATURED_PRODUCTS.map((prod, idx) => {
+        {productsList.slice(0, 5).map((prod, idx) => {
           const isFav = !!favorites[prod.id];
           const isLastSingleOnMobile = idx === 4;
 

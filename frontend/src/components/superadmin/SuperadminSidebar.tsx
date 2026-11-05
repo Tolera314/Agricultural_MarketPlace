@@ -116,13 +116,13 @@ export function SuperadminSidebar({ isOpen = false, onClose }: SuperadminSidebar
       <div className="p-3.5 border-t border-[#124230]">
         <div className="bg-[#0E3D2B] rounded-2xl p-3.5 border border-[#164C37] space-y-2">
           <p className="text-[11px] font-bold text-white">Need Help?</p>
-          <button
-            onClick={() => alert('Superadmin Assistance & Support: support@agrimarket.et | Hotline: +251 911 22 33 44')}
-            className="w-full py-2 px-3 rounded-xl bg-[#134D37] hover:bg-[#1A5E44] text-white text-xs font-bold transition-colors flex items-center justify-center gap-2 cursor-pointer shadow-xs"
+          <a
+            href="mailto:support@agrimarket.et"
+            className="w-full py-2 px-3 rounded-xl bg-[#134D37] hover:bg-[#1A5E44] text-white text-xs font-bold transition-colors flex items-center justify-center gap-2 cursor-pointer shadow-xs text-center"
           >
             <Headphones className="w-3.5 h-3.5 text-emerald-300" />
-            <span>Contact Support</span>
-          </button>
+            <span>Support Desk</span>
+          </a>
         </div>
       </div>
     </div>

@@ -117,13 +117,13 @@ export default function FarmerSidebar({
       <div className="p-3.5 border-t border-[#124230]">
         <div className="bg-[#0E3D2B] rounded-2xl p-3.5 border border-[#164C37]">
           <p className="text-[11px] font-bold text-white mb-2">Farmer Desk</p>
-          <button
-            onClick={() => alert('Farmer Support: +251 911 234 567')}
-            className="w-full py-2 px-3 rounded-xl bg-[#134D37] hover:bg-[#1A5E44] text-white text-xs font-bold transition-colors flex items-center justify-center gap-2 cursor-pointer shadow-xs"
+          <a
+            href="tel:+251911234567"
+            className="w-full py-2 px-3 rounded-xl bg-[#134D37] hover:bg-[#1A5E44] text-white text-xs font-bold transition-colors flex items-center justify-center gap-2 cursor-pointer shadow-xs text-center"
           >
             <Headphones className="w-3.5 h-3.5 text-emerald-300" />
-            <span>Contact Support</span>
-          </button>
+            <span>Support Desk</span>
+          </a>
         </div>
       </div>
     </div>

@@ -10,36 +10,6 @@ interface RecentActivitiesCardProps {
 }
 
 export function RecentActivitiesCard({ activities = [] }: RecentActivitiesCardProps) {
-  const displayActivities: RecentActivityItem[] =
-    activities.length > 0
-      ? activities
-      : [
-          {
-            id: '1',
-            title: 'New superadmin created',
-            actor: 'System Admin',
-            role: 'SUPERADMIN',
-            timestamp: new Date().toISOString(),
-            formattedDate: 'Oct 18, 2026 · 09:34 am',
-          },
-          {
-            id: '2',
-            title: 'System settings updated',
-            actor: 'System Admin',
-            role: 'SUPERADMIN',
-            timestamp: new Date().toISOString(),
-            formattedDate: 'Oct 15, 2026 · 02:15 pm',
-          },
-          {
-            id: '3',
-            title: 'User reported for suspicious activity',
-            actor: 'Security Monitor',
-            role: 'SUPERADMIN',
-            timestamp: new Date().toISOString(),
-            formattedDate: 'Oct 11, 2026 · 11:45 PM',
-          },
-        ];
-
   const getIcon = (title: string) => {
     const lower = title.toLowerCase();
     if (lower.includes('admin') || lower.includes('user')) {
@@ -71,26 +41,33 @@ export function RecentActivitiesCard({ activities = [] }: RecentActivitiesCardPr
       </div>
 
       {/* Activity Items */}
-      <div className="space-y-3">
-        {displayActivities.slice(0, 3).map((act) => (
-          <div
-            key={act.id}
-            className="flex items-start gap-3.5 p-2 rounded-xl hover:bg-gray-50/60 dark:hover:bg-[#0E3524]/40 transition-colors"
-          >
-            <div className="w-8 h-8 rounded-xl bg-emerald-50 dark:bg-[#0E3524] flex items-center justify-center shrink-0 mt-0.5">
-              {getIcon(act.title)}
+      {activities.length === 0 ? (
+        <div className="py-8 text-center text-xs text-gray-400 dark:text-gray-500">
+          <p className="font-semibold text-gray-700 dark:text-gray-300">No recent security or audit events</p>
+          <p className="text-[11px] text-gray-400 mt-0.5">Platform governance and administrative actions will be logged here.</p>
+        </div>
+      ) : (
+        <div className="space-y-3">
+          {activities.slice(0, 3).map((act) => (
+            <div
+              key={act.id}
+              className="flex items-start gap-3.5 p-2 rounded-xl hover:bg-gray-50/60 dark:hover:bg-[#0E3524]/40 transition-colors"
+            >
+              <div className="w-8 h-8 rounded-xl bg-emerald-50 dark:bg-[#0E3524] flex items-center justify-center shrink-0 mt-0.5">
+                {getIcon(act.title)}
+              </div>
+              <div className="min-w-0">
+                <p className="text-xs font-bold text-[#142E24] dark:text-[#E6F0EB] leading-tight">
+                  {act.title}
+                </p>
+                <p className="text-[11px] text-gray-500 dark:text-gray-400 mt-1">
+                  {act.formattedDate}
+                </p>
+              </div>
             </div>
-            <div className="min-w-0">
-              <p className="text-xs font-bold text-[#142E24] dark:text-[#E6F0EB] leading-tight">
-                {act.title}
-              </p>
-              <p className="text-[11px] text-gray-500 dark:text-gray-400 mt-1">
-                {act.formattedDate}
-              </p>
-            </div>
-          </div>
-        ))}
-      </div>
+          ))}
+        </div>
+      )}
     </div>
   );
 }
