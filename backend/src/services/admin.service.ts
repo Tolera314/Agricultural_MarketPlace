@@ -574,23 +574,40 @@ export class AdminService {
       },
     });
 
-    return workers.map((w) => ({
-      id: w.id,
-      userId: w.userId,
-      fullName: w.user.fullName,
-      phone: w.user.phone,
-      email: w.user.email,
-      vehicleType: w.vehicleType,
-      vehiclePlate: w.vehiclePlate || 'Not Registered',
-      vehicleCapacityKg: w.vehicleCapacityKg,
-      availability: w.availability,
-      verificationStatus: w.verificationStatus,
-      verificationNote: (w as any).verificationNote,
-      verificationDocuments: (w as any).verificationDocuments,
-      activeJobCount: w.activeJobCount,
-      lastLocation: w.lastLatitude && w.lastLongitude ? { latitude: w.lastLatitude, longitude: w.lastLongitude } : null,
-      createdAt: w.createdAt,
-    }));
+    const maxAgeSeconds = parseInt(process.env.WORKER_LOCATION_MAX_AGE_SECONDS || '300', 10);
+
+    return workers.map((w) => {
+      const locationAgeSeconds = w.lastLocationAt
+        ? Math.max(0, Math.floor((Date.now() - new Date(w.lastLocationAt).getTime()) / 1000))
+        : null;
+      const isLocationRecent = locationAgeSeconds !== null ? locationAgeSeconds <= maxAgeSeconds : false;
+
+      return {
+        id: w.id,
+        userId: w.userId,
+        fullName: w.user.fullName,
+        phone: w.user.phone,
+        email: w.user.email,
+        vehicleType: w.vehicleType,
+        vehiclePlate: w.vehiclePlate || 'Not Registered',
+        vehicleCapacityKg: w.vehicleCapacityKg,
+        availability: w.availability,
+        verificationStatus: w.verificationStatus,
+        verificationNote: (w as any).verificationNote,
+        verificationDocuments: (w as any).verificationDocuments,
+        activeJobCount: w.activeJobCount,
+        lastLocation: w.lastLatitude && w.lastLongitude ? {
+          latitude: w.lastLatitude,
+          longitude: w.lastLongitude,
+          accuracy: w.lastAccuracy,
+          lastLocationAt: w.lastLocationAt,
+          locationAgeSeconds,
+          isLocationRecent,
+          stalenessStatus: isLocationRecent ? 'RECENT' : 'OUTDATED',
+        } : null,
+        createdAt: w.createdAt,
+      };
+    });
   }
 
   static async verifyWorker(workerProfileId: string, status: VerificationStatus, reason: string, adminId: string) {

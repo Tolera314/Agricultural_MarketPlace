@@ -480,8 +480,12 @@ export async function getBuyerDashboardOverview(ctx: BuyerContext, userLat?: num
   };
 }
 
-/** 2. Core Business Rule: Nearest Eligible Farmer First */
-export async function getNearbyFarmers(userLat: number, userLng: number, maxRadiusKm = 50) {
+/** 2. Core Business Rule: Nearest Eligible Farmer First (configured via FARMER_SEARCH_RADIUS_KM, default 20km) */
+export async function getNearbyFarmers(
+  userLat: number,
+  userLng: number,
+  maxRadiusKm = parseInt(process.env.FARMER_SEARCH_RADIUS_KM || '20', 10)
+) {
   try {
     const farmers = await prisma.farmerProfile.findMany({
       where: { verificationStatus: 'VERIFIED' },

@@ -111,28 +111,48 @@ export function LocationShareWidget({
     }
   };
 
+  // Staleness check based on WORKER_LOCATION_MAX_AGE_SECONDS (300 seconds / 5 minutes)
+  const locationAgeSeconds = activeLocation?.capturedAt
+    ? Math.max(0, Math.floor((Date.now() - new Date(activeLocation.capturedAt).getTime()) / 1000))
+    : null;
+  const isRecent = locationAgeSeconds !== null ? locationAgeSeconds <= 300 : true;
+
   // Compact Pill mode (Ideal for headers)
   if (variant === 'pill') {
     return (
       <>
         {activeLocation ? (
-          <button
-            type="button"
-            onClick={() => setModalOpen(true)}
-            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold transition-all cursor-pointer bg-emerald-50 dark:bg-[#122E21] text-[#075C3B] dark:text-[#34D399] border border-emerald-200 dark:border-[#1E4130] hover:bg-emerald-100 dark:hover:bg-[#173A2A] shadow-xs ${className}`}
-            title={`GPS Active: ${activeLocation.latitude.toFixed(4)}, ${activeLocation.longitude.toFixed(4)}${
-              activeLocation.accuracy ? ` (±${activeLocation.accuracy}m)` : ''
-            }`}
-          >
-            <span className="relative flex h-2 w-2">
-              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />
-              <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500" />
-            </span>
-            <span className="truncate max-w-[120px] sm:max-w-none">
-              GPS Active
-              {activeLocation.accuracy ? ` (±${activeLocation.accuracy}m)` : ''}
-            </span>
-          </button>
+          isRecent ? (
+            <button
+              type="button"
+              onClick={() => setModalOpen(true)}
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold transition-all cursor-pointer bg-emerald-50 dark:bg-[#122E21] text-[#075C3B] dark:text-[#34D399] border border-emerald-200 dark:border-[#1E4130] hover:bg-emerald-100 dark:hover:bg-[#173A2A] shadow-xs ${className}`}
+              title={`GPS Recent (${locationAgeSeconds !== null ? `${Math.floor(locationAgeSeconds / 60)}m ago` : 'just now'}): ${activeLocation.latitude.toFixed(4)}, ${activeLocation.longitude.toFixed(4)}${
+                activeLocation.accuracy ? ` (±${activeLocation.accuracy}m)` : ''
+              }`}
+            >
+              <span className="relative flex h-2 w-2">
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />
+                <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500" />
+              </span>
+              <span className="truncate max-w-[120px] sm:max-w-none">
+                GPS Recent
+                {activeLocation.accuracy ? ` (±${activeLocation.accuracy}m)` : ''}
+              </span>
+            </button>
+          ) : (
+            <button
+              type="button"
+              onClick={() => setModalOpen(true)}
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold transition-all cursor-pointer bg-amber-50 dark:bg-[#2E2012] text-amber-700 dark:text-amber-300 border border-amber-300 dark:border-amber-800 hover:bg-amber-100 dark:hover:bg-[#3D2C19] shadow-xs ${className}`}
+              title={`GPS Outdated (${locationAgeSeconds !== null ? `${Math.floor(locationAgeSeconds / 60)}m ago` : '> 5m ago'}). Click to update position for dispatch.`}
+            >
+              <span className="h-2 w-2 rounded-full bg-amber-500" />
+              <span className="truncate max-w-[120px] sm:max-w-none">
+                GPS Outdated ({locationAgeSeconds !== null ? `${Math.floor(locationAgeSeconds / 60)}m` : '> 5m'})
+              </span>
+            </button>
+          )
         ) : (
           <button
             type="button"
@@ -173,15 +193,34 @@ export function LocationShareWidget({
           </div>
 
           {activeLocation && (
-            <span className="inline-flex items-center gap-1 text-[11px] font-bold text-[#088647] dark:text-[#34D399] bg-[#E8F8EE] dark:bg-[#133A27] px-2.5 py-1 rounded-full">
-              <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
-              Active
-            </span>
+            isRecent ? (
+              <span className="inline-flex items-center gap-1 text-[11px] font-bold text-[#088647] dark:text-[#34D399] bg-[#E8F8EE] dark:bg-[#133A27] px-2.5 py-1 rounded-full">
+                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                Recent (&le; 5 min)
+              </span>
+            ) : (
+              <span className="inline-flex items-center gap-1 text-[11px] font-bold text-amber-700 dark:text-amber-300 bg-amber-100 dark:bg-amber-950/60 px-2.5 py-1 rounded-full border border-amber-200 dark:border-amber-800">
+                <span className="w-1.5 h-1.5 rounded-full bg-amber-500" />
+                Outdated (&gt; 5 min)
+              </span>
+            )
           )}
         </div>
 
         {activeLocation ? (
           <div className="space-y-3">
+            {!isRecent && (
+              <div className="p-3 rounded-xl bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800 text-xs text-amber-800 dark:text-amber-300 flex items-center justify-between">
+                <span>⚠️ Your recorded GPS fix is older than 5 minutes ({Math.floor((locationAgeSeconds ?? 300) / 60)}m ago). The dispatch system considers it outdated and requires a recent fix to assign nearby orders.</span>
+                <button
+                  type="button"
+                  onClick={() => setModalOpen(true)}
+                  className="ml-2 font-bold underline cursor-pointer shrink-0 hover:text-amber-900 dark:hover:text-amber-100"
+                >
+                  Update Now
+                </button>
+              </div>
+            )}
             <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5 text-xs">
               <div className="bg-[#F8FAF9] dark:bg-[#12281E] p-3 rounded-xl border border-[#E8F0EB] dark:border-[#1E4130]">
                 <p className="text-[#6B8B7B] dark:text-[#88B8A0]">Latitude</p>

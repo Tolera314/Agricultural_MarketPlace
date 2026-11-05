@@ -104,6 +104,7 @@ async function runDeliveryTests() {
         vehicleCapacityKg: 80,
         lastLatitude: 9.012,
         lastLongitude: 38.755,
+        lastLocationAt: new Date(),
       },
       create: {
         userId: worker1.id,
@@ -114,6 +115,7 @@ async function runDeliveryTests() {
         vehicleCapacityKg: 80,
         lastLatitude: 9.012,
         lastLongitude: 38.755,
+        lastLocationAt: new Date(),
       },
     });
 
@@ -141,6 +143,7 @@ async function runDeliveryTests() {
         vehicleCapacityKg: 80,
         lastLatitude: 9.015,
         lastLongitude: 38.758,
+        lastLocationAt: new Date(),
       },
       create: {
         userId: worker2.id,
@@ -151,6 +154,7 @@ async function runDeliveryTests() {
         vehicleCapacityKg: 80,
         lastLatitude: 9.015,
         lastLongitude: 38.758,
+        lastLocationAt: new Date(),
       },
     });
 

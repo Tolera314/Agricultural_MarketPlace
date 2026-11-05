@@ -94,7 +94,14 @@ export interface LatestLocationResponse {
       lastLocationAt: string | null;
       locationConsentGranted: boolean;
       locationConsentAt: string | null;
+      locationAgeSeconds?: number | null;
+      isLocationRecent?: boolean;
+      stalenessStatus?: 'RECENT' | 'OUTDATED';
     } | null;
+    locationAgeSeconds?: number | null;
+    isLocationRecent?: boolean;
+    maxAgeSecondsThreshold?: number;
+    stalenessStatus?: 'RECENT' | 'OUTDATED';
     hasConsented: boolean;
   };
 }
