@@ -91,35 +91,72 @@ export class MessageService {
     });
 
     if (!conversation) {
-      conversation = await prisma.conversation.create({
-        data: {
-          buyerId,
-          farmerId,
-          lastMessageText: initialMessage ? initialMessage.trim().slice(0, 100) : null,
-          lastMessageAt: new Date(),
-        },
-        include: {
-          buyer: {
-            select: {
-              id: true,
-              fullName: true,
-              phone: true,
-              role: true,
-              userProfile: { select: { avatarUrl: true } },
+      try {
+        conversation = await prisma.conversation.create({
+          data: {
+            buyerId,
+            farmerId,
+            lastMessageText: initialMessage ? initialMessage.trim().slice(0, 100) : null,
+            lastMessageAt: new Date(),
+          },
+          include: {
+            buyer: {
+              select: {
+                id: true,
+                fullName: true,
+                phone: true,
+                role: true,
+                userProfile: { select: { avatarUrl: true } },
+              },
+            },
+            farmer: {
+              select: {
+                id: true,
+                fullName: true,
+                phone: true,
+                role: true,
+                userProfile: { select: { avatarUrl: true } },
+                farmerProfile: { select: { id: true, farmName: true, verificationStatus: true } },
+              },
             },
           },
-          farmer: {
-            select: {
-              id: true,
-              fullName: true,
-              phone: true,
-              role: true,
-              userProfile: { select: { avatarUrl: true } },
-              farmerProfile: { select: { id: true, farmName: true, verificationStatus: true } },
+        });
+      } catch (err: any) {
+        if (err.code === 'P2002') {
+          conversation = await prisma.conversation.findUnique({
+            where: {
+              buyerId_farmerId: {
+                buyerId,
+                farmerId,
+              },
             },
-          },
-        },
-      });
+            include: {
+              buyer: {
+                select: {
+                  id: true,
+                  fullName: true,
+                  phone: true,
+                  role: true,
+                  userProfile: { select: { avatarUrl: true } },
+                },
+              },
+              farmer: {
+                select: {
+                  id: true,
+                  fullName: true,
+                  phone: true,
+                  role: true,
+                  userProfile: { select: { avatarUrl: true } },
+                  farmerProfile: { select: { id: true, farmName: true, verificationStatus: true } },
+                },
+              },
+            },
+          });
+          if (!conversation) throw err;
+        } else {
+          throw err;
+        }
+      }
     }
 
     // If an initial message was supplied, persist it

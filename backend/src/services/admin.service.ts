@@ -38,6 +38,10 @@ function calculateDateRange(options?: DateFilterOptions): { gte: Date; lte: Date
   return null; // 'all'
 }
 
+function isValidParam(val?: any): val is string {
+  return typeof val === 'string' && val.trim() !== '' && val !== 'undefined' && val !== 'null' && val !== 'ALL';
+}
+
 export class AdminService {
   /**
    * Helper to write an immutable audit log entry
@@ -342,13 +346,14 @@ export class AdminService {
    */
   static async getProducts(query: { categoryId?: string; status?: ListingStatus; search?: string; stock?: string }) {
     const where: any = {};
-    if (query.categoryId) where.categoryId = query.categoryId;
-    if (query.status) where.status = query.status;
+    if (isValidParam(query.categoryId)) where.categoryId = query.categoryId;
+    if (isValidParam(query.status)) where.status = query.status;
     if (query.stock === 'low') where.stockQuantity = { lte: 10 };
-    if (query.search) {
+    if (isValidParam(query.search)) {
+      const term = query.search.trim();
       where.OR = [
-        { name: { contains: query.search, mode: 'insensitive' } },
-        { farmer: { fullName: { contains: query.search, mode: 'insensitive' } } },
+        { name: { contains: term, mode: 'insensitive' } },
+        { farmer: { fullName: { contains: term, mode: 'insensitive' } } },
       ];
     }
 
@@ -406,12 +411,13 @@ export class AdminService {
    */
   static async getFarmers(query: { status?: VerificationStatus; search?: string }) {
     const where: any = {};
-    if (query.status) where.verificationStatus = query.status;
-    if (query.search) {
+    if (isValidParam(query.status)) where.verificationStatus = query.status;
+    if (isValidParam(query.search)) {
+      const term = query.search.trim();
       where.OR = [
-        { farmName: { contains: query.search, mode: 'insensitive' } },
-        { user: { fullName: { contains: query.search, mode: 'insensitive' } } },
-        { user: { phone: { contains: query.search } } },
+        { farmName: { contains: term, mode: 'insensitive' } },
+        { user: { fullName: { contains: term, mode: 'insensitive' } } },
+        { user: { phone: { contains: term } } },
       ];
     }
 
@@ -495,11 +501,11 @@ export class AdminService {
    */
   static async getBuyers(query: { search?: string }) {
     const where: any = { role: 'BUYER' };
-    if (query.search) {
+    if (isValidParam(query.search)) {
+      const term = query.search.trim();
       where.OR = [
-        { fullName: { contains: query.search, mode: 'insensitive' } },
-        { phone: { contains: query.search } },
-        { email: { contains: query.search, mode: 'insensitive' } },
+        { fullName: { contains: term, mode: 'insensitive' } },
+        { phone: { contains: term } },
       ];
     }
 
@@ -556,13 +562,14 @@ export class AdminService {
    */
   static async getWorkers(query: { status?: VerificationStatus; availability?: string; search?: string }) {
     const where: any = {};
-    if (query.status) where.verificationStatus = query.status;
-    if (query.availability) where.availability = query.availability;
-    if (query.search) {
+    if (isValidParam(query.status)) where.verificationStatus = query.status;
+    if (isValidParam(query.availability)) where.availability = query.availability;
+    if (isValidParam(query.search)) {
+      const term = query.search.trim();
       where.OR = [
-        { user: { fullName: { contains: query.search, mode: 'insensitive' } } },
-        { user: { phone: { contains: query.search } } },
-        { vehiclePlate: { contains: query.search, mode: 'insensitive' } },
+        { user: { fullName: { contains: term, mode: 'insensitive' } } },
+        { user: { phone: { contains: term } } },
+        { vehiclePlate: { contains: term, mode: 'insensitive' } },
       ];
     }
 
@@ -644,13 +651,14 @@ export class AdminService {
    */
   static async getOrders(query: { tradeType?: string; status?: OrderStatus; search?: string }) {
     const where: any = {};
-    if (query.tradeType && query.tradeType !== 'ALL') where.tradeType = query.tradeType;
-    if (query.status) where.status = query.status;
-    if (query.search) {
+    if (isValidParam(query.tradeType)) where.tradeType = query.tradeType;
+    if (isValidParam(query.status)) where.status = query.status;
+    if (isValidParam(query.search)) {
+      const term = query.search.trim();
       where.OR = [
-        { id: { contains: query.search } },
-        { buyer: { fullName: { contains: query.search, mode: 'insensitive' } } },
-        { deliveryAddress: { contains: query.search, mode: 'insensitive' } },
+        { id: { contains: term } },
+        { buyer: { fullName: { contains: term, mode: 'insensitive' } } },
+        { deliveryAddress: { contains: term, mode: 'insensitive' } },
       ];
     }
 

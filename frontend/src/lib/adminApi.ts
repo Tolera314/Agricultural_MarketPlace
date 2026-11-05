@@ -192,6 +192,25 @@ export interface DashboardData {
   }>;
 }
 
+function toQueryString(params?: Record<string, any>): string {
+  if (!params) return '';
+  const q = new URLSearchParams();
+  for (const [key, value] of Object.entries(params)) {
+    if (
+      value !== undefined &&
+      value !== null &&
+      value !== '' &&
+      value !== 'undefined' &&
+      value !== 'null' &&
+      value !== 'ALL'
+    ) {
+      q.set(key, String(value));
+    }
+  }
+  const str = q.toString();
+  return str ? '?' + str : '';
+}
+
 export const adminApi = {
   // Dashboard
   getDashboard: (period = '7d') => fetchAdmin<DashboardData>(`/api/admin/dashboard?period=${period}`),
