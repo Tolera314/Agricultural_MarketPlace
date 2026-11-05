@@ -183,9 +183,9 @@ To connect your Chapa merchant account with your AgriMarket deployment, configur
    - For Production: Use live keys (`CHAPUBK_LIVE-...` and `CHASECK_LIVE-...`).
 4. Set these keys in your `.env` file:
    ```ini
-   CHAPA_SECRET_KEY=CHASECK_TEST-wM02mvy33VndTz3DuhhLzFjFhyS7Jp1G
-   CHAPA_PUBLIC_KEY=CHAPUBK_TEST-e1X9uW1V6n9w8uF2wY7p3M1zX9uW1V6n
    CHAPA_BASE_URL=https://api.chapa.co/v1
+   CHAPA_PUBLIC_KEY=CHAPUBK_TEST-YOUR_PUBLIC_KEY
+   CHAPA_SECRET_KEY=CHASECK_TEST-YOUR_SECRET_KEY
    ```
 
 #### Step 2: Configure Webhook Endpoint & Secret Hash
@@ -193,17 +193,17 @@ To connect your Chapa merchant account with your AgriMarket deployment, configur
 2. Enter the **Webhook URL**:
    - **Production Deployment:**
      ```text
-     https://agricultural-marketplace-hthx.onrender.com/api/payment/chapa/webhook
+     https://example.com/api/payment/chapa/webhook
      ```
    - **Local Testing (via ngrok tunnel):**
      ```text
      https://<your-subdomain>.ngrok-free.app/api/payment/chapa/webhook
      ```
 3. Set the **Secret Hash / Webhook Secret**:
-   - Enter a secure secret string (e.g. `Asdftyf21zXe1HJk08pqwDGe`).
+   - Enter a secure secret string (e.g. `your_webhook_secret`).
    - Set the identical value in your `.env` file:
      ```ini
-     CHAPA_WEBHOOK_SECRET=Asdftyf21zXe1HJk08pqwDGe
+     CHAPA_WEBHOOK_SECRET=your_webhook_secret
      ```
 4. Click **Save Webhook Settings**.
 
@@ -217,7 +217,7 @@ To connect your Chapa merchant account with your AgriMarket deployment, configur
 
 AgriMarket includes an automated logistics engine that dispatches couriers based on proximity to the farmer's produce pickup coordinates.
 
-### Location Staleness Matrix (`WORKER_LOCATION_MAX_AGE_SECONDS=300`)
+### Location Staleness Matrix (`WORKER_LOCATION_MAX_AGE_SECONDS=600`)
 
 To prevent assigning orders to couriers who are no longer active or whose GPS signal has degraded, the system validates the age of the courier's last recorded location:
 
@@ -455,18 +455,19 @@ FRONTEND_URL=http://localhost:3000
 NEXT_PUBLIC_API_URL=http://localhost:5000
 
 # Database (PostgreSQL / Neon Serverless)
-DATABASE_URL=postgresql://neondb_owner:npg_gL9hUqF4vNyd@ep-tiny-paper-a859vbt4-pooler.eastus2.azure.neon.tech/neondb?sslmode=require&connect_timeout=15
+DATABASE_URL=postgresql://USER:PASSWORD@HOST.REGION.aws.neon.tech/DBNAME?sslmode=require
 
 # Session Security & Tokens
-JWT_SECRET=super_secret_jwt_agrimarket_ethiopia_2026_enterprise_grade_key
+JWT_SECRET=super_secret_jwt
 JWT_EXPIRES_IN=15m
 REFRESH_TOKEN_EXPIRES_IN=7d
 
 # Chapa Payment Gateway (Ethiopian Birr - ETB)
-CHAPA_SECRET_KEY=CHASECK_TEST-wM02mvy33VndTz3DuhhLzFjFhyS7Jp1G
-CHAPA_PUBLIC_KEY=CHAPUBK_TEST-e1X9uW1V6n9w8uF2wY7p3M1zX9uW1V6n
-CHAPA_WEBHOOK_SECRET=Asdftyf21zXe1HJk08pqwDGe
 CHAPA_BASE_URL=https://api.chapa.co/v1
+CHAPA_PUBLIC_KEY=CHAPUBK_TEST-YOUR_PUBLIC_KEY
+CHAPA_SECRET_KEY=CHASECK_TEST-YOUR_SECRET_KEY
+CHAPA_WEBHOOK_SECRET=your_webhook_secret
+
 
 # Logistics & Courier Location Freshness
 WORKER_LOCATION_MAX_AGE_SECONDS=300
