@@ -24,6 +24,7 @@
     "test:messaging": "node --loader ts-node/esm src/tests/messaging-approval.test.ts",
     "test:guest": "node --loader ts-node/esm src/tests/guest-browsing.test.ts",
     "test:error": "node --loader ts-node/esm src/tests/error-handling.test.ts",
+    "test:corridor": "node --loader ts-node/esm src/tests/corridor-batch.test.ts",
     "seed": "node --loader ts-node/esm src/scripts/seed.ts"
   },
   "keywords": [],

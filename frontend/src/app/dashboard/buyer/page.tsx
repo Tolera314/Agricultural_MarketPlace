@@ -40,6 +40,9 @@ import {
   Building,
   ChevronRight,
   Menu,
+  Navigation,
+  Loader2,
+  Crosshair,
 } from 'lucide-react';
 import { ThemeToggle } from '@/components/layout/ThemeToggle';
 import { buyerApi } from '@/lib/buyerApi';
@@ -214,6 +217,64 @@ function BuyerDashboardContent(props: any) {
     isDefault: false,
     deliveryNotes: '',
   });
+
+  // Automated GPS Real Data Tracking for Delivery Address
+  const [isDetectingAddressGps, setIsDetectingAddressGps] = useState(false);
+  const [addressGpsStatus, setAddressGpsStatus] = useState<string | null>(null);
+
+  const handleDetectAddressLocation = () => {
+    if (typeof window === 'undefined' || !navigator.geolocation) {
+      setAddressGpsStatus('Geolocation is not supported by your browser.');
+      return;
+    }
+    setIsDetectingAddressGps(true);
+    setAddressGpsStatus('Contacting GPS satellites for real delivery coordinates...');
+    navigator.geolocation.getCurrentPosition(
+      async (pos) => {
+        const lat = parseFloat(pos.coords.latitude.toFixed(6));
+        const lon = parseFloat(pos.coords.longitude.toFixed(6));
+        const acc = Math.round(pos.coords.accuracy);
+        setAddressForm((prev) => ({
+          ...prev,
+          latitude: lat,
+          longitude: lon,
+        }));
+        setAddressGpsStatus(`Real GPS Captured: ${lat.toFixed(4)}° N, ${lon.toFixed(4)}° E (±${acc}m accuracy)`);
+        setIsDetectingAddressGps(false);
+
+        // Smart reverse geocoding to fill address fields without manual typing
+        try {
+          const controller = new AbortController();
+          const tId = setTimeout(() => controller.abort(), 3500);
+          const res = await fetch(
+            `https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat=${lat}&lon=${lon}`,
+            { signal: controller.signal }
+          );
+          clearTimeout(tId);
+          if (res.ok) {
+            const data = await res.json();
+            const addr = data.address || {};
+            const sub = addr.suburb || addr.neighbourhood || addr.district || '';
+            const city = addr.city || addr.town || 'Addis Ababa';
+            const road = addr.road || addr.amenity || '';
+            setAddressForm((prev) => ({
+              ...prev,
+              city: city || prev.city,
+              subcity: sub || prev.subcity,
+              streetAddress: road ? `${road}${sub ? `, ${sub}` : ''}` : prev.streetAddress,
+            }));
+          }
+        } catch {
+          // Ignore reverse geocode failures
+        }
+      },
+      (err) => {
+        setIsDetectingAddressGps(false);
+        setAddressGpsStatus('Location permission denied or timed out.');
+      },
+      { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
+    );
+  };
 
   // Support Form State
   const [supportForm, setSupportForm] = useState({
@@ -2031,6 +2092,45 @@ function BuyerDashboardContent(props: any) {
             </div>
 
             <form onSubmit={handleCreateAddress} className="space-y-3 text-xs">
+              {/* Automated Real GPS Address Card */}
+              <div className="p-3 rounded-xl bg-emerald-50/60 dark:bg-emerald-950/20 border border-emerald-200 dark:border-emerald-800 space-y-2">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-1.5 font-bold text-emerald-900 dark:text-emerald-300">
+                    <MapPin className="w-3.5 h-3.5 text-emerald-600" />
+                    <span>Real-World Drop-off Telemetry</span>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={handleDetectAddressLocation}
+                    disabled={isDetectingAddressGps}
+                    className="flex items-center gap-1 px-2.5 py-1 rounded-lg text-[11px] font-bold bg-emerald-600 text-white hover:bg-emerald-700 disabled:opacity-50 transition-colors cursor-pointer"
+                  >
+                    {isDetectingAddressGps ? (
+                      <>
+                        <Loader2 className="w-3 h-3 animate-spin" />
+                        <span>Detecting...</span>
+                      </>
+                    ) : (
+                      <>
+                        <Navigation className="w-3 h-3" />
+                        <span>Auto-Detect Real GPS</span>
+                      </>
+                    )}
+                  </button>
+                </div>
+                {addressGpsStatus && (
+                  <p className="text-[10px] font-medium text-emerald-700 dark:text-emerald-400">
+                    {addressGpsStatus}
+                  </p>
+                )}
+                <div className="flex items-center gap-2 text-[10px] text-gray-500 font-mono">
+                  <span>Lat: {addressForm.latitude.toFixed(4)}° N</span>
+                  <span>·</span>
+                  <span>Lon: {addressForm.longitude.toFixed(4)}° E</span>
+                  <span className="text-emerald-600 font-semibold">(Turn-by-turn courier precision)</span>
+                </div>
+              </div>
+
               <div>
                 <label className="block font-bold text-[#517663] mb-1">Label</label>
                 <input

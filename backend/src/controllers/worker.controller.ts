@@ -1,6 +1,12 @@
 import type { Request, Response, NextFunction } from 'express';
 import prisma from '../config/prisma.js';
-import { haversineKm, dispatchOrder, seedDemoOrderAndDispatch } from '../services/dispatch.service.js';
+import {
+  haversineKm,
+  dispatchOrder,
+  seedDemoOrderAndDispatch,
+  getAvailableCorridorBatches,
+  acceptCorridorBatch,
+} from '../services/dispatch.service.js';
 import { uploadToCloudinary, validateFileBuffer } from '../services/cloudinary.service.js';
 
 // ─── GET /api/worker/dashboard ────────────────────────────────
@@ -1114,6 +1120,32 @@ export async function uploadProofOfDelivery(req: Request, res: Response, next: N
         bytes: uploaded.bytes,
       },
     });
+  } catch (err) {
+    next(err);
+  }
+}
+
+// ─── GET /api/worker/corridors/batches ────────────────────────
+export async function getCorridorBatchesAction(req: Request, res: Response, next: NextFunction) {
+  try {
+    const workerId = req.auth!.sub;
+    const batches = await getAvailableCorridorBatches(workerId);
+    return res.json({
+      success: true,
+      data: batches,
+    });
+  } catch (err) {
+    next(err);
+  }
+}
+
+// ─── POST /api/worker/corridors/batches/accept ────────────────
+export async function acceptCorridorBatchAction(req: Request, res: Response, next: NextFunction) {
+  try {
+    const workerId = req.auth!.sub;
+    const { jobIds } = req.body;
+    const result = await acceptCorridorBatch(workerId, jobIds);
+    return res.json(result);
   } catch (err) {
     next(err);
   }
