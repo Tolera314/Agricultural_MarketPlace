@@ -134,6 +134,17 @@ export const Footer: React.FC<FooterProps> = ({
               </li>
               <li>
                 <Link
+                  href="/dashboard/transport"
+                  className="hover:text-[#2E7D32] dark:hover:text-[#34D399] transition-colors flex items-center gap-1.5"
+                >
+                  <span>Carrier Fleet Portal</span>
+                  <span className="px-1.5 py-0.5 rounded text-[9px] font-extrabold bg-indigo-100 text-indigo-800 dark:bg-indigo-950 dark:text-indigo-300">
+                    NEW
+                  </span>
+                </Link>
+              </li>
+              <li>
+                <Link
                   href="/dashboard/buyer"
                   className="hover:text-[#2E7D32] dark:hover:text-[#34D399] transition-colors"
                 >
