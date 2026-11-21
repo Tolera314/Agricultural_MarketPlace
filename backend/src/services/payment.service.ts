@@ -1,6 +1,7 @@
 import crypto from 'crypto';
 import prisma from '../config/prisma.js';
 import { dispatchOrder } from './dispatch.service.js';
+import { shipmentService } from './logistics/shipment.service.js';
 
 /**
  * Utility to cleanly extract configuration values, stripping comments and trailing whitespace
@@ -354,11 +355,18 @@ export async function finalizePaymentSuccess(txRef: string, gatewayResponse?: an
     });
   });
 
-  // High performance: Dispatch nearby couriers asynchronously (non-blocking)
-  setImmediate(() => {
-    dispatchOrder(payment.orderId).catch((err: any) => {
-      console.warn(`[Courier dispatch after payment for order ${payment.orderId}]:`, err?.message);
-    });
+  // High performance: Dispatch nearby couriers or schedule inter-city bulk freight asynchronously
+  setImmediate(async () => {
+    try {
+      const order = await prisma.order.findUnique({ where: { id: payment.orderId } });
+      if (order?.tradeType === 'INTERCITY' || order?.fulfillmentType === 'INTERCITY_BULK' || order?.fulfillmentType === 'INTERCITY_CONSOLIDATED') {
+        await shipmentService.createShipmentFromOrder(payment.orderId);
+      } else {
+        await dispatchOrder(payment.orderId);
+      }
+    } catch (err: any) {
+      console.warn(`[Logistics activation after payment for order ${payment.orderId}]:`, err?.message);
+    }
   });
 
   return {
@@ -401,10 +409,17 @@ async function finalizePaymentSuccessById(orderId: string, txRef: string, gatewa
     });
   });
 
-  setImmediate(() => {
-    dispatchOrder(orderId).catch((err: any) => {
-      console.warn(`[Courier dispatch fallback for order ${orderId}]:`, err?.message);
-    });
+  setImmediate(async () => {
+    try {
+      const order = await prisma.order.findUnique({ where: { id: orderId } });
+      if (order?.tradeType === 'INTERCITY' || order?.fulfillmentType === 'INTERCITY_BULK' || order?.fulfillmentType === 'INTERCITY_CONSOLIDATED') {
+        await shipmentService.createShipmentFromOrder(orderId);
+      } else {
+        await dispatchOrder(orderId);
+      }
+    } catch (err: any) {
+      console.warn(`[Logistics activation fallback for order ${orderId}]:`, err?.message);
+    }
   });
 
   return {

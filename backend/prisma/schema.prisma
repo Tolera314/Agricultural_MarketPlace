@@ -30,8 +30,69 @@ enum Role {
   FARMER
   BUYER
   DELIVERY_WORKER
+  TRANSPORT_PROVIDER
   ADMIN
   SUPERADMIN
+}
+
+/// Fulfillment classification evaluated by centralized backend logic.
+enum FulfillmentType {
+  LOCAL_DELIVERY
+  INTERCITY_BULK
+  INTERCITY_CONSOLIDATED
+  UNFULFILLABLE
+}
+
+/// Full operational lifecycle of a physical freight shipment.
+enum ShipmentStatus {
+  REQUESTED
+  QUOTATION_PENDING
+  AWAITING_APPROVAL
+  SCHEDULED
+  PICKUP_IN_PROGRESS
+  LOADING
+  READY_FOR_DISPATCH
+  IN_TRANSIT
+  ARRIVED
+  UNLOADING
+  DELIVERED
+  PARTIALLY_DELIVERED
+  FAILED
+  CANCELLED
+}
+
+/// Heavy and commercial cargo vehicle classifications for inter-city bulk haulage.
+enum VehicleCategory {
+  LIGHT_PICKUP_1T
+  MEDIUM_TRUCK_ISUZU_5T
+  HEAVY_TRUCK_15T
+  HEAVY_TRUCK_30T
+  REEFER_VAN_COLD_CHAIN
+  REEFER_TRUCK_COLD_CHAIN
+}
+
+/// Verification state for commercial transport operators and fleet vehicles.
+enum CarrierVerificationStatus {
+  PENDING
+  VERIFIED
+  REJECTED
+  SUSPENDED
+}
+
+/// Perishable and bulk cargo handling requirements.
+enum CargoHandlingRequirement {
+  STANDARD_DRY
+  VENTILATED_CRATE
+  COLD_CHAIN_REFRIGERATED
+  FRAGILE_PERISHABLE
+  BULK_GRAIN_SACK
+}
+
+/// Transportation cost allocation strategies for consolidated shipments.
+enum AllocationStrategy {
+  WEIGHT_PROPORTIONAL
+  VOLUME_PROPORTIONAL
+  HYBRID
 }
 
 /// Verification state for accounts that require manual review.
@@ -255,6 +316,8 @@ model User {
   farmerProfile     FarmerProfile?
   buyerProfile      BuyerProfile?
   deliveryProfile   DeliveryWorkerProfile?
+  transportProviderProfile TransportProviderProfile?
+  transportDriverProfile   TransportDriver?
   productListings   ProductListing[]      @relation("FarmerListings")
   buyerOrders       Order[]               @relation("BuyerOrders")
   reviewsGiven      Review[]              @relation("ReviewerReviews")
@@ -493,6 +556,10 @@ model ProductListing {
   pickupLatitude  Float
   pickupLongitude Float
   intercityEligible Boolean    @default(false)
+  minBulkOrderQty       Decimal?                  @db.Decimal(14, 3)
+  reservedQuantity      Decimal                   @default(0) @db.Decimal(14, 3)
+  cargoVolumePerUnitM3  Float?
+  handlingRequirement   CargoHandlingRequirement  @default(STANDARD_DRY)
   createdAt       DateTime      @default(now())
   updatedAt       DateTime      @updatedAt
 
@@ -615,6 +682,11 @@ model Order {
   paymentMethod       PaymentMethod
   paymentStatus       PaymentStatus  @default(PENDING)
   buyerNotes          String?
+  fulfillmentType     FulfillmentType @default(LOCAL_DELIVERY)
+  transportFee        Decimal        @db.Decimal(14, 4) @default(0)
+  loadingFee          Decimal        @db.Decimal(14, 4) @default(0)
+  deliveryOtp         String?
+  deliveryOtpExpiresAt DateTime?
   cancellationReason  String?
   confirmedAt         DateTime?
   cancelledAt         DateTime?
@@ -629,6 +701,8 @@ model Order {
   adminApproval       AdminApproval?
   disputes            Dispute[]
   supportTickets      SupportTicket[]
+  quotationSnapshot   QuotationSnapshot?
+  shipmentOrders      ShipmentOrder[]
 
   @@index([buyerId])
   @@index([status])
@@ -1118,4 +1192,268 @@ model ChatMessage {
   @@index([conversationId, createdAt])
   @@index([senderId])
   @@map("chat_messages")
+}
+
+// ============================================================
+// ------------  INTER-CITY BULK LOGISTICS & FREIGHT ----------
+// ============================================================
+
+/// Commercial transport provider / fleet company.
+model TransportProviderProfile {
+  id                    String                    @id @default(uuid())
+  userId                String                    @unique
+  companyName           String
+  businessLicenseNo     String?
+  tinNumber             String?
+  contactPhone          String
+  contactEmail          String?
+  operatingCities       String[]
+  verificationStatus    CarrierVerificationStatus @default(PENDING)
+  verificationNote      String?
+  verificationDocuments Json?
+  rating                Float                     @default(5.0)
+  ratingCount           Int                       @default(0)
+  isActive              Boolean                   @default(true)
+  createdAt             DateTime                  @default(now())
+  updatedAt             DateTime                  @updatedAt
+
+  user                  User                      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  vehicles              TransportVehicle[]
+  drivers               TransportDriver[]
+  shipments             Shipment[]
+
+  @@index([verificationStatus])
+  @@index([isActive])
+  @@map("transport_provider_profiles")
+}
+
+/// Heavy commercial cargo freight vehicle.
+model TransportVehicle {
+  id                    String                    @id @default(uuid())
+  providerId            String
+  plateNumber           String                    @unique
+  category              VehicleCategory
+  payloadCapacityKg     Float
+  usableCargoVolumeM3   Float
+  hasRefrigeration      Boolean                   @default(false)
+  makeModel             String?
+  yearOfManufacture     Int?
+  registrationDocUrl    String?
+  inspectionExpiryDate  DateTime?
+  status                String                    @default("AVAILABLE")
+  verificationStatus    CarrierVerificationStatus @default(PENDING)
+  currentLatitude       Float?
+  currentLongitude      Float?
+  createdAt             DateTime                  @default(now())
+  updatedAt             DateTime                  @updatedAt
+
+  provider              TransportProviderProfile  @relation(fields: [providerId], references: [id], onDelete: Cascade)
+  drivers               TransportDriver[]
+  assignments           Shipment[]
+
+  @@index([providerId])
+  @@index([category, status])
+  @@map("transport_vehicles")
+}
+
+/// Commercial heavy truck driver employed by or associated with a provider.
+model TransportDriver {
+  id                    String                    @id @default(uuid())
+  providerId            String
+  userId                String?                   @unique
+  fullName              String
+  phone                 String
+  licenseNumber         String
+  licenseCategory       String
+  licenseDocUrl         String?
+  vehicleId             String?
+  isActive              Boolean                   @default(true)
+  createdAt             DateTime                  @default(now())
+  updatedAt             DateTime                  @updatedAt
+
+  provider              TransportProviderProfile  @relation(fields: [providerId], references: [id], onDelete: Cascade)
+  user                  User?                     @relation(fields: [userId], references: [id], onDelete: SetNull)
+  vehicle               TransportVehicle?         @relation(fields: [vehicleId], references: [id], onDelete: SetNull)
+  shipments             Shipment[]
+
+  @@index([providerId])
+  @@map("transport_drivers")
+}
+
+/// Fixed-price transportation rate policy configured by administrators.
+model TransportRate {
+  id                    String          @id @default(uuid())
+  name                  String
+  description           String?
+  originCityId          String?
+  destinationCityId     String?
+  minDistanceKm         Float           @default(0)
+  maxDistanceKm         Float?
+  vehicleCategory       VehicleCategory
+  basePickupFee         Decimal         @db.Decimal(14, 4)
+  ratePerKm             Decimal         @db.Decimal(14, 4)
+  ratePerKg             Decimal         @default(0) @db.Decimal(14, 4)
+  ratePerM3             Decimal         @default(0) @db.Decimal(14, 4)
+  additionalPickupFee   Decimal         @default(100) @db.Decimal(14, 4)
+  loadingUnloadingFee   Decimal         @default(150) @db.Decimal(14, 4)
+  coldChainMultiplier   Float           @default(1.3)
+  isActive              Boolean         @default(true)
+  effectiveFrom         DateTime        @default(now())
+  effectiveTo           DateTime?
+  version               Int             @default(1)
+  createdAt             DateTime        @default(now())
+  updatedAt             DateTime        @updatedAt
+
+  @@index([vehicleCategory, isActive])
+  @@index([originCityId, destinationCityId])
+  @@map("transport_rates")
+}
+
+/// Immutable snapshot of the exact quotation locked when buyer confirms the order.
+model QuotationSnapshot {
+  id                    String          @id @default(uuid())
+  orderId               String          @unique
+  rateVersionId         String?
+  originCity            String
+  destinationCity       String
+  distanceKm            Float
+  vehicleCategory       VehicleCategory
+  baseFee               Decimal         @db.Decimal(14, 4)
+  distanceCharge        Decimal         @db.Decimal(14, 4)
+  weightCharge          Decimal         @db.Decimal(14, 4)
+  volumeCharge          Decimal         @db.Decimal(14, 4)
+  multiStopSurcharge    Decimal         @db.Decimal(14, 4)
+  handlingSurcharge     Decimal         @db.Decimal(14, 4)
+  totalTransportCost    Decimal         @db.Decimal(14, 4)
+  pricingPolicyVersion  String          @default("V1-FIXED")
+  expiresAt             DateTime
+  createdAt             DateTime        @default(now())
+
+  order                 Order           @relation(fields: [orderId], references: [id], onDelete: Cascade)
+
+  @@index([orderId])
+  @@map("quotation_snapshots")
+}
+
+/// Physical freight shipment transporting one or more buyer orders.
+model Shipment {
+  id                    String                    @id @default(uuid())
+  trackingNumber        String                    @unique
+  originCityId          String?
+  destinationCityId     String?
+  originMarketId        String?
+  destinationMarketId   String?
+  requiredCategory      VehicleCategory
+  totalCargoWeightKg    Float
+  totalCargoVolumeM3    Float
+  totalTransportCost    Decimal                   @db.Decimal(14, 4)
+  status                ShipmentStatus            @default(REQUESTED)
+  scheduledPickupDate   DateTime?
+  actualPickupDate      DateTime?
+  estimatedArrivalDate  DateTime?
+  actualDeliveryDate    DateTime?
+  assignedProviderId    String?
+  assignedVehicleId     String?
+  assignedDriverId      String?
+  notes                 String?
+  createdAt             DateTime                  @default(now())
+  updatedAt             DateTime                  @updatedAt
+
+  provider              TransportProviderProfile? @relation(fields: [assignedProviderId], references: [id], onDelete: SetNull)
+  vehicle               TransportVehicle?         @relation(fields: [assignedVehicleId], references: [id], onDelete: SetNull)
+  driver                TransportDriver?          @relation(fields: [assignedDriverId], references: [id], onDelete: SetNull)
+  shipmentOrders        ShipmentOrder[]
+  pickups               ShipmentPickup[]
+  events                ShipmentEvent[]
+
+  @@index([status])
+  @@index([assignedProviderId])
+  @@index([assignedVehicleId])
+  @@map("shipments")
+}
+
+/// Links an Order to a physical Shipment with transparent cost allocation.
+model ShipmentOrder {
+  id                    String                @id @default(uuid())
+  shipmentId            String
+  orderId               String
+  allocatedTransportCost Decimal               @db.Decimal(14, 4)
+  cargoWeightKg         Float
+  cargoVolumeM3         Float?
+  deliverySequence      Int                   @default(1)
+  status                String                @default("SCHEDULED")
+  createdAt             DateTime              @default(now())
+
+  shipment              Shipment              @relation(fields: [shipmentId], references: [id], onDelete: Cascade)
+  order                 Order                 @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  deliveryConfirmation  DeliveryConfirmation?
+
+  @@unique([shipmentId, orderId])
+  @@index([orderId])
+  @@map("shipment_orders")
+}
+
+/// Farmer gate collection event for a shipment.
+model ShipmentPickup {
+  id                    String    @id @default(uuid())
+  shipmentId            String
+  farmerId              String
+  pickupLatitude        Float
+  pickupLongitude       Float
+  pickupAddress         String
+  scheduledTime         DateTime?
+  actualArrivalTime     DateTime?
+  collectedAt           DateTime?
+  collectedQuantityKg   Float
+  packageCount          Int?
+  cargoCondition        String    @default("GOOD")
+  photoEvidenceUrl      String?
+  notes                 String?
+  farmerConfirmed       Boolean   @default(false)
+  farmerConfirmedAt     DateTime?
+  status                String    @default("PENDING")
+  createdAt             DateTime  @default(now())
+
+  shipment              Shipment  @relation(fields: [shipmentId], references: [id], onDelete: Cascade)
+
+  @@index([shipmentId])
+  @@index([farmerId])
+  @@map("shipment_pickups")
+}
+
+/// Immutable milestone audit event for a shipment.
+model ShipmentEvent {
+  id          String         @id @default(uuid())
+  shipmentId  String
+  status      ShipmentStatus
+  title       String
+  description String?
+  latitude    Float?
+  longitude   Float?
+  actorId     String?
+  occurredAt  DateTime       @default(now())
+
+  shipment    Shipment       @relation(fields: [shipmentId], references: [id], onDelete: Cascade)
+
+  @@index([shipmentId])
+  @@map("shipment_events")
+}
+
+/// Buyer delivery offloading verification receipt.
+model DeliveryConfirmation {
+  id                   String        @id @default(uuid())
+  shipmentOrderId      String        @unique
+  dispatchedQuantityKg Float
+  receivedQuantityKg   Float
+  shortageQuantityKg   Float         @default(0)
+  cargoCondition       String        @default("SATISFACTORY")
+  verifiedWithOtp      Boolean       @default(true)
+  confirmedAt          DateTime      @default(now())
+  buyerNotes           String?
+  hasDispute           Boolean       @default(false)
+  photoEvidenceUrl     String?
+
+  shipmentOrder        ShipmentOrder @relation(fields: [shipmentOrderId], references: [id], onDelete: Cascade)
+
+  @@map("delivery_confirmations")
 }

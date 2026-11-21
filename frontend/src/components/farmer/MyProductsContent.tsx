@@ -61,6 +61,9 @@ const EMPTY_FORM = {
   name: '', category: 'Vegetables' as Category, description: '',
   price: '', unit: 'kg' as Unit, stock: '', grade: 'Grade A',
   status: 'Active' as Status, image: '',
+  intercityEligible: true,
+  minBulkOrderQty: '100',
+  handlingRequirement: 'VENTILATED_CRATE',
 };
 
 // ─────────────────────────────────────────────
@@ -112,7 +115,10 @@ function ProductModal({ initial, isVerified = true, onSave, onClose }: {
     initial
       ? { name: initial.name, category: initial.category, description: initial.description,
           price: String(initial.price), unit: initial.unit, stock: String(initial.stock),
-          grade: initial.grade, status: initial.status, image: initial.image }
+          grade: initial.grade, status: initial.status, image: initial.image,
+          intercityEligible: Boolean((initial as any).intercityEligible ?? true),
+          minBulkOrderQty: String((initial as any).minBulkOrderQty || '100'),
+          handlingRequirement: (initial as any).handlingRequirement || 'VENTILATED_CRATE' }
       : { ...EMPTY_FORM }
   );
   const [dragOver, setDragOver] = useState(false);
@@ -135,7 +141,10 @@ function ProductModal({ initial, isVerified = true, onSave, onClose }: {
       unit: form.unit as Unit, stock: Number(form.stock),
       grade: form.grade, status: draft ? 'Draft' : 'Active',
       image: form.image || '/images/prod_tomatoes.jpg',
-    }, draft);
+      intercityEligible: Boolean(form.intercityEligible),
+      minBulkOrderQty: form.minBulkOrderQty ? Number(form.minBulkOrderQty) : undefined,
+      handlingRequirement: form.handlingRequirement,
+    } as any, draft);
   };
 
   return (
@@ -255,6 +264,53 @@ function ProductModal({ initial, isVerified = true, onSave, onClose }: {
             <label className="block text-xs font-bold text-gray-600 dark:text-gray-300 mb-1.5">Available Stock</label>
             <input type="number" min="0" value={form.stock} onChange={e => set('stock', e.target.value)} placeholder="0"
               className="w-full px-3.5 py-2.5 text-sm rounded-xl border border-gray-200 dark:border-white/10 bg-white dark:bg-white/5 text-gray-800 dark:text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-emerald-500/30 focus:border-emerald-400 transition-all" />
+          </div>
+
+          {/* Inter-City Trade & Bulk Logistics Capabilities */}
+          <div className="p-4 rounded-xl bg-emerald-50/60 dark:bg-emerald-950/30 border border-emerald-200/80 dark:border-emerald-800/60 space-y-3">
+            <div className="flex items-center justify-between">
+              <div>
+                <span className="block text-xs font-bold text-[#142E24] dark:text-[#E6F0EB]">Inter-City Bulk Trade</span>
+                <span className="block text-[11px] text-gray-500 dark:text-gray-400">Permit commercial multi-quintal purchases from other cities</span>
+              </div>
+              <button
+                type="button"
+                onClick={() => set('intercityEligible', form.intercityEligible ? '' : 'true')}
+                className={`relative inline-flex h-5 w-9 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${form.intercityEligible ? 'bg-emerald-600' : 'bg-gray-300 dark:bg-gray-700'}`}
+              >
+                <span className={`pointer-events-none inline-block h-4 w-4 transform rounded-full bg-white shadow-sm ring-0 transition duration-200 ease-in-out ${form.intercityEligible ? 'translate-x-4' : 'translate-x-0'}`} />
+              </button>
+            </div>
+
+            {form.intercityEligible && (
+              <div className="grid grid-cols-2 gap-3 pt-2 border-t border-emerald-200/50 dark:border-emerald-800/40">
+                <div>
+                  <label className="block text-[11px] font-bold text-gray-600 dark:text-gray-300 mb-1">Min Bulk Qty ({form.unit})</label>
+                  <input
+                    type="number"
+                    min="1"
+                    value={form.minBulkOrderQty}
+                    onChange={(e) => set('minBulkOrderQty', e.target.value)}
+                    placeholder="100"
+                    className="w-full px-3 py-1.5 text-xs rounded-lg border border-gray-200 dark:border-white/10 bg-white dark:bg-[#0D2118] text-gray-800 dark:text-white"
+                  />
+                </div>
+                <div>
+                  <label className="block text-[11px] font-bold text-gray-600 dark:text-gray-300 mb-1">Cargo Packaging</label>
+                  <select
+                    value={form.handlingRequirement}
+                    onChange={(e) => set('handlingRequirement', e.target.value)}
+                    className="w-full px-2 py-1.5 text-xs rounded-lg border border-gray-200 dark:border-white/10 bg-white dark:bg-[#0D2118] text-gray-800 dark:text-white"
+                  >
+                    <option value="VENTILATED_CRATE">Ventilated Crates</option>
+                    <option value="COLD_CHAIN_REFRIGERATED">Cold Chain / Reefer</option>
+                    <option value="BULK_GRAIN_SACK">Bulk Grain Sacks</option>
+                    <option value="STANDARD_DRY">Standard Dry Box</option>
+                    <option value="FRAGILE_PERISHABLE">Fragile Produce</option>
+                  </select>
+                </div>
+              </div>
+            )}
           </div>
         </div>
 
@@ -490,7 +546,10 @@ export default function MyProductsContent({ onOpenSidebar }: { onOpenSidebar: ()
           unit: data.unit,
           status: draft ? 'DRAFT' : 'ACTIVE',
           qualityGrade: data.grade.includes('A') ? 'A' : data.grade.includes('B') ? 'B' : 'C',
-        });
+          intercityEligible: (data as any).intercityEligible,
+          ...((data as any).minBulkOrderQty ? { minBulkOrderQty: (data as any).minBulkOrderQty } : {}),
+          ...((data as any).handlingRequirement ? { handlingRequirement: (data as any).handlingRequirement } : {}),
+        } as any);
       } catch (err) {
         console.warn('Product update error:', err);
       }
@@ -505,7 +564,10 @@ export default function MyProductsContent({ onOpenSidebar }: { onOpenSidebar: ()
           stockQuantity: data.stock,
           unit: data.unit,
           qualityGrade: data.grade.includes('A') ? 'A' : data.grade.includes('B') ? 'B' : 'C',
-        });
+          intercityEligible: (data as any).intercityEligible,
+          minOrderQty: (data as any).minBulkOrderQty,
+          ...((data as any).handlingRequirement ? { handlingRequirement: (data as any).handlingRequirement } : {}),
+        } as any);
         if (created?.data?.id) {
           setProducts(prev => prev.map(p => p.id === tempId ? { ...p, id: created.data.id } : p));
         }

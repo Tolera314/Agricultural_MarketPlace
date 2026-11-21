@@ -50,9 +50,9 @@ export function AdminSidebar({ isOpen = false, onClose }: AdminSidebarProps) {
   const pathname = usePathname();
 
   const SidebarBody = () => (
-    <div className="flex flex-col h-full bg-[#0A3323] text-white">
+    <div className="flex flex-col h-full bg-[#003D31] text-white">
       {/* Brand Header */}
-      <div className="px-5 py-5 border-b border-[#124230] flex items-center justify-between">
+      <div className="px-5 py-5 border-b border-[#064E3F] flex items-center justify-between">
         <Link href="/" className="flex items-center gap-2.5">
           <div className="w-8 h-8 rounded-xl bg-[#10B981]/20 flex items-center justify-center shrink-0">
             <svg className="w-5 h-5" viewBox="0 0 36 36" fill="none">
@@ -97,14 +97,14 @@ export function AdminSidebar({ isOpen = false, onClose }: AdminSidebarProps) {
               }}
               className={`w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
                 isActive
-                  ? 'bg-[#134D37] text-white shadow-sm'
-                  : 'text-[#9BB8AA] hover:bg-[#0E3D2B] hover:text-white'
+                  ? 'bg-[#027A5B] text-white shadow-sm'
+                  : 'text-[#A2C2B5] hover:bg-[#054E3F] hover:text-white'
               }`}
             >
               <div className="flex items-center gap-3">
                 <Icon
                   className={`w-4 h-4 shrink-0 transition-colors ${
-                    isActive ? 'text-emerald-300' : 'text-[#8AA899]'
+                    isActive ? 'text-white' : 'text-[#8AA899]'
                   }`}
                 />
                 <span className="truncate">{item.name}</span>
@@ -115,8 +115,8 @@ export function AdminSidebar({ isOpen = false, onClose }: AdminSidebarProps) {
       </nav>
 
       {/* Bottom Assistance & GPS Audit Card */}
-      <div className="p-3.5 border-t border-[#124230]">
-        <div className="bg-[#0E3D2B] rounded-2xl p-3.5 border border-[#164C37] space-y-2.5">
+      <div className="p-3.5 border-t border-[#064E3F]">
+        <div className="bg-[#085441] rounded-2xl p-3.5 border border-[#0D6B53] space-y-2.5">
           <Link
             href="/dashboard/admin/locations"
             onClick={() => {
@@ -130,14 +130,14 @@ export function AdminSidebar({ isOpen = false, onClose }: AdminSidebarProps) {
             </span>
             <ChevronRight className="w-3.5 h-3.5 opacity-70" />
           </Link>
-          <div className="pt-2 border-t border-[#164C37]">
-            <p className="text-[11px] font-bold text-white mb-2">Admin Help Desk</p>
+          <div className="pt-2 border-t border-[#0D6B53]">
+            <p className="text-[11px] font-bold text-white mb-2">Need Help?</p>
             <a
               href="tel:+251911234567"
-              className="w-full py-2 px-3 rounded-xl bg-[#134D37] hover:bg-[#1A5E44] text-white text-xs font-bold transition-colors flex items-center justify-center gap-2 cursor-pointer shadow-xs text-center"
+              className="w-full py-2 px-3 rounded-xl bg-[#027A5B] hover:bg-[#038C68] text-white text-xs font-bold transition-colors flex items-center justify-center gap-2 cursor-pointer shadow-xs text-center"
             >
               <Headphones className="w-3.5 h-3.5 text-emerald-300" />
-              <span>Support Desk</span>
+              <span>Contact Support</span>
             </a>
           </div>
         </div>
@@ -161,7 +161,7 @@ export function AdminSidebar({ isOpen = false, onClose }: AdminSidebarProps) {
           </div>
           <button
             onClick={onClose}
-            className="absolute top-4 right-4 w-9 h-9 rounded-full bg-white/90 dark:bg-[#0D2118] text-slate-800 dark:text-white flex items-center justify-center shadow-md cursor-pointer z-20"
+            className="absolute top-4 right-4 w-9 h-9 rounded-full bg-white/90 dark:bg-[#003D31] text-slate-800 dark:text-white flex items-center justify-center shadow-md cursor-pointer z-20"
           >
             <X className="w-5 h-5" />
           </button>

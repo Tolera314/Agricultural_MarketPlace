@@ -43,9 +43,16 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({
   if (!isOpen) return null;
 
   const subtotal = items.reduce((acc, item) => acc + item.product.price * item.quantity, 0);
-  const deliveryFee = items.length > 0 ? 50 : 0; // ETB
+  const totalWeightKg = items.reduce((acc, item) => acc + item.quantity, 0);
+  const isBulkFreight = totalWeightKg >= 300 || items.some((i) => (i.product as any).intercityEligible);
+
+  // V1 Fixed-price transport formula for bulk inter-city freight
+  const transportFee = isBulkFreight
+    ? Math.round(totalWeightKg > 1200 ? 650 + 72 * 32 + totalWeightKg * 0.12 : 250 + 72 * 18 + totalWeightKg * 0.15)
+    : (items.length > 0 ? 50 : 0);
+  const loadingFee = isBulkFreight ? 200 : 0;
   const platformFee = items.length > 0 ? Math.round(subtotal * 0.05) : 0;
-  const total = subtotal + deliveryFee + platformFee;
+  const total = subtotal + transportFee + loadingFee + platformFee;
 
   const handleStartCheckout = () => {
     setRoleErrorMessage(null);
@@ -260,10 +267,22 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({
                   </div>
 
                   {/* Delivery Location Note */}
-                  <div className="p-3 bg-[#E5EDE4]/60 dark:bg-[#163327] rounded-xl text-xs text-[#173F35] dark:text-[#B6E0CC] flex items-center gap-2">
-                    <Truck className="w-4 h-4 text-[#39745A] dark:text-[#34D399] shrink-0" />
+                  <div className={`p-3 rounded-xl text-xs flex items-center gap-2 ${
+                    isBulkFreight
+                      ? 'bg-amber-50 dark:bg-amber-950/40 text-amber-900 dark:text-amber-200 border border-amber-200 dark:border-amber-800'
+                      : 'bg-[#E5EDE4]/60 dark:bg-[#163327] text-[#173F35] dark:text-[#B6E0CC]'
+                  }`}>
+                    <Truck className={`w-4 h-4 shrink-0 ${isBulkFreight ? 'text-amber-600' : 'text-[#39745A] dark:text-[#34D399]'}`} />
                     <span>
-                      Routed via verified cold couriers in <strong className="font-semibold">{currentLocation.name}</strong>
+                      {isBulkFreight ? (
+                        <>
+                          <strong className="font-bold">Inter-City Freight Haulage:</strong> Total cargo {totalWeightKg} kg. Assigned to verified commercial truck with fixed-price rate.
+                        </>
+                      ) : (
+                        <>
+                          Routed via verified cold couriers in <strong className="font-semibold">{currentLocation.name}</strong>
+                        </>
+                      )}
                     </span>
                   </div>
                 </div>
@@ -436,16 +455,29 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({
                 <span>Produce Total (100% to farmers)</span>
                 <span className="font-medium text-[#252B26] dark:text-[#EDF7F1] tabular-nums">ETB {subtotal.toFixed(2)}</span>
               </div>
+              {isBulkFreight ? (
+                <>
+                  <div className="flex justify-between text-[#68766C] dark:text-[#88A89A]">
+                    <span>Fixed-Price Freight Transport</span>
+                    <span className="font-medium text-[#252B26] dark:text-[#EDF7F1] tabular-nums">ETB {transportFee.toFixed(2)}</span>
+                  </div>
+                  <div className="flex justify-between text-[#68766C] dark:text-[#88A89A]">
+                    <span>Loading & Gate Handling Fee</span>
+                    <span className="font-medium text-[#252B26] dark:text-[#EDF7F1] tabular-nums">ETB {loadingFee.toFixed(2)}</span>
+                  </div>
+                </>
+              ) : (
+                <div className="flex justify-between text-[#68766C] dark:text-[#88A89A]">
+                  <span>Local Proximity Delivery Courier</span>
+                  <span className="font-medium text-[#252B26] dark:text-[#EDF7F1] tabular-nums">ETB {transportFee.toFixed(2)}</span>
+                </div>
+              )}
               <div className="flex justify-between text-[#68766C] dark:text-[#88A89A]">
-                <span>Local Proximity Delivery Courier</span>
-                <span className="font-medium text-[#252B26] dark:text-[#EDF7F1] tabular-nums">ETB {deliveryFee.toFixed(2)}</span>
-              </div>
-              <div className="flex justify-between text-[#68766C] dark:text-[#88A89A]">
-                <span>Platform Support & Cold Chain (5%)</span>
+                <span>Platform Support & Coordination (5%)</span>
                 <span className="font-medium text-[#252B26] dark:text-[#EDF7F1] tabular-nums">ETB {platformFee.toFixed(2)}</span>
               </div>
               <div className="pt-2 border-t border-[#E5EDE4] dark:border-[#1E3A2F] flex justify-between font-bold text-[#173F35] dark:text-[#34D399] text-sm">
-                <span>Total Amount</span>
+                <span>Total Payable Amount</span>
                 <span className="tabular-nums">ETB {total.toFixed(2)}</span>
               </div>
             </div>

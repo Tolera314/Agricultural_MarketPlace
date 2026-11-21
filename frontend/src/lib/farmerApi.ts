@@ -94,6 +94,9 @@ export const farmerApi = {
     maxOrderQty?: number;
     qualityGrade?: string;
     intercityEligible?: boolean;
+    minBulkOrderQty?: number;
+    cargoVolumePerUnitM3?: number;
+    handlingRequirement?: string;
     pickupLatitude?: number;
     pickupLongitude?: number;
   }): Promise<any> {
@@ -112,6 +115,9 @@ export const farmerApi = {
     status: string;
     qualityGrade: string;
     intercityEligible: boolean;
+    minBulkOrderQty: number;
+    cargoVolumePerUnitM3: number;
+    handlingRequirement: string;
   }>): Promise<any> {
     return apiFetch(`/api/farmer/products/${id}`, {
       method: 'PATCH',
