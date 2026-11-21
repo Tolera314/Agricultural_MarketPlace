@@ -5,6 +5,11 @@ import {
   BusinessRuleError,
 } from '../utils/errors.js';
 import { dispatchOrder } from './dispatch.service.js';
+import { shipmentService } from './logistics/shipment.service.js';
+import { evaluateFulfillmentEligibility } from './logistics/fulfillment.service.js';
+import { calculateTransportQuotation } from './logistics/pricing.service.js';
+import { inventoryService } from './logistics/inventory.service.js';
+import crypto from 'crypto';
 
 // ─── Mathematical Helpers ─────────────────────────────────────
 
@@ -857,8 +862,12 @@ export function getCategories() {
   ];
 }
 
-/** 4. Checkout Calculation & Verification (Farmer-Controlled Pricing) */
-export async function calculateCheckout(items: { listingId: string; quantity: number }[], deliveryAddressId?: string) {
+/** 4. Checkout Calculation & Verification (Farmer-Controlled Pricing & Intercity Freight) */
+export async function calculateCheckout(
+  items: { listingId: string; quantity: number }[],
+  deliveryAddressId?: string,
+  destinationInfo?: { destinationCity?: string; destinationLat?: number; destinationLng?: number }
+) {
   let productSubtotal = 0;
   const verifiedItems: any[] = [];
 
@@ -918,7 +927,50 @@ export async function calculateCheckout(items: { listingId: string; quantity: nu
     });
   }
 
-  const deliveryFee = items.length > 0 ? 50 : 0;
+  const totalWeightKg = verifiedItems.reduce((acc, i) => acc + i.quantity, 0);
+  const destCity = destinationInfo?.destinationCity || 'Addis Ababa';
+  const destLat = destinationInfo?.destinationLat || 9.0125;
+  const destLng = destinationInfo?.destinationLng || 38.7636;
+
+  let fulfillmentType: 'LOCAL_DELIVERY' | 'INTERCITY_BULK' = 'LOCAL_DELIVERY';
+  let transportFee = 0;
+  let loadingFee = 0;
+  let transportBreakdown: any = null;
+
+  // Inter-city bulk routing evaluation
+  if (totalWeightKg >= 300 || verifiedItems.some((i) => i.intercityEligible)) {
+    try {
+      const decision = await evaluateFulfillmentEligibility({
+        originCity: 'Mojo',
+        destinationCity: destCity,
+        originLat: 8.5878,
+        originLng: 39.1245,
+        destinationLat: destLat,
+        destinationLng: destLng,
+        totalWeightKg,
+        intercityEligible: true,
+      });
+
+      if (decision.fulfillmentType === 'INTERCITY_BULK') {
+        fulfillmentType = 'INTERCITY_BULK';
+        const quote = await calculateTransportQuotation({
+          originCity: 'Mojo',
+          destinationCity: destCity,
+          distanceKm: decision.roadDistanceKm,
+          vehicleCategory: decision.requiredVehicleCategory,
+          totalWeightKg,
+          needLoadingAssistance: true,
+        });
+        transportBreakdown = quote;
+        transportFee = quote.totalPayableTransportCost;
+        loadingFee = quote.handlingSurcharge;
+      }
+    } catch {
+      // Keep local delivery defaults on fallback
+    }
+  }
+
+  const deliveryFee = fulfillmentType === 'INTERCITY_BULK' ? transportFee : (items.length > 0 ? 50 : 0);
   const platformCommission = Math.round(productSubtotal * 0.05);
   const taxAmount = 0;
   const totalAmount = productSubtotal + deliveryFee + platformCommission;
@@ -927,9 +979,13 @@ export async function calculateCheckout(items: { listingId: string; quantity: nu
     items: verifiedItems,
     productSubtotal,
     deliveryFee,
+    transportFee,
+    loadingFee,
     platformCommission,
     taxAmount,
     totalAmount,
+    fulfillmentType,
+    transportBreakdown,
     currency: 'ETB',
   };
 }
@@ -999,17 +1055,24 @@ export async function createBuyerOrder(
       const initialConfirmedAt = isChapa ? null : new Date();
       const initialPaidAt = (isChapa || isCod) ? null : new Date();
 
+      const isIntercity = calc.fulfillmentType === 'INTERCITY_BULK';
+      const deliveryOtp = isIntercity ? crypto.randomInt(100000, 999999).toString() : null;
+      const deliveryOtpExpiresAt = isIntercity ? new Date(Date.now() + 7 * 24 * 60 * 60 * 1000) : null;
+
       // 2. Create Order
       const newDbOrder = await tx.order.create({
         data: {
           buyerId: ctx.userId,
-          tradeType: 'LOCAL',
+          tradeType: isIntercity ? 'INTERCITY' : 'LOCAL',
+          fulfillmentType: isIntercity ? 'INTERCITY_BULK' : 'LOCAL_DELIVERY',
           status: initialOrderStatus as any,
           deliveryAddress: data.deliveryAddress,
           deliveryLatitude: data.deliveryLatitude,
           deliveryLongitude: data.deliveryLongitude,
           productSubtotal: calc.productSubtotal,
           deliveryFee: calc.deliveryFee,
+          transportFee: calc.transportFee || 0,
+          loadingFee: calc.loadingFee || 0,
           platformCommission: calc.platformCommission,
           taxAmount: calc.taxAmount,
           totalAmount: calc.totalAmount,
@@ -1018,6 +1081,8 @@ export async function createBuyerOrder(
           idempotencyKey: data.idempotencyKey || null,
           buyerNotes: data.buyerNotes || null,
           confirmedAt: initialConfirmedAt,
+          deliveryOtp,
+          deliveryOtpExpiresAt,
           items: {
             create: calc.items.map((i) => ({
               listingId: i.listingId,
@@ -1036,21 +1101,49 @@ export async function createBuyerOrder(
               paidAt: initialPaidAt,
             },
           },
+          ...(calc.transportBreakdown
+            ? {
+                quotationSnapshot: {
+                  create: {
+                    originCity: calc.transportBreakdown.originCity,
+                    destinationCity: calc.transportBreakdown.destinationCity,
+                    distanceKm: calc.transportBreakdown.distanceKm,
+                    vehicleCategory: calc.transportBreakdown.vehicleCategory,
+                    baseFee: calc.transportBreakdown.basePickupFee,
+                    distanceCharge: calc.transportBreakdown.distanceCharge,
+                    weightCharge: calc.transportBreakdown.weightCharge,
+                    volumeCharge: calc.transportBreakdown.volumeCharge,
+                    multiStopSurcharge: calc.transportBreakdown.multiStopSurcharge,
+                    handlingSurcharge: calc.transportBreakdown.handlingSurcharge,
+                    totalTransportCost: calc.transportBreakdown.totalPayableTransportCost,
+                    pricingPolicyVersion: calc.transportBreakdown.pricingPolicyVersion,
+                    expiresAt: new Date(calc.transportBreakdown.expiresAt),
+                  },
+                },
+              }
+            : {}),
         },
         include: {
           items: true,
           payment: true,
+          quotationSnapshot: true,
         },
       });
 
       return newDbOrder;
     });
 
-    // 3. Trigger Courier Dispatch Broadcasting asynchronously ONLY if order is already confirmed (not waiting for online payment)
+    // 3. Trigger Courier Dispatch or Freight Shipment activation asynchronously if confirmed
     if (createdOrder.status === 'CONFIRMED') {
-      dispatchOrder(createdOrder.id).catch((err) => {
-        console.warn('[Dispatch broadcast non-blocking error]:', err?.message);
-      });
+      if (createdOrder.tradeType === 'INTERCITY' || createdOrder.fulfillmentType === 'INTERCITY_BULK') {
+        shipmentService.createShipmentFromOrder(createdOrder.id).catch((err) => {
+          console.warn('[Intercity shipment creation non-blocking error]:', err?.message);
+        });
+      } else {
+        dispatchOrder(createdOrder.id).catch((err) => {
+          console.warn('[Dispatch broadcast non-blocking error]:', err?.message);
+        });
+      }
     }
 
     // Keep resilientStore synchronized
@@ -1186,6 +1279,11 @@ export async function getBuyerOrders(ctx: BuyerContext, options: { status?: stri
         totalAmount: Number(o.totalAmount),
         paymentMethod: o.paymentMethod,
         paymentStatus: o.paymentStatus,
+        fulfillmentType: o.fulfillmentType,
+        transportFee: Number(o.transportFee || 0),
+        loadingFee: Number(o.loadingFee || 0),
+        deliveryOtp: o.deliveryOtp,
+        deliveryOtpExpiresAt: o.deliveryOtpExpiresAt,
         createdAt: o.createdAt,
         updatedAt: o.updatedAt,
         items: o.items.map((it: any) => ({
@@ -1256,6 +1354,11 @@ export async function getBuyerOrderDetails(orderId: string, ctx: BuyerContext) {
         totalAmount: Number(o.totalAmount),
         paymentMethod: o.paymentMethod,
         paymentStatus: o.paymentStatus,
+        fulfillmentType: o.fulfillmentType,
+        transportFee: Number(o.transportFee || 0),
+        loadingFee: Number(o.loadingFee || 0),
+        deliveryOtp: o.deliveryOtp,
+        deliveryOtpExpiresAt: o.deliveryOtpExpiresAt,
         createdAt: o.createdAt,
         updatedAt: o.updatedAt,
         items: o.items.map((it: any) => ({

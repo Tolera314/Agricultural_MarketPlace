@@ -19,6 +19,8 @@ import {
   dispatchOrderAction,
   seedDemoOrderAction,
   uploadProofOfDelivery,
+  getCorridorBatchesAction,
+  acceptCorridorBatchAction,
 } from '../controllers/worker.controller.js';
 
 const router = Router();
@@ -30,6 +32,10 @@ router.get('/dashboard', getDashboard);
 router.get('/offers', getMyOffers);
 router.post('/offers/:offerId/accept', acceptOffer);
 router.post('/offers/:offerId/reject', rejectOffer);
+
+// Farm Corridor Multi-Stop Batching
+router.get('/corridors/batches', getCorridorBatchesAction);
+router.post('/corridors/batches/accept', acceptCorridorBatchAction);
 
 router.get('/deliveries', getMyDeliveries);
 router.get('/deliveries/active', getActiveDelivery);

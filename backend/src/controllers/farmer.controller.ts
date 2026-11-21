@@ -156,8 +156,11 @@ export async function createProduct(req: Request, res: Response, next: NextFunct
       stockQuantity,
       minOrderQty = 1,
       maxOrderQty,
+      minBulkOrderQty,
       qualityGrade = 'UNGRADED',
       intercityEligible = false,
+      handlingRequirement = 'STANDARD_DRY',
+      cargoVolumePerUnitM3,
       pickupLatitude,
       pickupLongitude,
     } = req.body;
@@ -194,8 +197,11 @@ export async function createProduct(req: Request, res: Response, next: NextFunct
         stockQuantity,
         minOrderQty,
         maxOrderQty: maxOrderQty || null,
+        minBulkOrderQty: minBulkOrderQty ? Number(minBulkOrderQty) : null,
         qualityGrade,
-        intercityEligible,
+        intercityEligible: Boolean(intercityEligible),
+        handlingRequirement: handlingRequirement as any,
+        cargoVolumePerUnitM3: cargoVolumePerUnitM3 ? Number(cargoVolumePerUnitM3) : null,
         pickupLatitude: pickupLatitude ?? profile.farmLatitude,
         pickupLongitude: pickupLongitude ?? profile.farmLongitude,
         status: 'ACTIVE',
@@ -261,6 +267,9 @@ export async function updateProduct(req: Request, res: Response, next: NextFunct
       status,
       qualityGrade,
       intercityEligible,
+      minBulkOrderQty,
+      handlingRequirement,
+      cargoVolumePerUnitM3,
     } = req.body;
 
     const updated = await prisma.productListing.update({
@@ -273,7 +282,10 @@ export async function updateProduct(req: Request, res: Response, next: NextFunct
         ...(unit && { unit }),
         ...(status && { status }),
         ...(qualityGrade && { qualityGrade }),
-        ...(intercityEligible !== undefined && { intercityEligible }),
+        ...(intercityEligible !== undefined && { intercityEligible: Boolean(intercityEligible) }),
+        ...(minBulkOrderQty !== undefined && { minBulkOrderQty: Number(minBulkOrderQty) }),
+        ...(handlingRequirement && { handlingRequirement: handlingRequirement as any }),
+        ...(cargoVolumePerUnitM3 !== undefined && { cargoVolumePerUnitM3: Number(cargoVolumePerUnitM3) }),
       },
     });
 

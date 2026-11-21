@@ -13,6 +13,8 @@ import {
   X,
   AlertCircle,
   Sliders,
+  Navigation,
+  Loader2,
 } from 'lucide-react';
 import { superadminApi, CityItem, MarketItem } from '@/lib/superadminApi';
 
@@ -42,6 +44,39 @@ export default function SuperadminMarketsPage() {
   const [editRadius, setEditRadius] = useState(35);
   const [actionLoading, setActionLoading] = useState(false);
   const [actionMsg, setActionMsg] = useState<string | null>(null);
+
+  // Automated Real-World Geolocation Detection for City & Market Creation
+  const [isDetectingCityGps, setIsDetectingCityGps] = useState(false);
+  const [isDetectingMarketGps, setIsDetectingMarketGps] = useState(false);
+
+  const handleDetectGps = (target: 'city' | 'market') => {
+    if (typeof window === 'undefined' || !navigator.geolocation) {
+      alert('Geolocation is not supported by your browser.');
+      return;
+    }
+    if (target === 'city') setIsDetectingCityGps(true);
+    else setIsDetectingMarketGps(true);
+
+    navigator.geolocation.getCurrentPosition(
+      (pos) => {
+        const lat = parseFloat(pos.coords.latitude.toFixed(6));
+        const lon = parseFloat(pos.coords.longitude.toFixed(6));
+        if (target === 'city') {
+          setCityForm((prev) => ({ ...prev, latitude: lat, longitude: lon }));
+          setIsDetectingCityGps(false);
+        } else {
+          setMarketForm((prev) => ({ ...prev, latitude: lat, longitude: lon }));
+          setIsDetectingMarketGps(false);
+        }
+      },
+      () => {
+        if (target === 'city') setIsDetectingCityGps(false);
+        else setIsDetectingMarketGps(false);
+        alert('Could not acquire GPS coordinates. Please verify device permissions.');
+      },
+      { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
+    );
+  };
 
   const loadData = async () => {
     setLoading(true);
@@ -358,28 +393,51 @@ export default function SuperadminMarketsPage() {
                   className="w-full px-3 py-2 bg-[#F4F7F5] dark:bg-[#0E261D] rounded-xl border border-transparent focus:border-emerald-500 focus:outline-none"
                 />
               </div>
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="block font-semibold mb-1">Latitude</label>
-                  <input
-                    type="number"
-                    step="0.0001"
-                    required
-                    value={cityForm.latitude}
-                    onChange={(e) => setCityForm({ ...cityForm, latitude: parseFloat(e.target.value) })}
-                    className="w-full px-3 py-2 bg-[#F4F7F5] dark:bg-[#0E261D] rounded-xl border border-transparent focus:border-emerald-500 focus:outline-none"
-                  />
+              <div>
+                <div className="flex items-center justify-between mb-1">
+                  <span className="font-semibold text-xs">Coordinates</span>
+                  <button
+                    type="button"
+                    onClick={() => handleDetectGps('city')}
+                    disabled={isDetectingCityGps}
+                    className="flex items-center gap-1 text-[11px] text-emerald-600 dark:text-emerald-400 font-bold hover:underline cursor-pointer"
+                  >
+                    {isDetectingCityGps ? (
+                      <>
+                        <Loader2 className="w-3 h-3 animate-spin" />
+                        <span>Detecting...</span>
+                      </>
+                    ) : (
+                      <>
+                        <Navigation className="w-3 h-3" />
+                        <span>Auto-Detect Real GPS</span>
+                      </>
+                    )}
+                  </button>
                 </div>
-                <div>
-                  <label className="block font-semibold mb-1">Longitude</label>
-                  <input
-                    type="number"
-                    step="0.0001"
-                    required
-                    value={cityForm.longitude}
-                    onChange={(e) => setCityForm({ ...cityForm, longitude: parseFloat(e.target.value) })}
-                    className="w-full px-3 py-2 bg-[#F4F7F5] dark:bg-[#0E261D] rounded-xl border border-transparent focus:border-emerald-500 focus:outline-none"
-                  />
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-[11px] text-gray-500 mb-1">Latitude</label>
+                    <input
+                      type="number"
+                      step="0.0001"
+                      required
+                      value={cityForm.latitude}
+                      onChange={(e) => setCityForm({ ...cityForm, latitude: parseFloat(e.target.value) })}
+                      className="w-full px-3 py-2 bg-[#F4F7F5] dark:bg-[#0E261D] rounded-xl border border-transparent focus:border-emerald-500 focus:outline-none"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-[11px] text-gray-500 mb-1">Longitude</label>
+                    <input
+                      type="number"
+                      step="0.0001"
+                      required
+                      value={cityForm.longitude}
+                      onChange={(e) => setCityForm({ ...cityForm, longitude: parseFloat(e.target.value) })}
+                      className="w-full px-3 py-2 bg-[#F4F7F5] dark:bg-[#0E261D] rounded-xl border border-transparent focus:border-emerald-500 focus:outline-none"
+                    />
+                  </div>
                 </div>
               </div>
               <div className="flex justify-end gap-3 pt-2">
@@ -450,28 +508,51 @@ export default function SuperadminMarketsPage() {
                   className="w-full px-3 py-2 bg-[#F4F7F5] dark:bg-[#0E261D] rounded-xl border border-transparent focus:border-emerald-500 focus:outline-none"
                 />
               </div>
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="block font-semibold mb-1">Latitude</label>
-                  <input
-                    type="number"
-                    step="0.0001"
-                    required
-                    value={marketForm.latitude}
-                    onChange={(e) => setMarketForm({ ...marketForm, latitude: parseFloat(e.target.value) })}
-                    className="w-full px-3 py-2 bg-[#F4F7F5] dark:bg-[#0E261D] rounded-xl border border-transparent focus:border-emerald-500 focus:outline-none"
-                  />
+              <div>
+                <div className="flex items-center justify-between mb-1">
+                  <span className="font-semibold text-xs">Coordinates</span>
+                  <button
+                    type="button"
+                    onClick={() => handleDetectGps('market')}
+                    disabled={isDetectingMarketGps}
+                    className="flex items-center gap-1 text-[11px] text-emerald-600 dark:text-emerald-400 font-bold hover:underline cursor-pointer"
+                  >
+                    {isDetectingMarketGps ? (
+                      <>
+                        <Loader2 className="w-3 h-3 animate-spin" />
+                        <span>Detecting...</span>
+                      </>
+                    ) : (
+                      <>
+                        <Navigation className="w-3 h-3" />
+                        <span>Auto-Detect Real GPS</span>
+                      </>
+                    )}
+                  </button>
                 </div>
-                <div>
-                  <label className="block font-semibold mb-1">Longitude</label>
-                  <input
-                    type="number"
-                    step="0.0001"
-                    required
-                    value={marketForm.longitude}
-                    onChange={(e) => setMarketForm({ ...marketForm, longitude: parseFloat(e.target.value) })}
-                    className="w-full px-3 py-2 bg-[#F4F7F5] dark:bg-[#0E261D] rounded-xl border border-transparent focus:border-emerald-500 focus:outline-none"
-                  />
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-[11px] text-gray-500 mb-1">Latitude</label>
+                    <input
+                      type="number"
+                      step="0.0001"
+                      required
+                      value={marketForm.latitude}
+                      onChange={(e) => setMarketForm({ ...marketForm, latitude: parseFloat(e.target.value) })}
+                      className="w-full px-3 py-2 bg-[#F4F7F5] dark:bg-[#0E261D] rounded-xl border border-transparent focus:border-emerald-500 focus:outline-none"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-[11px] text-gray-500 mb-1">Longitude</label>
+                    <input
+                      type="number"
+                      step="0.0001"
+                      required
+                      value={marketForm.longitude}
+                      onChange={(e) => setMarketForm({ ...marketForm, longitude: parseFloat(e.target.value) })}
+                      className="w-full px-3 py-2 bg-[#F4F7F5] dark:bg-[#0E261D] rounded-xl border border-transparent focus:border-emerald-500 focus:outline-none"
+                    />
+                  </div>
                 </div>
               </div>
               <div>

@@ -40,9 +40,17 @@ import {
   Building,
   ChevronRight,
   Menu,
+  Navigation,
+  Loader2,
+  Crosshair,
+  KeyRound,
+  Scale,
+  AlertTriangle,
+  Copy,
 } from 'lucide-react';
 import { ThemeToggle } from '@/components/layout/ThemeToggle';
 import { buyerApi } from '@/lib/buyerApi';
+import { logisticsApi } from '@/lib/logisticsApi';
 import { paymentApi } from '@/lib/paymentApi';
 import { getAccessToken, getCachedUserProfile, logout } from '@/lib/auth';
 import { API_BASE_URL } from '@/lib/apiConfig';
@@ -203,6 +211,21 @@ function BuyerDashboardContent(props: any) {
   const [isNotificationsOpen, setIsNotificationsOpen] = useState(false);
   const [isSupportOpen, setIsSupportOpen] = useState(false);
   const [trackingOrder, setTrackingOrder] = useState<any | null>(null);
+  const [verifyDeliveryModal, setVerifyDeliveryModal] = useState<{
+    orderId: string;
+    shipmentOrderId: string;
+    orderNumber: string;
+    expectedWeightKg: number;
+    otpCode: string;
+  } | null>(null);
+  const [verifyForm, setVerifyForm] = useState({
+    receivedQuantityKg: 0,
+    cargoCondition: 'SATISFACTORY',
+    buyerNotes: '',
+    photoEvidenceUrl: '',
+  });
+  const [isSubmittingVerification, setIsSubmittingVerification] = useState(false);
+  const [copiedOtp, setCopiedOtp] = useState(false);
   const [isAddressModalOpen, setIsAddressModalOpen] = useState(false);
   const [addressForm, setAddressForm] = useState({
     label: 'Home',
@@ -214,6 +237,64 @@ function BuyerDashboardContent(props: any) {
     isDefault: false,
     deliveryNotes: '',
   });
+
+  // Automated GPS Real Data Tracking for Delivery Address
+  const [isDetectingAddressGps, setIsDetectingAddressGps] = useState(false);
+  const [addressGpsStatus, setAddressGpsStatus] = useState<string | null>(null);
+
+  const handleDetectAddressLocation = () => {
+    if (typeof window === 'undefined' || !navigator.geolocation) {
+      setAddressGpsStatus('Geolocation is not supported by your browser.');
+      return;
+    }
+    setIsDetectingAddressGps(true);
+    setAddressGpsStatus('Contacting GPS satellites for real delivery coordinates...');
+    navigator.geolocation.getCurrentPosition(
+      async (pos) => {
+        const lat = parseFloat(pos.coords.latitude.toFixed(6));
+        const lon = parseFloat(pos.coords.longitude.toFixed(6));
+        const acc = Math.round(pos.coords.accuracy);
+        setAddressForm((prev) => ({
+          ...prev,
+          latitude: lat,
+          longitude: lon,
+        }));
+        setAddressGpsStatus(`Real GPS Captured: ${lat.toFixed(4)}° N, ${lon.toFixed(4)}° E (±${acc}m accuracy)`);
+        setIsDetectingAddressGps(false);
+
+        // Smart reverse geocoding to fill address fields without manual typing
+        try {
+          const controller = new AbortController();
+          const tId = setTimeout(() => controller.abort(), 3500);
+          const res = await fetch(
+            `https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat=${lat}&lon=${lon}`,
+            { signal: controller.signal }
+          );
+          clearTimeout(tId);
+          if (res.ok) {
+            const data = await res.json();
+            const addr = data.address || {};
+            const sub = addr.suburb || addr.neighbourhood || addr.district || '';
+            const city = addr.city || addr.town || 'Addis Ababa';
+            const road = addr.road || addr.amenity || '';
+            setAddressForm((prev) => ({
+              ...prev,
+              city: city || prev.city,
+              subcity: sub || prev.subcity,
+              streetAddress: road ? `${road}${sub ? `, ${sub}` : ''}` : prev.streetAddress,
+            }));
+          }
+        } catch {
+          // Ignore reverse geocode failures
+        }
+      },
+      (err) => {
+        setIsDetectingAddressGps(false);
+        setAddressGpsStatus('Location permission denied or timed out.');
+      },
+      { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
+    );
+  };
 
   // Support Form State
   const [supportForm, setSupportForm] = useState({
@@ -495,15 +576,88 @@ function BuyerDashboardContent(props: any) {
     }
   };
 
-  // ─── Delivery Tracking ──────────────────────────────────────
+  // ─── Delivery Tracking & Logistics Verification ──────────────
   const handleTrackOrder = async (orderId: string) => {
     try {
+      // 1. Check for Inter-City Bulk Freight Shipment first
+      const shipRes = await logisticsApi.getBuyerShipment(orderId).catch(() => null);
+      if (shipRes?.data) {
+        const orderMatch = orders.find((o) => o.id === orderId);
+        setTrackingOrder({
+          isIntercity: true,
+          orderId,
+          orderNumber: orderMatch?.orderNumber || `#${orderId.slice(-6).toUpperCase()}`,
+          shipmentOrderId: shipRes.data.shipmentOrderId,
+          trackingNumber: shipRes.data.trackingNumber,
+          status: shipRes.data.status,
+          vehicle: shipRes.data.vehicle,
+          driver: shipRes.data.driver,
+          events: shipRes.data.events || [],
+          deliveryOtp: shipRes.data.deliveryOtp || orderMatch?.deliveryOtp,
+          confirmation: shipRes.data.confirmation,
+          orderStatus: shipRes.data.orderStatus,
+        });
+        return;
+      }
+
+      // 2. Standard Local Courier Tracking fallback
       const res = await buyerApi.getDeliveryTracking(orderId);
       if (res?.data) {
         setTrackingOrder(res.data);
       }
     } catch (err: any) {
       showNotification('Tracking information not yet available.', 'error');
+    }
+  };
+
+  const openVerifyDeliveryModal = async (order: any) => {
+    try {
+      let shipmentOrderId = '';
+      let otpCode = order.deliveryOtp || '';
+      const shipRes = await logisticsApi.getBuyerShipment(order.id).catch(() => null);
+      if (shipRes?.data) {
+        shipmentOrderId = shipRes.data.shipmentOrderId;
+        if (!otpCode && shipRes.data.deliveryOtp) otpCode = shipRes.data.deliveryOtp;
+      }
+      const totalKg = order.items?.reduce((sum: number, it: any) => sum + (Number(it.quantity) || 0), 0) || 500;
+      setVerifyDeliveryModal({
+        orderId: order.id,
+        shipmentOrderId: shipmentOrderId || order.id,
+        orderNumber: order.orderNumber,
+        expectedWeightKg: totalKg,
+        otpCode,
+      });
+      setVerifyForm({
+        receivedQuantityKg: totalKg,
+        cargoCondition: 'SATISFACTORY',
+        buyerNotes: '',
+        photoEvidenceUrl: '',
+      });
+    } catch {
+      showNotification('Unable to prepare delivery verification modal.', 'error');
+    }
+  };
+
+  const handleConfirmDeliveryVerification = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!verifyDeliveryModal) return;
+    setIsSubmittingVerification(true);
+    try {
+      await logisticsApi.verifyDelivery({
+        shipmentOrderId: verifyDeliveryModal.shipmentOrderId,
+        otpCode: verifyDeliveryModal.otpCode,
+        receivedQuantityKg: Number(verifyForm.receivedQuantityKg),
+        cargoCondition: verifyForm.cargoCondition,
+        buyerNotes: verifyForm.buyerNotes,
+        photoEvidenceUrl: verifyForm.photoEvidenceUrl || undefined,
+      });
+      showNotification('Delivery and scale receipt verified successfully!');
+      setVerifyDeliveryModal(null);
+      fetchAllData();
+    } catch (err: any) {
+      showNotification(err.message || 'Delivery verification failed.', 'error');
+    } finally {
+      setIsSubmittingVerification(false);
     }
   };
 
@@ -578,9 +732,9 @@ function BuyerDashboardContent(props: any) {
   };
 
   const SidebarContent = () => (
-    <div className="flex flex-col h-full bg-[#0A3323] text-white">
+    <div className="flex flex-col h-full bg-[#003D31] text-white">
       {/* Brand Header */}
-      <div className="px-5 py-5 border-b border-[#124230] flex items-center justify-between">
+      <div className="px-5 py-5 border-b border-[#064E3F] flex items-center justify-between">
         <Link href="/" className="flex items-center gap-2.5">
           <div className="w-8 h-8 rounded-xl bg-[#10B981]/20 flex items-center justify-center shrink-0">
             <svg className="w-5 h-5" viewBox="0 0 36 36" fill="none">
@@ -620,12 +774,12 @@ function BuyerDashboardContent(props: any) {
                 setSidebarOpen(false);
               }}
               className={`w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${isActive
-                ? 'bg-[#134D37] text-white shadow-sm'
-                : 'text-[#9BB8AA] hover:bg-[#0E3D2B] hover:text-white'
+                ? 'bg-[#027A5B] text-white shadow-sm'
+                : 'text-[#A2C2B5] hover:bg-[#054E3F] hover:text-white'
                 }`}
             >
               <div className="flex items-center gap-3">
-                <Icon className={`w-4 h-4 ${isActive ? 'text-emerald-300' : 'text-[#8AA899]'}`} />
+                <Icon className={`w-4 h-4 ${isActive ? 'text-white' : 'text-[#8AA899]'}`} />
                 <span>{item.label}</span>
               </div>
             </Link>
@@ -634,12 +788,12 @@ function BuyerDashboardContent(props: any) {
       </nav>
 
       {/* Need Help Card */}
-      <div className="p-3.5 border-t border-[#124230]">
-        <div className="bg-[#0E3D2B] rounded-2xl p-3.5 border border-[#164C37]">
-          <p className="text-[11px] font-bold text-white mb-2">Buyer Help Desk</p>
+      <div className="p-3.5 border-t border-[#064E3F]">
+        <div className="bg-[#085441] rounded-2xl p-3.5 border border-[#0D6B53]">
+          <p className="text-[11px] font-bold text-white mb-2">Need Help?</p>
           <button
             onClick={() => setIsSupportOpen(true)}
-            className="w-full py-2 px-3 rounded-xl bg-[#134D37] hover:bg-[#1A5E44] text-white text-xs font-bold transition-colors flex items-center justify-center gap-2 cursor-pointer shadow-xs"
+            className="w-full py-2 px-3 rounded-xl bg-[#027A5B] hover:bg-[#038C68] text-white text-xs font-bold transition-colors flex items-center justify-center gap-2 cursor-pointer shadow-xs"
           >
             <HelpCircle className="w-3.5 h-3.5 text-emerald-300" />
             <span>Contact Support</span>
@@ -682,7 +836,7 @@ function BuyerDashboardContent(props: any) {
           </div>
           <button
             onClick={() => setSidebarOpen(false)}
-            className="absolute top-4 right-4 w-9 h-9 rounded-full bg-white/90 dark:bg-[#0D2118] text-slate-800 dark:text-white flex items-center justify-center shadow-md cursor-pointer z-20"
+            className="absolute top-4 right-4 w-9 h-9 rounded-full bg-white/90 dark:bg-[#003D31] text-slate-800 dark:text-white flex items-center justify-center shadow-md cursor-pointer z-20"
           >
             <X className="w-5 h-5" />
           </button>
@@ -1307,6 +1461,12 @@ function BuyerDashboardContent(props: any) {
                       <div>
                         <div className="font-bold text-sm text-[#1E2923] dark:text-white flex items-center gap-2">
                           <span>Order #{order.orderNumber}</span>
+                          {order.fulfillmentType === 'INTERCITY_BULK' && (
+                            <span className="px-2 py-0.5 rounded-full text-[10px] font-black bg-indigo-50 text-indigo-700 dark:bg-indigo-950/60 dark:text-indigo-400 border border-indigo-200 dark:border-indigo-800 flex items-center gap-1">
+                              <Truck className="w-3 h-3" />
+                              INTERCITY BULK
+                            </span>
+                          )}
                           <span
                             className={`px-2.5 py-0.5 rounded-full text-[10px] font-bold ${order.status === 'DELIVERED'
                               ? 'bg-emerald-50 text-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-400'
@@ -1354,6 +1514,33 @@ function BuyerDashboardContent(props: any) {
                       ))}
                     </div>
 
+                    {/* Inter-City Transport & Loading Breakdown */}
+                    {(order.transportFee > 0 || order.loadingFee > 0) && (
+                      <div className="flex flex-wrap items-center gap-4 text-[11px] text-[#517663] dark:text-[#88B8A0] bg-gray-50 dark:bg-[#11241B] p-2.5 rounded-xl border border-gray-100 dark:border-white/5">
+                        <span className="font-semibold">Logistics Allocation:</span>
+                        <span>Transport: ETB {order.transportFee?.toLocaleString()}</span>
+                        {order.loadingFee > 0 && <span>Loading/Handling: ETB {order.loadingFee?.toLocaleString()}</span>}
+                      </div>
+                    )}
+
+                    {/* Delivery OTP Handover Badge */}
+                    {order.deliveryOtp && (
+                      <div className="flex items-center justify-between p-3 bg-emerald-50 dark:bg-emerald-950/40 rounded-xl border border-emerald-200 dark:border-emerald-800 text-xs">
+                        <div className="flex items-center gap-2">
+                          <KeyRound className="w-4 h-4 text-emerald-600 dark:text-emerald-400 shrink-0" />
+                          <div>
+                            <span className="font-bold text-[#1E2923] dark:text-white">Secure Delivery PIN:</span>{' '}
+                            <span className="font-mono font-black text-sm tracking-widest text-[#075C3B] dark:text-[#34D399] ml-1">
+                              {order.deliveryOtp}
+                            </span>
+                          </div>
+                        </div>
+                        <span className="text-[10px] font-medium text-[#517663] dark:text-[#88B8A0]">
+                          Provide to truck driver upon scale weight confirmation
+                        </span>
+                      </div>
+                    )}
+
                     {/* Destination & Action Buttons */}
                     <div className="pt-3 border-t border-[#E5EDE7] dark:border-[#132A20] flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 text-xs">
                       <div className="flex items-center gap-1.5 text-[#517663] dark:text-[#88B8A0]">
@@ -1368,6 +1555,16 @@ function BuyerDashboardContent(props: any) {
                         >
                           Track Delivery
                         </button>
+
+                        {order.fulfillmentType === 'INTERCITY_BULK' && order.status !== 'CANCELLED' && order.status !== 'DELIVERED' && (
+                          <button
+                            onClick={() => openVerifyDeliveryModal(order)}
+                            className="px-3.5 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs transition-colors cursor-pointer flex items-center gap-1.5"
+                          >
+                            <Scale className="w-3.5 h-3.5" />
+                            Verify Scale Weight
+                          </button>
+                        )}
 
                         {/* Order cancellation permitted only in pre-transit status */}
                         {['CONFIRMED', 'PREPARING'].includes(order.status) && (
@@ -1962,50 +2159,157 @@ function BuyerDashboardContent(props: any) {
             <div className="flex items-center justify-between pb-3 border-b border-[#E5EDE7] dark:border-[#132A20]">
               <div className="flex items-center gap-2">
                 <Truck className="w-5 h-5 text-[#075C3B] dark:text-[#34D399]" />
-                <h3 className="font-bold text-sm text-[#1E2923] dark:text-white">
-                  Delivery Tracking: #{trackingOrder.orderNumber}
-                </h3>
+                <div>
+                  <h3 className="font-bold text-sm text-[#1E2923] dark:text-white">
+                    {trackingOrder.isIntercity ? 'Inter-City Freight Tracking' : 'Delivery Tracking'}
+                  </h3>
+                  <div className="text-[10px] text-gray-500 font-mono">
+                    Order #{trackingOrder.orderNumber} {trackingOrder.trackingNumber ? `• Waybill: ${trackingOrder.trackingNumber}` : ''}
+                  </div>
+                </div>
               </div>
               <button onClick={() => setTrackingOrder(null)} className="p-1 cursor-pointer">
                 <X className="w-4 h-4" />
               </button>
             </div>
 
-            {/* Courier Info */}
-            <div className="bg-[#F4F7F5] dark:bg-[#11241B] p-3.5 rounded-xl space-y-1.5 text-xs">
-              <div className="font-bold text-[#075C3B] dark:text-[#34D399]">Assigned Courier</div>
+            {/* Carrier / Vehicle Information */}
+            <div className="bg-[#F4F7F5] dark:bg-[#11241B] p-3.5 rounded-xl space-y-2 text-xs">
+              <div className="flex items-center justify-between">
+                <span className="font-bold text-[#075C3B] dark:text-[#34D399]">
+                  {trackingOrder.isIntercity ? 'Commercial Carrier & Driver' : 'Assigned Courier'}
+                </span>
+                {trackingOrder.vehicle?.hasRefrigeration && (
+                  <span className="px-2 py-0.5 rounded-full text-[9px] font-extrabold bg-cyan-100 text-cyan-800 dark:bg-cyan-950 dark:text-cyan-300">
+                    ❄️ Cold-Chain Active
+                  </span>
+                )}
+              </div>
               <div className="text-[#1E2923] dark:text-white font-semibold">
-                {trackingOrder.courier?.name} ({trackingOrder.courier?.vehicleType})
+                {trackingOrder.isIntercity
+                  ? `${trackingOrder.driver?.fullName || 'Assigned Carrier Driver'} (${trackingOrder.vehicle?.plateNumber || 'Commercial Truck'})`
+                  : `${trackingOrder.courier?.name} (${trackingOrder.courier?.vehicleType})`}
               </div>
               <div className="text-[#517663] dark:text-[#88B8A0] flex items-center gap-1.5">
                 <Phone className="w-3.5 h-3.5" />
-                <span>{trackingOrder.courier?.phone}</span>
+                <a
+                  href={`tel:${trackingOrder.isIntercity ? trackingOrder.driver?.phone : trackingOrder.courier?.phone}`}
+                  className="hover:underline font-bold text-emerald-600"
+                >
+                  {trackingOrder.isIntercity ? trackingOrder.driver?.phone || '+251 91 100 0000' : trackingOrder.courier?.phone}
+                </a>
               </div>
             </div>
 
+            {/* Secure Delivery OTP Banner (For Intercity) */}
+            {trackingOrder.isIntercity && trackingOrder.deliveryOtp && (
+              <div className="bg-emerald-50 dark:bg-emerald-950/60 border border-emerald-200 dark:border-emerald-800 p-3.5 rounded-xl space-y-1">
+                <div className="flex items-center justify-between">
+                  <span className="text-[11px] font-bold text-emerald-800 dark:text-emerald-300 flex items-center gap-1.5">
+                    <KeyRound className="w-3.5 h-3.5 text-emerald-600" />
+                    Delivery Release PIN
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (trackingOrder.deliveryOtp) {
+                        navigator.clipboard.writeText(trackingOrder.deliveryOtp);
+                        setCopiedOtp(true);
+                        setTimeout(() => setCopiedOtp(false), 2000);
+                      }
+                    }}
+                    className="text-[10px] font-bold text-emerald-700 dark:text-emerald-400 hover:underline flex items-center gap-1 cursor-pointer"
+                  >
+                    {copiedOtp ? <Check className="w-3 h-3" /> : <Copy className="w-3 h-3" />}
+                    {copiedOtp ? 'Copied' : 'Copy PIN'}
+                  </button>
+                </div>
+                <div className="text-2xl font-mono font-black tracking-widest text-[#075C3B] dark:text-[#34D399]">
+                  {trackingOrder.deliveryOtp}
+                </div>
+                <p className="text-[10px] text-[#517663] dark:text-[#88B8A0]">
+                  Provide this code to the driver upon gate unloading to confirm scale weight receipt.
+                </p>
+              </div>
+            )}
+
+            {/* Delivery Confirmation Snapshot (if already verified) */}
+            {trackingOrder.confirmation && (
+              <div className="p-3 bg-emerald-100/60 dark:bg-emerald-950/80 rounded-xl border border-emerald-300 text-xs space-y-1">
+                <div className="font-bold text-emerald-900 dark:text-emerald-200 flex items-center gap-1">
+                  <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
+                  <span>Cargo Received & Verified</span>
+                </div>
+                <div className="text-[11px] text-emerald-800 dark:text-emerald-300">
+                  Scale Net: {trackingOrder.confirmation.receivedQuantityKg} kg{' '}
+                  {trackingOrder.confirmation.shortageQuantityKg > 0 && (
+                    <span className="text-amber-700 font-bold">
+                      (Shortage: {trackingOrder.confirmation.shortageQuantityKg} kg)
+                    </span>
+                  )}
+                </div>
+              </div>
+            )}
+
             {/* Timeline */}
             <div className="space-y-3">
-              {trackingOrder.timeline?.map((step: any, idx: number) => (
-                <div key={idx} className="flex items-start gap-3 text-xs">
-                  <div
-                    className={`w-5 h-5 rounded-full flex items-center justify-center text-[10px] shrink-0 mt-0.5 ${step.done
-                      ? 'bg-emerald-600 text-white'
-                      : 'bg-gray-200 text-gray-500 dark:bg-gray-800'
-                      }`}
-                  >
-                    ✓
-                  </div>
-                  <div>
-                    <div className="font-bold text-[#1E2923] dark:text-white">{step.title}</div>
-                    {step.time && (
-                      <div className="text-[10px] text-[#7A9988]">
-                        {new Date(step.time).toLocaleTimeString()}
+              {trackingOrder.isIntercity ? (
+                trackingOrder.events?.length > 0 ? (
+                  trackingOrder.events.map((ev: any, idx: number) => (
+                    <div key={idx} className="flex items-start gap-3 text-xs">
+                      <div className="w-5 h-5 rounded-full flex items-center justify-center text-[10px] shrink-0 mt-0.5 bg-emerald-600 text-white">
+                        ✓
                       </div>
-                    )}
+                      <div>
+                        <div className="font-bold text-[#1E2923] dark:text-white">{ev.status?.replace(/_/g, ' ')}</div>
+                        {ev.notes && <div className="text-[11px] text-gray-500">{ev.notes}</div>}
+                        <div className="text-[10px] text-[#7A9988]">
+                          {new Date(ev.occurredAt).toLocaleTimeString()}
+                        </div>
+                      </div>
+                    </div>
+                  ))
+                ) : (
+                  <div className="text-xs text-gray-500 italic">No milestone events logged yet.</div>
+                )
+              ) : (
+                trackingOrder.timeline?.map((step: any, idx: number) => (
+                  <div key={idx} className="flex items-start gap-3 text-xs">
+                    <div
+                      className={`w-5 h-5 rounded-full flex items-center justify-center text-[10px] shrink-0 mt-0.5 ${step.done
+                        ? 'bg-emerald-600 text-white'
+                        : 'bg-gray-200 text-gray-500 dark:bg-gray-800'
+                        }`}
+                    >
+                      ✓
+                    </div>
+                    <div>
+                      <div className="font-bold text-[#1E2923] dark:text-white">{step.title}</div>
+                      {step.time && (
+                        <div className="text-[10px] text-[#7A9988]">
+                          {new Date(step.time).toLocaleTimeString()}
+                        </div>
+                      )}
+                    </div>
                   </div>
-                </div>
-              ))}
+                ))
+              )}
             </div>
+
+            {/* Verify scale weight button inside modal if intercity */}
+            {trackingOrder.isIntercity && !trackingOrder.confirmation && trackingOrder.orderStatus !== 'CANCELLED' && (
+              <button
+                onClick={() => {
+                  const orderMatch = orders.find((o) => o.id === trackingOrder.orderId);
+                  setTrackingOrder(null);
+                  openVerifyDeliveryModal(orderMatch || { id: trackingOrder.orderId, orderNumber: trackingOrder.orderNumber, deliveryOtp: trackingOrder.deliveryOtp });
+                }}
+                className="w-full py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold transition-colors cursor-pointer flex items-center justify-center gap-2"
+              >
+                <Scale className="w-4 h-4" />
+                <span>Confirm Offloading & Scale Weight</span>
+              </button>
+            )}
 
             <button
               onClick={() => setTrackingOrder(null)}
@@ -2013,6 +2317,135 @@ function BuyerDashboardContent(props: any) {
             >
               Close Tracking
             </button>
+          </div>
+        </div>
+      )}
+
+      {/* ─── MODAL: VERIFY DELIVERY & SCALE WEIGHT ─────────────────────── */}
+      {verifyDeliveryModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs">
+          <div className="bg-white dark:bg-[#0D221A] rounded-2xl border border-[#E5EDE7] dark:border-[#132A20] max-w-md w-full p-6 space-y-4 shadow-2xl">
+            <div className="flex items-center justify-between pb-3 border-b border-[#E5EDE7] dark:border-[#132A20]">
+              <div className="flex items-center gap-2">
+                <Scale className="w-5 h-5 text-emerald-600 dark:text-emerald-400" />
+                <h3 className="font-bold text-sm text-[#1E2923] dark:text-white">
+                  Verify Delivery: #{verifyDeliveryModal.orderNumber}
+                </h3>
+              </div>
+              <button onClick={() => setVerifyDeliveryModal(null)} className="p-1 cursor-pointer">
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            <form onSubmit={handleConfirmDeliveryVerification} className="space-y-4 text-xs">
+              <div className="bg-amber-50/70 dark:bg-amber-950/30 p-3 rounded-xl border border-amber-200 dark:border-amber-800 space-y-1">
+                <div className="font-bold text-amber-900 dark:text-amber-300 flex items-center gap-1.5">
+                  <ShieldCheck className="w-4 h-4 text-amber-600" />
+                  <span>Physical Cargo Inspection Protocol</span>
+                </div>
+                <p className="text-[11px] text-amber-800/80 dark:text-amber-400">
+                  Measure the total net weight received at your gate scale before providing the OTP to the carrier driver.
+                </p>
+              </div>
+
+              <div>
+                <label className="block font-bold text-[#1E2923] dark:text-white mb-1">
+                  Measured Scale Weight Received (kg)
+                </label>
+                <div className="relative">
+                  <input
+                    type="number"
+                    step="0.1"
+                    min="1"
+                    required
+                    value={verifyForm.receivedQuantityKg || ''}
+                    onChange={(e) => setVerifyForm({ ...verifyForm, receivedQuantityKg: parseFloat(e.target.value) || 0 })}
+                    className="w-full p-2.5 rounded-xl border border-[#E5EDE7] dark:border-[#132A20] bg-white dark:bg-[#07130D] font-mono font-bold"
+                  />
+                  <span className="absolute right-3 top-2.5 text-gray-400 font-bold">kg</span>
+                </div>
+                <div className="flex justify-between items-center mt-1 text-[11px] text-gray-500">
+                  <span>Manifest Expected: {verifyDeliveryModal.expectedWeightKg} kg</span>
+                  {verifyForm.receivedQuantityKg > 0 && verifyForm.receivedQuantityKg < verifyDeliveryModal.expectedWeightKg && (
+                    <span className="font-bold text-red-600 flex items-center gap-1">
+                      <AlertTriangle className="w-3 h-3" />
+                      Shortage: {(verifyDeliveryModal.expectedWeightKg - verifyForm.receivedQuantityKg).toFixed(1)} kg
+                    </span>
+                  )}
+                </div>
+              </div>
+
+              <div>
+                <label className="block font-bold text-[#1E2923] dark:text-white mb-1">
+                  Produce & Packaging Condition
+                </label>
+                <select
+                  value={verifyForm.cargoCondition}
+                  onChange={(e) => setVerifyForm({ ...verifyForm, cargoCondition: e.target.value })}
+                  className="w-full p-2.5 rounded-xl border border-[#E5EDE7] dark:border-[#132A20] bg-white dark:bg-[#07130D]"
+                >
+                  <option value="SATISFACTORY">Satisfactory - High Quality, Undamaged</option>
+                  <option value="MINOR_DAMAGE">Minor Packaging Abrasion (Acceptable)</option>
+                  <option value="SPOILED_OR_DEFECTIVE">Spoiled / Temperature Compromised</option>
+                  <option value="REJECTED">Rejected Cargo</option>
+                </select>
+              </div>
+
+              <div>
+                <label className="block font-bold text-[#1E2923] dark:text-white mb-1">
+                  6-Digit Carrier Release PIN
+                </label>
+                <input
+                  type="text"
+                  maxLength={6}
+                  required
+                  placeholder="e.g. 583921"
+                  value={verifyDeliveryModal.otpCode}
+                  onChange={(e) => setVerifyDeliveryModal({ ...verifyDeliveryModal, otpCode: e.target.value })}
+                  className="w-full p-2.5 rounded-xl border border-[#E5EDE7] dark:border-[#132A20] bg-white dark:bg-[#07130D] font-mono font-bold tracking-widest text-center text-base"
+                />
+              </div>
+
+              <div>
+                <label className="block font-bold text-[#1E2923] dark:text-white mb-1">
+                  Receiving Inspector Notes (Optional)
+                </label>
+                <textarea
+                  rows={2}
+                  value={verifyForm.buyerNotes}
+                  onChange={(e) => setVerifyForm({ ...verifyForm, buyerNotes: e.target.value })}
+                  placeholder="Notes regarding scale reading, driver seal number, or cargo quality..."
+                  className="w-full p-2.5 rounded-xl border border-[#E5EDE7] dark:border-[#132A20] bg-white dark:bg-[#07130D]"
+                />
+              </div>
+
+              <div className="flex items-center justify-end gap-2 pt-2 border-t border-[#E5EDE7] dark:border-[#132A20]">
+                <button
+                  type="button"
+                  onClick={() => setVerifyDeliveryModal(null)}
+                  className="px-4 py-2 border rounded-xl text-xs font-semibold cursor-pointer"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={isSubmittingVerification}
+                  className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold transition-colors cursor-pointer flex items-center gap-1.5"
+                >
+                  {isSubmittingVerification ? (
+                    <>
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                      <span>Verifying...</span>
+                    </>
+                  ) : (
+                    <>
+                      <CheckCircle2 className="w-4 h-4" />
+                      <span>Verify & Release Cargo</span>
+                    </>
+                  )}
+                </button>
+              </div>
+            </form>
           </div>
         </div>
       )}
@@ -2031,6 +2464,45 @@ function BuyerDashboardContent(props: any) {
             </div>
 
             <form onSubmit={handleCreateAddress} className="space-y-3 text-xs">
+              {/* Automated Real GPS Address Card */}
+              <div className="p-3 rounded-xl bg-emerald-50/60 dark:bg-emerald-950/20 border border-emerald-200 dark:border-emerald-800 space-y-2">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-1.5 font-bold text-emerald-900 dark:text-emerald-300">
+                    <MapPin className="w-3.5 h-3.5 text-emerald-600" />
+                    <span>Real-World Drop-off Telemetry</span>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={handleDetectAddressLocation}
+                    disabled={isDetectingAddressGps}
+                    className="flex items-center gap-1 px-2.5 py-1 rounded-lg text-[11px] font-bold bg-emerald-600 text-white hover:bg-emerald-700 disabled:opacity-50 transition-colors cursor-pointer"
+                  >
+                    {isDetectingAddressGps ? (
+                      <>
+                        <Loader2 className="w-3 h-3 animate-spin" />
+                        <span>Detecting...</span>
+                      </>
+                    ) : (
+                      <>
+                        <Navigation className="w-3 h-3" />
+                        <span>Auto-Detect Real GPS</span>
+                      </>
+                    )}
+                  </button>
+                </div>
+                {addressGpsStatus && (
+                  <p className="text-[10px] font-medium text-emerald-700 dark:text-emerald-400">
+                    {addressGpsStatus}
+                  </p>
+                )}
+                <div className="flex items-center gap-2 text-[10px] text-gray-500 font-mono">
+                  <span>Lat: {addressForm.latitude.toFixed(4)}° N</span>
+                  <span>·</span>
+                  <span>Lon: {addressForm.longitude.toFixed(4)}° E</span>
+                  <span className="text-emerald-600 font-semibold">(Turn-by-turn courier precision)</span>
+                </div>
+              </div>
+
               <div>
                 <label className="block font-bold text-[#517663] mb-1">Label</label>
                 <input

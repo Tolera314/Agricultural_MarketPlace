@@ -12,6 +12,7 @@ import onboardingRouter from './routes/onboarding.routes.js';
 import farmerRouter from './routes/farmer.routes.js';
 import messageRouter from './routes/message.routes.js';
 import paymentRouter from './routes/payment.routes.js';
+import logisticsRouter from './routes/logistics.routes.js';
 import { handleChapaWebhook } from './controllers/payment.controller.js';
 
 import cookieParser from 'cookie-parser';
@@ -154,6 +155,7 @@ app.use('/api/farmer', farmerRouter);
 app.use('/api/onboarding', onboardingRouter);
 app.use('/api/messages', messageRouter);
 app.use('/api/payment', paymentRouter);
+app.use('/api/logistics', logisticsRouter);
 
 // Public Chapa Webhook Direct Aliases (supports both legacy and custom webhook configurations)
 app.post('/api/v1/subscriptions/webhook', handleChapaWebhook);

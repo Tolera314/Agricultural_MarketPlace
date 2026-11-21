@@ -152,4 +152,31 @@ export const workerApi = {
     apiFetch<any>('/api/worker/profile', { method: 'PATCH', body: JSON.stringify(data) }),
   notifications: () => apiFetch<any>('/api/worker/notifications'),
   seedDemoOrder: () => apiFetch<any>('/api/worker/seed-demo-order', { method: 'POST' }),
+
+  // Dynamic Multi-Stop Batching & Farm Corridor Clustering
+  corridorBatches: () => apiFetch<any>('/api/worker/corridors/batches'),
+  acceptCorridorBatch: (jobIds: string[]) =>
+    apiFetch<any>('/api/worker/corridors/batches/accept', {
+      method: 'POST',
+      body: JSON.stringify({ jobIds }),
+    }),
+
+  // Multi-Factor Proof-of-Delivery Photo Upload
+  uploadProof: async (file: File) => {
+    const token = getToken();
+    const formData = new FormData();
+    formData.append('file', file);
+    const res = await fetch(`${API}/api/worker/deliveries/upload-proof`, {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+      body: formData,
+    });
+    const parsed = await safeParseApiResponse<any>(res);
+    if (!parsed.ok) {
+      throw new ApiClientError(parsed.error || { message: 'Failed to upload proof photo.', status: res.status });
+    }
+    return parsed.data;
+  },
 };

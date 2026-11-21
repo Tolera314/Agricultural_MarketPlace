@@ -20,6 +20,11 @@ import {
   Navigation,
   FileText,
   HelpCircle,
+  Crosshair,
+  RefreshCw,
+  ExternalLink,
+  Radio,
+  Check,
 } from 'lucide-react';
 import { onboardingApi } from '@/lib/onboardingApi';
 import { compressDocumentImage } from '@/lib/imageCompressor';
@@ -76,7 +81,13 @@ export function FarmerOnboardingForm() {
   const [draftNotice, setDraftNotice] = useState<string | null>(null);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [uploadingField, setUploadingField] = useState<string | null>(null);
-  const [detectingGps, setDetectingGps] = useState(false);
+
+  // Automated GPS Real Data Tracking (No manual coordinate input)
+  const [gpsStatus, setGpsStatus] = useState<'idle' | 'detecting' | 'acquired' | 'error' | 'denied'>('idle');
+  const [gpsAccuracy, setGpsAccuracy] = useState<number | null>(null);
+  const [gpsTimestamp, setGpsTimestamp] = useState<string | null>(null);
+  const [detectedAddress, setDetectedAddress] = useState<string | null>(null);
+  const [gpsSource, setGpsSource] = useState<'auto_gps' | 'manual_refresh' | 'draft_restored' | 'preset'>('auto_gps');
 
   // Load user data & saved draft
   useEffect(() => {
@@ -104,6 +115,11 @@ export function FarmerOnboardingForm() {
             ...prev,
             ...status.onboardingDraft,
           }));
+          if (status.onboardingDraft.farmLatitude && status.onboardingDraft.farmLongitude) {
+            setGpsStatus('acquired');
+            setGpsSource('draft_restored');
+            setGpsTimestamp('Restored from draft');
+          }
           setDraftNotice('Resumed your previously saved application draft.');
           setTimeout(() => setDraftNotice(null), 4000);
         }
@@ -165,32 +181,124 @@ export function FarmerOnboardingForm() {
     }
   };
 
-  // GPS detection helper
-  const handleDetectLocation = () => {
-    if (!navigator.geolocation) {
+  // Verified Ethiopian Agricultural Hub presets as instant zero-typing fallback
+  const REGIONAL_PRESETS = [
+    { label: 'Mojo / Lume Farming Corridor', region: 'Oromia', woreda: 'Lume / Mojo', lat: 8.5878, lon: 39.1245 },
+    { label: 'Bishoftu Agricultural Area', region: 'Oromia', woreda: "Ada'a / Bishoftu", lat: 8.7523, lon: 38.9785 },
+    { label: 'Adama Regional Valley', region: 'Oromia', woreda: 'Adama', lat: 8.5414, lon: 39.2689 },
+    { label: 'Addis Ababa Central Hub', region: 'Addis Ababa', woreda: 'Kirkos / Bole', lat: 9.0222, lon: 38.7468 },
+    { label: 'Hawassa Lake Corridor', region: 'Sidama', woreda: 'Hawassa Zuria', lat: 7.0620, lon: 38.4764 },
+    { label: 'Bahir Dar Agro Zone', region: 'Amhara', woreda: 'Bahir Dar Zuria', lat: 11.5936, lon: 37.3908 },
+  ];
+
+  // Automated Real-World Geolocation Detection (Zero Manual Input)
+  const detectRealCoordinates = (isManualTrigger = false) => {
+    if (typeof window === 'undefined' || !navigator.geolocation) {
+      setGpsStatus('error');
       setErrors((prev) => ({ ...prev, gps: 'Geolocation is not supported by your browser.' }));
       return;
     }
 
-    setDetectingGps(true);
+    setGpsStatus('detecting');
+    setErrors((prev) => {
+      const copy = { ...prev };
+      delete copy.gps;
+      return copy;
+    });
+
     navigator.geolocation.getCurrentPosition(
-      (pos) => {
+      async (pos) => {
+        const realLat = parseFloat(pos.coords.latitude.toFixed(6));
+        const realLon = parseFloat(pos.coords.longitude.toFixed(6));
+        const accuracy = Math.round(pos.coords.accuracy);
+
         setFormData((prev) => ({
           ...prev,
-          farmLatitude: parseFloat(pos.coords.latitude.toFixed(6)),
-          farmLongitude: parseFloat(pos.coords.longitude.toFixed(6)),
+          farmLatitude: realLat,
+          farmLongitude: realLon,
         }));
-        setDetectingGps(false);
+
+        setGpsAccuracy(accuracy);
+        setGpsTimestamp(new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }));
+        setGpsStatus('acquired');
+        setGpsSource(isManualTrigger ? 'manual_refresh' : 'auto_gps');
+
+        // Non-blocking reverse lookup to auto-suggest Woreda and Region without typing
+        try {
+          const controller = new AbortController();
+          const timeoutId = setTimeout(() => controller.abort(), 4000);
+          const res = await fetch(
+            `https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat=${realLat}&lon=${realLon}`,
+            { signal: controller.signal }
+          );
+          clearTimeout(timeoutId);
+          if (res.ok) {
+            const data = await res.json();
+            const addr = data.address || {};
+            const woredaOrDistrict = addr.county || addr.district || addr.suburb || addr.town || addr.city || '';
+            const detectedState = addr.state || '';
+            if (woredaOrDistrict) {
+              setDetectedAddress(data.display_name?.split(',').slice(0, 3).join(',') || woredaOrDistrict);
+              setFormData((prev) => ({
+                ...prev,
+                woreda: prev.woreda.trim() ? prev.woreda : woredaOrDistrict,
+                region: prev.region || (detectedState.includes('Oromia') ? 'Oromia' : prev.region),
+              }));
+            }
+          }
+        } catch {
+          // Ignore reverse geocoding errors silently
+        }
       },
       (err) => {
-        setErrors((prev) => ({
-          ...prev,
-          gps: 'Unable to detect location. You can enter coordinates or district manually.',
-        }));
-        setDetectingGps(false);
+        let errorMsg = 'Unable to acquire real GPS location fix.';
+        if (err.code === err.PERMISSION_DENIED) {
+          setGpsStatus('denied');
+          errorMsg = 'Location permission was denied. Please allow location access in your browser to automatically capture real farm coordinates.';
+        } else if (err.code === err.TIMEOUT) {
+          setGpsStatus('error');
+          errorMsg = 'GPS satellite request timed out. Please tap retry.';
+        } else {
+          setGpsStatus('error');
+        }
+        setErrors((prev) => ({ ...prev, gps: errorMsg }));
       },
-      { timeout: 10000 }
+      {
+        enableHighAccuracy: true,
+        timeout: 12000,
+        maximumAge: 0,
+      }
     );
+  };
+
+  // Automatically trigger real GPS acquisition when arriving at Step 3
+  useEffect(() => {
+    if (currentStep === 3) {
+      if (gpsStatus === 'idle') {
+        detectRealCoordinates(false);
+      }
+    }
+  }, [currentStep, gpsStatus]);
+
+  // Apply Regional Preset without manual number input
+  const handleApplyPreset = (preset: (typeof REGIONAL_PRESETS)[number]) => {
+    setFormData((prev) => ({
+      ...prev,
+      farmLatitude: preset.lat,
+      farmLongitude: preset.lon,
+      region: preset.region,
+      woreda: prev.woreda.trim() ? prev.woreda : preset.woreda,
+    }));
+    setGpsStatus('acquired');
+    setGpsSource('preset');
+    setGpsAccuracy(50);
+    setGpsTimestamp('Calibrated Regional Hub');
+    setDetectedAddress(`${preset.label} (${preset.region})`);
+    setErrors((prev) => {
+      const copy = { ...prev };
+      delete copy.gps;
+      return copy;
+    });
   };
 
   // Step validation
@@ -668,48 +776,150 @@ export function FarmerOnboardingForm() {
                 </div>
               </div>
 
-              {/* Coordinates with GPS capture */}
-              <div className="p-4 rounded-2xl bg-gray-50/60 dark:bg-white/5 border border-gray-200 dark:border-white/10 space-y-3">
-                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-                  <div className="flex items-center gap-2">
-                    <MapPin className="w-4 h-4 text-emerald-600" />
-                    <span className="text-xs font-bold text-[#11261D] dark:text-[#E8F5EF]">
-                      Farm Geolocation Coordinates
-                    </span>
+              {/* Automated Real GPS Geolocation Card (No Manual Input Required) */}
+              <div className="p-5 rounded-2xl bg-gradient-to-br from-emerald-50/50 via-gray-50/50 to-white dark:from-[#0E261D]/40 dark:via-white/5 dark:to-[#07130D] border border-emerald-200/80 dark:border-emerald-800/60 shadow-sm space-y-4">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                  <div className="flex items-center gap-2.5">
+                    <div className="w-8 h-8 rounded-xl bg-emerald-100 dark:bg-emerald-950/70 border border-emerald-300 dark:border-emerald-700/60 flex items-center justify-center text-emerald-700 dark:text-emerald-300">
+                      <Radio className={`w-4 h-4 ${gpsStatus === 'detecting' ? 'animate-pulse text-amber-500' : 'text-emerald-600'}`} />
+                    </div>
+                    <div>
+                      <div className="flex items-center gap-2">
+                        <span className="text-xs font-bold text-[#11261D] dark:text-[#E8F5EF]">
+                          Automated Farm Coordinates (Real GPS)
+                        </span>
+                        {gpsStatus === 'acquired' && (
+                          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800">
+                            <Check className="w-2.5 h-2.5" />
+                            <span>Auto-Acquired</span>
+                          </span>
+                        )}
+                      </div>
+                      <p className="text-[11px] text-gray-500 dark:text-gray-400">
+                        Acquired directly from device satellite telemetry for courier pickup routing.
+                      </p>
+                    </div>
                   </div>
+
                   <button
                     type="button"
-                    onClick={handleDetectLocation}
-                    disabled={detectingGps}
-                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold bg-emerald-100 text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300 hover:bg-emerald-200 transition-colors"
+                    onClick={() => detectRealCoordinates(true)}
+                    disabled={gpsStatus === 'detecting'}
+                    className="flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold bg-emerald-600 text-white hover:bg-emerald-700 disabled:opacity-50 transition-all shadow-sm shrink-0"
                   >
-                    <Navigation className={`w-3.5 h-3.5 ${detectingGps ? 'animate-spin' : ''}`} />
-                    <span>{detectingGps ? 'Detecting GPS...' : 'Capture Current Location'}</span>
+                    <RefreshCw className={`w-3.5 h-3.5 ${gpsStatus === 'detecting' ? 'animate-spin' : ''}`} />
+                    <span>{gpsStatus === 'detecting' ? 'Acquiring GPS...' : 'Re-sync Live GPS'}</span>
                   </button>
                 </div>
 
-                {errors.gps && <p className="text-[11px] text-amber-600 font-semibold">{errors.gps}</p>}
-
-                <div className="grid grid-cols-2 gap-3 text-xs">
-                  <div>
-                    <label className="block text-gray-500 font-semibold mb-1">Latitude</label>
-                    <input
-                      type="number"
-                      step="0.0001"
-                      value={formData.farmLatitude}
-                      onChange={(e) => setFormData({ ...formData, farmLatitude: parseFloat(e.target.value) || 0 })}
-                      className="w-full px-3 py-2 rounded-xl border border-gray-200 dark:border-white/10 bg-white dark:bg-[#07130D]"
-                    />
+                {/* Detecting state banner */}
+                {gpsStatus === 'detecting' && (
+                  <div className="p-3 bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800 rounded-xl text-xs flex items-center gap-2.5 text-amber-800 dark:text-amber-200">
+                    <Loader2 className="w-4 h-4 animate-spin shrink-0 text-amber-600" />
+                    <span>Detecting real-world coordinates via device satellite fix. No manual typing needed...</span>
                   </div>
-                  <div>
-                    <label className="block text-gray-500 font-semibold mb-1">Longitude</label>
-                    <input
-                      type="number"
-                      step="0.0001"
-                      value={formData.farmLongitude}
-                      onChange={(e) => setFormData({ ...formData, farmLongitude: parseFloat(e.target.value) || 0 })}
-                      className="w-full px-3 py-2 rounded-xl border border-gray-200 dark:border-white/10 bg-white dark:bg-[#07130D]"
-                    />
+                )}
+
+                {/* Error / Denied notice */}
+                {errors.gps && (
+                  <div className="p-3 bg-rose-50 dark:bg-rose-950/30 border border-rose-200 dark:border-rose-800 rounded-xl text-xs text-rose-800 dark:text-rose-200 space-y-2">
+                    <div className="flex items-center gap-2">
+                      <AlertCircle className="w-4 h-4 shrink-0 text-rose-600" />
+                      <span>{errors.gps}</span>
+                    </div>
+                    <div className="flex flex-wrap items-center gap-2 pt-1">
+                      <button
+                        type="button"
+                        onClick={() => detectRealCoordinates(true)}
+                        className="px-2.5 py-1 rounded-lg text-xs font-bold bg-rose-600 text-white hover:bg-rose-700 transition-colors"
+                      >
+                        Retry GPS Detection
+                      </button>
+                      <span className="text-[11px] text-gray-500">or pick an agricultural zone below:</span>
+                    </div>
+                  </div>
+                )}
+
+                {/* Display Real Coordinates Cleanly as Read-Only Telemetry Badges */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
+                  <div className="p-3 bg-white dark:bg-[#07130D] rounded-xl border border-gray-200 dark:border-white/10 shadow-inner flex items-center justify-between">
+                    <div>
+                      <span className="block text-[10px] uppercase font-bold text-gray-400">Real Latitude</span>
+                      <span className="text-sm font-mono font-bold text-[#11261D] dark:text-[#E8F5EF]">
+                        {formData.farmLatitude.toFixed(6)}° N
+                      </span>
+                    </div>
+                    <Crosshair className="w-4 h-4 text-emerald-600 opacity-60" />
+                  </div>
+
+                  <div className="p-3 bg-white dark:bg-[#07130D] rounded-xl border border-gray-200 dark:border-white/10 shadow-inner flex items-center justify-between">
+                    <div>
+                      <span className="block text-[10px] uppercase font-bold text-gray-400">Real Longitude</span>
+                      <span className="text-sm font-mono font-bold text-[#11261D] dark:text-[#E8F5EF]">
+                        {formData.farmLongitude.toFixed(6)}° E
+                      </span>
+                    </div>
+                    <MapPin className="w-4 h-4 text-emerald-600 opacity-60" />
+                  </div>
+                </div>
+
+                {/* Telemetry metadata footer */}
+                <div className="flex flex-wrap items-center justify-between gap-2 pt-1 text-[11px] text-gray-500 dark:text-gray-400">
+                  <div className="flex flex-wrap items-center gap-2">
+                    {gpsAccuracy !== null && (
+                      <span className="inline-flex items-center gap-1 font-semibold text-emerald-700 dark:text-emerald-400">
+                        <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                        Accurate to ±{gpsAccuracy}m
+                      </span>
+                    )}
+                    {gpsTimestamp && <span>· Fix: {gpsTimestamp}</span>}
+                    {detectedAddress && (
+                      <span className="text-gray-600 dark:text-gray-300 truncate max-w-xs font-medium">
+                        · {detectedAddress}
+                      </span>
+                    )}
+                  </div>
+
+                  <a
+                    href={`https://www.google.com/maps?q=${formData.farmLatitude},${formData.farmLongitude}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex items-center gap-1 font-bold text-emerald-600 hover:text-emerald-700 dark:text-emerald-400 hover:underline"
+                  >
+                    <span>Preview on Map</span>
+                    <ExternalLink className="w-3 h-3" />
+                  </a>
+                </div>
+
+                {/* 1-Click Regional Hub Fallback Presets (Zero Typing Required) */}
+                <div className="pt-2 border-t border-gray-200/70 dark:border-white/10 space-y-1.5">
+                  <div className="flex items-center justify-between">
+                    <span className="text-[10px] font-bold uppercase tracking-wider text-gray-400">
+                      Quick Agricultural Zone Select (Zero Manual Input)
+                    </span>
+                    <span className="text-[10px] text-gray-400">Tap to calibrate farm zone</span>
+                  </div>
+                  <div className="grid grid-cols-2 sm:grid-cols-3 gap-1.5">
+                    {REGIONAL_PRESETS.map((p) => {
+                      const isSelected =
+                        Math.abs(formData.farmLatitude - p.lat) < 0.001 &&
+                        Math.abs(formData.farmLongitude - p.lon) < 0.001;
+                      return (
+                        <button
+                          key={p.label}
+                          type="button"
+                          onClick={() => handleApplyPreset(p)}
+                          className={`px-2 py-1.5 rounded-lg text-left text-[11px] border transition-all ${
+                            isSelected
+                              ? 'bg-emerald-100/80 dark:bg-emerald-950/60 border-emerald-500 text-emerald-900 dark:text-emerald-300 font-bold shadow-xs'
+                              : 'bg-white dark:bg-white/5 border-gray-200 dark:border-white/10 text-gray-700 dark:text-gray-300 hover:border-emerald-300'
+                          }`}
+                        >
+                          <div className="truncate">{p.label}</div>
+                          <div className="text-[9px] text-gray-400">{p.region}</div>
+                        </button>
+                      );
+                    })}
                   </div>
                 </div>
               </div>
@@ -975,9 +1185,11 @@ export function FarmerOnboardingForm() {
                   <div className="text-gray-600 dark:text-gray-400">
                     {formData.region}, {formData.woreda} {formData.kebele ? `(${formData.kebele})` : ''}
                   </div>
-                  <div className="text-gray-500 text-[11px]">
-                    Coordinates: {formData.farmLatitude}, {formData.farmLongitude} · {formData.farmSizeHectares} Hectares
-                    {formData.isOrganic ? ' · Organic' : ''}
+                  <div className="text-gray-500 text-[11px] flex flex-wrap items-center gap-1.5 pt-0.5">
+                    <span>GPS Telemetry: {formData.farmLatitude.toFixed(5)}° N, {formData.farmLongitude.toFixed(5)}° E</span>
+                    <span className="text-emerald-600 dark:text-emerald-400 font-semibold">(Auto-Acquired)</span>
+                    <span>· {formData.farmSizeHectares} Hectares</span>
+                    {formData.isOrganic && <span className="text-emerald-700 font-bold">· Organic</span>}
                   </div>
                 </div>
                 <button

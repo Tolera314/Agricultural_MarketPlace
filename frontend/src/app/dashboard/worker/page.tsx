@@ -44,6 +44,9 @@ import {
   ArrowRight,
   Receipt,
   CheckCheck,
+  Layers,
+  GitMerge,
+  TrendingDown,
 } from 'lucide-react';
 import { ThemeToggle } from '@/components/layout/ThemeToggle';
 import { LocationShareWidget } from '@/components/location/LocationShareWidget';
@@ -373,11 +376,10 @@ function NearbyDeliveryRequestsCard({
               ) : (
                 <button
                   onClick={() => onAccept(item)}
-                  className={`px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all shadow-xs cursor-pointer flex items-center gap-1 ${
-                    !isVerified
-                      ? 'bg-amber-100 hover:bg-amber-200 dark:bg-amber-950/60 text-amber-900 dark:text-amber-200 border border-amber-300 dark:border-amber-800'
-                      : 'bg-[#075C3B] dark:bg-[#10B981] hover:bg-[#05462D] dark:hover:bg-[#059669] active:scale-95 text-white dark:text-[#062417]'
-                  }`}
+                  className={`px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all shadow-xs cursor-pointer flex items-center gap-1 ${!isVerified
+                    ? 'bg-amber-100 hover:bg-amber-200 dark:bg-amber-950/60 text-amber-900 dark:text-amber-200 border border-amber-300 dark:border-amber-800'
+                    : 'bg-[#075C3B] dark:bg-[#10B981] hover:bg-[#05462D] dark:hover:bg-[#059669] active:scale-95 text-white dark:text-[#062417]'
+                    }`}
                   title={!isVerified ? 'Courier verification required to accept orders' : 'Accept order'}
                 >
                   {!isVerified && <Lock className="w-3 h-3 text-amber-700 dark:text-amber-400" />}
@@ -835,13 +837,12 @@ function DashboardSection({
       {/* Verification Status Alert Banner */}
       {data?.profile?.verificationStatus && data.profile.verificationStatus !== 'VERIFIED' && (
         <div
-          className={`p-4 sm:p-5 rounded-2xl border shadow-xs flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 ${
-            data.profile.verificationStatus === 'PENDING'
-              ? 'bg-amber-50/90 dark:bg-amber-950/30 border-amber-200 dark:border-amber-800 text-amber-900 dark:text-amber-200'
-              : data.profile.verificationStatus === 'REJECTED'
+          className={`p-4 sm:p-5 rounded-2xl border shadow-xs flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 ${data.profile.verificationStatus === 'PENDING'
+            ? 'bg-amber-50/90 dark:bg-amber-950/30 border-amber-200 dark:border-amber-800 text-amber-900 dark:text-amber-200'
+            : data.profile.verificationStatus === 'REJECTED'
               ? 'bg-rose-50/90 dark:bg-rose-950/30 border-rose-200 dark:border-rose-800 text-rose-900 dark:text-rose-200'
               : 'bg-gray-100 dark:bg-gray-800 border-gray-200 text-gray-800'
-          }`}
+            }`}
         >
           <div className="flex items-start sm:items-center gap-3">
             <div className="w-10 h-10 rounded-xl bg-white/80 dark:bg-black/20 flex items-center justify-center shrink-0">
@@ -866,7 +867,7 @@ function DashboardSection({
                 {data.profile.verificationStatus === 'PENDING'
                   ? 'Your courier application is awaiting administrator approval. Order offers, broadcast requests, and dispatch eligibility will activate once verified.'
                   : (data.profile as any).verificationNote ||
-                    'Your application requires additional vehicle or driver information. Review administrator remarks and resubmit.'}
+                  'Your application requires additional vehicle or driver information. Review administrator remarks and resubmit.'}
               </p>
             </div>
           </div>
@@ -958,25 +959,32 @@ function OffersSection({
   onSeedDemoOrder: () => void;
 }) {
   const [offers, setOffers] = useState<DeliveryOffer[]>([]);
+  const [corridorBatches, setCorridorBatches] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [actingOfferId, setActingOfferId] = useState<string | null>(null);
+  const [acceptingBatchId, setAcceptingBatchId] = useState<string | null>(null);
   const [seeding, setSeeding] = useState(false);
 
-  const loadOffers = useCallback(async () => {
+  const loadData = useCallback(async () => {
     setLoading(true);
     try {
-      const res = await workerApi.offers();
-      setOffers(res.data || []);
+      const [offersRes, corridorRes] = await Promise.all([
+        workerApi.offers().catch(() => ({ data: [] })),
+        workerApi.corridorBatches().catch(() => ({ data: [] })),
+      ]);
+      setOffers(offersRes.data || []);
+      setCorridorBatches(corridorRes.data || []);
     } catch {
       setOffers([]);
+      setCorridorBatches([]);
     } finally {
       setLoading(false);
     }
   }, []);
 
   useEffect(() => {
-    loadOffers();
-  }, [loadOffers]);
+    loadData();
+  }, [loadData]);
 
   const handleAccept = async (offer: DeliveryOffer) => {
     if (!isVerified) {
@@ -989,9 +997,27 @@ function OffersSection({
       onAcceptSuccess(res?.data?.jobId || offer.jobId);
     } catch (err: any) {
       alert(err?.message || 'Failed to accept offer. It may have expired or been assigned to another driver.');
-      loadOffers();
+      loadData();
     } finally {
       setActingOfferId(null);
+    }
+  };
+
+  const handleAcceptCorridorBatch = async (batch: any) => {
+    if (!isVerified) {
+      alert('Order Acceptance Locked: Your delivery courier account is pending administrator verification.');
+      return;
+    }
+    setAcceptingBatchId(batch.corridorId);
+    try {
+      const res = await workerApi.acceptCorridorBatch(batch.jobIds);
+      const targetJobId = res?.jobIds?.[0] || batch.jobIds[0];
+      onAcceptSuccess(targetJobId);
+    } catch (err: any) {
+      alert(err?.message || 'Failed to accept corridor batch.');
+      loadData();
+    } finally {
+      setAcceptingBatchId(null);
     }
   };
 
@@ -1011,7 +1037,7 @@ function OffersSection({
     setSeeding(true);
     try {
       await workerApi.seedDemoOrder();
-      await loadOffers();
+      await loadData();
       onSeedDemoOrder();
     } catch (err: any) {
       alert(err?.message || 'Failed to seed demo order.');
@@ -1039,7 +1065,7 @@ function OffersSection({
             <span>Simulate Order Dispatch</span>
           </button>
           <button
-            onClick={loadOffers}
+            onClick={loadData}
             className="p-2 rounded-xl bg-white dark:bg-[#0D2118] border border-[#D7E6DD] dark:border-[#1E4130] text-[#075C3B] dark:text-[#34D399] hover:bg-[#EBF6EE] dark:hover:bg-[#163828] transition-colors cursor-pointer"
             title="Refresh Offers"
           >
@@ -1047,6 +1073,135 @@ function OffersSection({
           </button>
         </div>
       </div>
+
+      {/* ─── DYNAMIC FARM CORRIDOR BATCHES (MULTI-STOP ROUTE BUNDLES) ──── */}
+      {corridorBatches.length > 0 && (
+        <div className="space-y-3">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <div className="w-7 h-7 rounded-lg bg-emerald-100 dark:bg-emerald-950/60 border border-emerald-300 dark:border-emerald-700/60 flex items-center justify-center text-emerald-700 dark:text-emerald-300">
+                <Layers className="w-4 h-4" />
+              </div>
+              <div>
+                <h3 className="text-sm font-bold text-[#0B3322] dark:text-[#EEFAF3] flex items-center gap-2">
+                  <span>Farm Corridor Batches (Dynamic Multi-Stop)</span>
+                  <span className="text-[10px] uppercase tracking-wider font-extrabold px-2 py-0.5 rounded-full bg-emerald-600 text-white">
+                    Optimized
+                  </span>
+                </h3>
+                <p className="text-[11px] text-[#517663] dark:text-[#88B8A0]">
+                  Nearby smallholder farm pickups grouped into single high-payout corridor runs.
+                </p>
+              </div>
+            </div>
+            <span className="text-xs font-semibold text-emerald-700 dark:text-emerald-400">
+              {corridorBatches.length} Corridor Bundle{corridorBatches.length > 1 ? 's' : ''} available
+            </span>
+          </div>
+
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+            {corridorBatches.map(batch => {
+              const isAccepting = acceptingBatchId === batch.corridorId;
+              return (
+                <div
+                  key={batch.corridorId}
+                  className="bg-gradient-to-br from-emerald-50/40 via-white to-white dark:from-[#0E261D]/60 dark:via-[#0D2118] dark:to-[#0A1A12] rounded-2xl border-2 border-emerald-500/30 dark:border-emerald-500/20 p-5 shadow-sm space-y-4"
+                >
+                  <div className="flex items-start justify-between gap-3">
+                    <div>
+                      <span className="text-[10px] font-bold uppercase tracking-wider text-emerald-700 dark:text-emerald-400">
+                        {batch.originRegion} → {batch.destinationZone}
+                      </span>
+                      <h4 className="text-sm font-black text-[#0B3322] dark:text-[#EEFAF3]">
+                        {batch.corridorName}
+                      </h4>
+                    </div>
+                    <div className="text-right">
+                      <span className="text-base font-black text-emerald-700 dark:text-emerald-400">
+                        ETB {batch.combinedCourierPayout}
+                      </span>
+                      <span className="block text-[10px] font-bold text-amber-600 dark:text-amber-400">
+                        +ETB {batch.corridorBonus} Corridor Bonus
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* Route Efficiency Metrics */}
+                  <div className="grid grid-cols-4 gap-2 text-center p-2.5 rounded-xl bg-white/80 dark:bg-black/20 border border-emerald-100 dark:border-emerald-900/40 text-[11px]">
+                    <div>
+                      <span className="block text-gray-400 text-[10px]">Stops</span>
+                      <span className="font-bold text-[#0B3322] dark:text-[#EEFAF3]">{batch.totalStops} (Multi)</span>
+                    </div>
+                    <div>
+                      <span className="block text-gray-400 text-[10px]">Weight</span>
+                      <span className="font-bold text-[#0B3322] dark:text-[#EEFAF3]">{batch.totalCargoWeightKg} kg</span>
+                    </div>
+                    <div>
+                      <span className="block text-gray-400 text-[10px]">Saved</span>
+                      <span className="font-bold text-emerald-600">-{batch.distanceSavedKm} km</span>
+                    </div>
+                    <div>
+                      <span className="block text-gray-400 text-[10px]">CO₂ Cut</span>
+                      <span className="font-bold text-emerald-600">-{batch.carbonReductionKg} kg</span>
+                    </div>
+                  </div>
+
+                  {/* Multi-Stop Sequence Timeline */}
+                  <div className="space-y-1.5 pt-1">
+                    <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">
+                      Sequenced Multi-Stop Route:
+                    </span>
+                    <div className="space-y-1 text-xs">
+                      {batch.stops.map((stop: any) => (
+                        <div
+                          key={stop.stopSequence}
+                          className="flex items-center gap-2 p-1.5 rounded-lg bg-gray-50 dark:bg-white/5 border border-gray-100 dark:border-white/5"
+                        >
+                          <span
+                            className={`w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-bold text-white shrink-0 ${stop.stopType === 'PICKUP' ? 'bg-[#075C3B]' : 'bg-blue-600'
+                              }`}
+                          >
+                            {stop.stopSequence}
+                          </span>
+                          <span
+                            className={`text-[10px] font-bold px-1.5 py-0.5 rounded ${stop.stopType === 'PICKUP'
+                              ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300'
+                              : 'bg-blue-100 text-blue-800 dark:bg-blue-950 dark:text-blue-300'
+                              }`}
+                          >
+                            {stop.stopType}
+                          </span>
+                          <span className="text-gray-700 dark:text-gray-300 truncate font-medium text-[11px] flex-1">
+                            {stop.contactName ? `${stop.contactName} · ` : ''}{stop.address}
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+
+                  <button
+                    onClick={() => handleAcceptCorridorBatch(batch)}
+                    disabled={isAccepting}
+                    className="w-full py-2.5 rounded-xl bg-gradient-to-r from-emerald-600 to-[#075C3B] hover:from-emerald-700 hover:to-[#05462D] text-white text-xs font-bold transition-all shadow-sm flex items-center justify-center gap-2 cursor-pointer disabled:opacity-60"
+                  >
+                    {isAccepting ? (
+                      <>
+                        <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                        <span>Assigning Corridor Route...</span>
+                      </>
+                    ) : (
+                      <>
+                        <CheckCircle2 className="w-3.5 h-3.5" />
+                        <span>Accept Corridor Bundle ({batch.jobs.length} Orders · ETB {batch.combinedCourierPayout})</span>
+                      </>
+                    )}
+                  </button>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
 
       {loading ? (
         <div className="py-16 text-center">
@@ -1129,11 +1284,10 @@ function OffersSection({
                     <button
                       onClick={() => handleAccept(offer)}
                       disabled={isActing}
-                      className={`px-4 py-1.5 rounded-xl text-xs font-bold transition-colors cursor-pointer flex items-center gap-1.5 disabled:opacity-50 ${
-                        !isVerified
-                          ? 'bg-amber-100 hover:bg-amber-200 dark:bg-amber-950/60 text-amber-900 dark:text-amber-200 border border-amber-300 dark:border-amber-800'
-                          : 'bg-[#075C3B] hover:bg-[#05462D] text-white'
-                      }`}
+                      className={`px-4 py-1.5 rounded-xl text-xs font-bold transition-colors cursor-pointer flex items-center gap-1.5 disabled:opacity-50 ${!isVerified
+                        ? 'bg-amber-100 hover:bg-amber-200 dark:bg-amber-950/60 text-amber-900 dark:text-amber-200 border border-amber-300 dark:border-amber-800'
+                        : 'bg-[#075C3B] hover:bg-[#05462D] text-white'
+                        }`}
                       title={!isVerified ? 'Courier verification required to accept orders' : 'Accept order'}
                     >
                       {isActing && <Loader2 className="w-3 h-3 animate-spin" />}
@@ -1193,11 +1347,10 @@ function DeliveriesSection({
             <button
               key={f}
               onClick={() => setFilter(f)}
-              className={`px-3 py-1.5 rounded-lg transition-colors cursor-pointer ${
-                filter === f
-                  ? 'bg-[#075C3B] text-white'
-                  : 'text-[#47705B] dark:text-[#88B8A0] hover:text-[#075C3B]'
-              }`}
+              className={`px-3 py-1.5 rounded-lg transition-colors cursor-pointer ${filter === f
+                ? 'bg-[#075C3B] text-white'
+                : 'text-[#47705B] dark:text-[#88B8A0] hover:text-[#075C3B]'
+                }`}
             >
               {f === 'ALL' ? 'All' : f === 'EN_ROUTE' ? 'In Transit' : f === 'DELIVERED' ? 'Delivered' : 'Exceptions'}
             </button>
@@ -1239,13 +1392,12 @@ function DeliveriesSection({
                     <div className="flex items-center gap-2">
                       <h4 className="text-sm font-bold text-[#0B3322] dark:text-[#EEFAF3] truncate">{job.product}</h4>
                       <span
-                        className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
-                          job.status === 'DELIVERED'
-                            ? 'bg-emerald-100 dark:bg-emerald-950/60 text-emerald-800 dark:text-emerald-300'
-                            : isOngoing
+                        className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${job.status === 'DELIVERED'
+                          ? 'bg-emerald-100 dark:bg-emerald-950/60 text-emerald-800 dark:text-emerald-300'
+                          : isOngoing
                             ? 'bg-blue-100 dark:bg-blue-950/60 text-blue-800 dark:text-blue-300'
                             : 'bg-rose-100 dark:bg-rose-950/60 text-rose-800 dark:text-rose-300'
-                        }`}
+                          }`}
                       >
                         {STATUS_LABELS[job.status] || job.status}
                       </span>
@@ -1344,11 +1496,10 @@ function EarningsSection() {
             <button
               key={p}
               onClick={() => setPeriod(p)}
-              className={`px-3 py-1.5 rounded-lg capitalize cursor-pointer transition-colors ${
-                period === p
-                  ? 'bg-[#075C3B] text-white'
-                  : 'text-[#47705B] dark:text-[#88B8A0] hover:text-[#075C3B]'
-              }`}
+              className={`px-3 py-1.5 rounded-lg capitalize cursor-pointer transition-colors ${period === p
+                ? 'bg-[#075C3B] text-white'
+                : 'text-[#47705B] dark:text-[#88B8A0] hover:text-[#075C3B]'
+                }`}
             >
               {p}
             </button>
@@ -1434,13 +1585,12 @@ function EarningsSection() {
                     <td className="py-3 font-bold text-[#075C3B] dark:text-[#34D399]">ETB {r.amount}</td>
                     <td className="py-3">
                       <span
-                        className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
-                          r.status === 'VERIFIED'
-                            ? 'bg-emerald-100 dark:bg-emerald-950/60 text-emerald-800 dark:text-emerald-300'
-                            : r.status === 'SUBMITTED'
+                        className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${r.status === 'VERIFIED'
+                          ? 'bg-emerald-100 dark:bg-emerald-950/60 text-emerald-800 dark:text-emerald-300'
+                          : r.status === 'SUBMITTED'
                             ? 'bg-blue-100 dark:bg-blue-950/60 text-blue-800 dark:text-blue-300'
                             : 'bg-amber-100 dark:bg-amber-950/60 text-amber-800 dark:text-amber-300'
-                        }`}
+                          }`}
                       >
                         {r.status}
                       </span>
@@ -1527,9 +1677,8 @@ function VehicleSection({
         <button
           onClick={toggleAvailability}
           disabled={updating}
-          className={`px-4 py-2 rounded-xl text-xs font-bold transition-colors cursor-pointer flex items-center gap-2 ${
-            online ? 'bg-[#075C3B] text-white' : 'bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-300'
-          }`}
+          className={`px-4 py-2 rounded-xl text-xs font-bold transition-colors cursor-pointer flex items-center gap-2 ${online ? 'bg-[#075C3B] text-white' : 'bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-300'
+            }`}
         >
           {updating ? (
             <Loader2 className="w-3.5 h-3.5 animate-spin" />
@@ -1912,9 +2061,9 @@ function WorkerDashboardContent(props: any) {
 
   // Sidebar Component
   const SidebarContent = () => (
-    <div className="flex flex-col h-full bg-[#0A3323] text-white">
+    <div className="flex flex-col h-full bg-[#003D31] text-white">
       {/* Brand Header */}
-      <div className="px-5 py-5 border-b border-[#124230] flex items-center justify-between">
+      <div className="px-5 py-5 border-b border-[#064E3F] flex items-center justify-between">
         <Link href="/" className="flex items-center gap-2.5">
           <div className="w-8 h-8 rounded-xl bg-[#10B981]/20 flex items-center justify-center shrink-0">
             <svg className="w-5 h-5" viewBox="0 0 36 36" fill="none">
@@ -1955,21 +2104,19 @@ function WorkerDashboardContent(props: any) {
                 setActiveSection(item.key as NavKey);
                 setSidebarOpen(false);
               }}
-              className={`w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
-                isActive
-                  ? 'bg-[#134D37] text-white shadow-sm'
-                  : 'text-[#9BB8AA] hover:bg-[#0E3D2B] hover:text-white'
-              }`}
+              className={`w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${isActive
+                ? 'bg-[#027A5B] text-white shadow-sm'
+                : 'text-[#A2C2B5] hover:bg-[#054E3F] hover:text-white'
+                }`}
             >
               <div className="flex items-center gap-3">
-                <Icon className={`w-4 h-4 ${isActive ? 'text-emerald-300' : 'text-[#8AA899]'}`} />
+                <Icon className={`w-4 h-4 ${isActive ? 'text-white' : 'text-[#8AA899]'}`} />
                 <span>{item.label}</span>
               </div>
               {badgeText && (
                 <span
-                  className={`px-2 py-0.5 rounded-full text-[10px] font-extrabold ${
-                    badgeText === 'LIVE' ? 'bg-amber-500 text-white animate-pulse' : 'bg-[#10B981] text-white'
-                  }`}
+                  className={`px-2 py-0.5 rounded-full text-[10px] font-extrabold ${badgeText === 'LIVE' ? 'bg-amber-500 text-white animate-pulse' : 'bg-[#10B981] text-white'
+                    }`}
                 >
                   {badgeText}
                 </span>
@@ -1980,12 +2127,12 @@ function WorkerDashboardContent(props: any) {
       </nav>
 
       {/* Need Help Card */}
-      <div className="p-3.5 border-t border-[#124230]">
-        <div className="bg-[#0E3D2B] rounded-2xl p-3.5 border border-[#164C37]">
-          <p className="text-[11px] font-bold text-white mb-2">Dispatch Desk</p>
+      <div className="p-3.5 border-t border-[#064E3F]">
+        <div className="bg-[#085441] rounded-2xl p-3.5 border border-[#0D6B53]">
+          <p className="text-[11px] font-bold text-white mb-2">Need Help?</p>
           <button
             onClick={() => setSupportModalOpen(true)}
-            className="w-full py-2 px-3 rounded-xl bg-[#134D37] hover:bg-[#1A5E44] text-white text-xs font-bold transition-colors flex items-center justify-center gap-2 cursor-pointer shadow-xs"
+            className="w-full py-2 px-3 rounded-xl bg-[#027A5B] hover:bg-[#038C68] text-white text-xs font-bold transition-colors flex items-center justify-center gap-2 cursor-pointer shadow-xs"
           >
             <Headphones className="w-3.5 h-3.5 text-emerald-300" />
             <span>Contact Support</span>
@@ -2011,7 +2158,7 @@ function WorkerDashboardContent(props: any) {
           </div>
           <button
             onClick={() => setSidebarOpen(false)}
-            className="absolute top-4 right-4 w-9 h-9 rounded-full bg-white/90 dark:bg-[#0D2118] text-slate-800 dark:text-white flex items-center justify-center shadow-md cursor-pointer z-20"
+            className="absolute top-4 right-4 w-9 h-9 rounded-full bg-white/90 dark:bg-[#003D31] text-slate-800 dark:text-white flex items-center justify-center shadow-md cursor-pointer z-20"
           >
             <X className="w-5 h-5" />
           </button>
