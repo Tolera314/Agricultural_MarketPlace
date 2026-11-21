@@ -92,9 +92,11 @@ export default function Home() {
           onLearnMore={() => handleScrollTo('how-it-works')}
         />
 
-        {/* 7. Connect Across Cities (Intercity Trade) */}
+        {/* 7. Connect Across Cities (Intercity Trade & Bulk Logistics) */}
         <ConnectAcrossCities
           onLearnMore={() => handleScrollTo('cta')}
+          onBrowseBulk={() => router.push('/products')}
+          onJoinTransport={() => router.push('/dashboard/transport')}
         />
 
         {/* 8. Testimonials (Lucide Star Rating) */}
